@@ -1,4 +1,7 @@
-OBJECT=main.o
+OBJECT=main.o\
+	   physics.o\
+	   util.o
+
 OUTPUT=a.out
 
 CFLAGS=-O3 -pipe
