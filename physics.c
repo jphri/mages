@@ -9,6 +9,7 @@
 typedef struct {
 	BodyID next, prev;
 	Body body;
+	unsigned int hit_info_start, hit_info_end;
 } BodyNode;
 
 typedef struct {
@@ -19,6 +20,8 @@ typedef struct {
 static bool body_check_collision(BodyID self, BodyID target, Hit *hit);
 static void update_body(BodyID body, float delta);
 
+static ArrayBuffer hit_info_arena;
+
 #define SYS_ID_TYPE   BodyID
 #define SYS_NODE_TYPE BodyNode
 #include "system.h"
@@ -27,12 +30,14 @@ void
 phx_init()
 {
 	_sys_init();
+	arrbuf_init(&hit_info_arena);
 }
 
 void
 phx_end()
 {
 	_sys_deinit();
+	arrbuf_free(&hit_info_arena);
 }
 
 BodyID phx_new()
@@ -56,6 +61,8 @@ void
 phx_update(float delta) 
 {
 	BodyID body_id = _sys_list;
+	arrbuf_clear(&hit_info_arena);
+
 	while(body_id) {
 		BodyID next = _sys_node(body_id)->next;
 		update_body(body_id, delta);
@@ -89,16 +96,27 @@ update_body(BodyID self, float delta)
 	#define SELF phx_data(self)
 	vec2_add_scaled(SELF->position, SELF->position, SELF->velocity, delta);
 
+	unsigned int info_start = hit_info_arena.size / sizeof(HitInfo);
 	BodyID target_id = _sys_list;
 	while(target_id) {
 		Hit hit;
 		BodyID next = _sys_node(target_id)->next;
 
-		if(target_id != self && body_check_collision(self, target_id, &hit))
+		if(target_id != self && body_check_collision(self, target_id, &hit)) {
 			vec2_add(SELF->position, hit.pierce, SELF->position);
+
+			HitInfo *info = arrbuf_newptr(&hit_info_arena, sizeof(HitInfo));
+			vec2_dup(info->pierce, hit.pierce);
+			vec2_dup(info->normal, hit.normal);
+			info->id = target_id;
+		}
 
 		target_id = next;
 	}
+	unsigned int info_end   = hit_info_arena.size / sizeof(HitInfo);
+	_sys_node(self)->hit_info_start = info_start;
+	_sys_node(self)->hit_info_end   = info_end;
+
 	#undef SELF
 }
 
@@ -144,4 +162,12 @@ body_check_collision(BodyID self_id, BodyID target_id, Hit *hit)
 
 	#undef self
 	#undef target
+}
+
+HitInfo *
+phx_hits(BodyID self_id, unsigned int *hit_count)
+{
+	HitInfo *ret = &((HitInfo*)hit_info_arena.data)[_sys_node(self_id)->hit_info_start];
+	*hit_count = _sys_node(self_id)->hit_info_end - _sys_node(self_id)->hit_info_start;
+	return ret;
 }

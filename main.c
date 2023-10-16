@@ -64,6 +64,8 @@ main()
 	}
 end_loop:
 
+	phx_end();
+
 	SDL_DestroyRenderer(GLOBAL.renderer);
 	SDL_DestroyWindow(GLOBAL.window);
 	SDL_Quit();
@@ -74,6 +76,8 @@ void
 body_control(BodyID b_id, float delta) 
 {
 	const Uint8 *keys = SDL_GetKeyboardState(NULL);
+	unsigned int hit_count;
+
 	#define b phx_data(b_id)
 	
 	vec2_dup(b->velocity, (vec2){ 0.0, 0.0 });
@@ -86,5 +90,9 @@ body_control(BodyID b_id, float delta)
 	if(keys[SDL_SCANCODE_D])
 		b->velocity[0] += 100;
 	#undef b
+
+	HitInfo *info = phx_hits(b_id, &hit_count);
+	for(int i = 0; i < hit_count; i++)
+		printf("Hit ID: %d\n", info->id);
 }
 
