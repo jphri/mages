@@ -48,7 +48,7 @@ BodyID phx_new()
 void
 phx_del(BodyID id) 
 {
-	return _sys_del(id);
+	_sys_del(id);
 }
 
 Body *
@@ -105,7 +105,8 @@ update_body(BodyID self, float delta)
 			continue;
 
 		if(target_id != self && body_check_collision(self, target_id, &hit)) {
-			if(SELF->solve_mask & (1 << phx_data(target_id)->solve_layer))
+
+			if(!SELF->is_static && SELF->solve_mask & (1 << phx_data(target_id)->solve_layer))
 				vec2_add(SELF->position, hit.pierce, SELF->position);
 
 			HitInfo *info = arrbuf_newptr(&hit_info_arena, sizeof(HitInfo));

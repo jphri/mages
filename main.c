@@ -5,8 +5,7 @@
 #include "global.h"
 #include "vecmath.h"
 #include "physics.h"
-
-static void body_control(BodyID id, float delta);
+#include "entity.h"
 
 Global GLOBAL;
 
@@ -24,17 +23,7 @@ main()
 	GLOBAL.renderer = SDL_CreateRenderer(GLOBAL.window, -1, SDL_RENDERER_ACCELERATED);
 
 	phx_init();
-
-	BodyID body = phx_new();
-	*phx_data(body) = (Body) {
-		.position = { 400, 300 },
-		.half_size = { 15, 15 },
-		.velocity = { 0.0, 0.0 },
-		.solve_layer     = 0,
-		.solve_mask      = 0x1,
-		.collision_layer = 0,
-		.collision_mask  = 1 << 0
-	};
+	ent_init();
 
 	BodyID body2 = phx_new();
 	*phx_data(body2) = (Body) {
@@ -44,9 +33,10 @@ main()
 		.solve_layer     =   0,
 		.solve_mask      = 0x1,
 		.collision_layer =   0,
-		.collision_mask  = 0x1
+		.collision_mask  = 0x1,
+		.is_static = true
 	};
-
+	ent_player_new((vec2){ 400, 300 });
 
 	Uint64 prev_time = SDL_GetPerformanceCounter();
 	while(true) {
@@ -56,7 +46,7 @@ main()
 		prev_time = curr_time;
 
 		phx_update(delta);
-		body_control(body, delta);
+		ent_update(delta);
 
 		SDL_SetRenderDrawColor(GLOBAL.renderer, 0, 0, 0, 255);
 		SDL_RenderClear(GLOBAL.renderer);
@@ -79,28 +69,3 @@ end_loop:
 	SDL_Quit();
 	return 0;
 }
-
-void
-body_control(BodyID b_id, float delta) 
-{
-	const Uint8 *keys = SDL_GetKeyboardState(NULL);
-	unsigned int hit_count;
-
-	#define b phx_data(b_id)
-	
-	vec2_dup(b->velocity, (vec2){ 0.0, 0.0 });
-	if(keys[SDL_SCANCODE_W])
-		b->velocity[1] -= 100;
-	if(keys[SDL_SCANCODE_S])
-		b->velocity[1] += 100;
-	if(keys[SDL_SCANCODE_A])
-		b->velocity[0] -= 100;
-	if(keys[SDL_SCANCODE_D])
-		b->velocity[0] += 100;
-	#undef b
-
-	HitInfo *info = phx_hits(b_id, &hit_count);
-	for(int i = 0; i < hit_count; i++)
-		printf("Hit ID: %d\n", info->id);
-}
-

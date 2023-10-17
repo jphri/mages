@@ -1,6 +1,8 @@
 OBJECT=main.o\
 	   physics.o\
-	   util.o
+	   util.o\
+	   entity.o\
+	   entities/player.o
 
 OUTPUT=a.out
 

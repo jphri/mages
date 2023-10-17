@@ -10,6 +10,8 @@ typedef struct {
 
 	unsigned int collision_layer;
 	unsigned long long int collision_mask;
+
+	bool is_static;
 } Body;
 
 typedef struct {
