@@ -97,21 +97,22 @@ update_body(BodyID self, float delta)
 	vec2_add_scaled(SELF->position, SELF->position, SELF->velocity, delta);
 
 	unsigned int info_start = hit_info_arena.size / sizeof(HitInfo);
-	BodyID target_id = _sys_list;
-	while(target_id) {
+	
+	for(BodyID target_id = _sys_list; target_id; target_id = _sys_node(target_id)->next) {
 		Hit hit;
-		BodyID next = _sys_node(target_id)->next;
+
+		if(!(SELF->collision_mask & (1 << phx_data(target_id)->collision_layer)))
+			continue;
 
 		if(target_id != self && body_check_collision(self, target_id, &hit)) {
-			vec2_add(SELF->position, hit.pierce, SELF->position);
+			if(SELF->solve_mask & (1 << phx_data(target_id)->solve_layer))
+				vec2_add(SELF->position, hit.pierce, SELF->position);
 
 			HitInfo *info = arrbuf_newptr(&hit_info_arena, sizeof(HitInfo));
 			vec2_dup(info->pierce, hit.pierce);
 			vec2_dup(info->normal, hit.normal);
 			info->id = target_id;
 		}
-
-		target_id = next;
 	}
 	unsigned int info_end   = hit_info_arena.size / sizeof(HitInfo);
 	_sys_node(self)->hit_info_start = info_start;

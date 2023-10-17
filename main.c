@@ -6,9 +6,9 @@
 #include "vecmath.h"
 #include "physics.h"
 
-Global GLOBAL;
-
 static void body_control(BodyID id, float delta);
+
+Global GLOBAL;
 
 int
 main()
@@ -29,15 +29,24 @@ main()
 	*phx_data(body) = (Body) {
 		.position = { 400, 300 },
 		.half_size = { 15, 15 },
-		.velocity = { 0.0, 0.0 }
+		.velocity = { 0.0, 0.0 },
+		.solve_layer     = 0,
+		.solve_mask      = 0x1,
+		.collision_layer = 0,
+		.collision_mask  = 1 << 0
 	};
 
 	BodyID body2 = phx_new();
 	*phx_data(body2) = (Body) {
 		.position = { 330, 300 },
 		.half_size = { 45, 15 },
-		.velocity = { 0.0, 0.0 }
+		.velocity = { 0.0, 0.0 },
+		.solve_layer     =   0,
+		.solve_mask      = 0x1,
+		.collision_layer =   0,
+		.collision_mask  = 0x1
 	};
+
 
 	Uint64 prev_time = SDL_GetPerformanceCounter();
 	while(true) {
@@ -65,7 +74,6 @@ main()
 end_loop:
 
 	phx_end();
-
 	SDL_DestroyRenderer(GLOBAL.renderer);
 	SDL_DestroyWindow(GLOBAL.window);
 	SDL_Quit();

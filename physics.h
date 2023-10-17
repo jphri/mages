@@ -4,6 +4,12 @@ typedef struct {
 	vec2 position;
 	vec2 half_size;
 	vec2 velocity;
+
+	unsigned int solve_layer;
+	unsigned long long int solve_mask;
+
+	unsigned int collision_layer;
+	unsigned long long int collision_mask;
 } Body;
 
 typedef struct {
