@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <GL/glew.h>
 #include <SDL2/SDL.h>
 
 #include "global.h"
 #include "vecmath.h"
 #include "physics.h"
 #include "entity.h"
+#include "graphics.h"
 
 Global GLOBAL;
 
@@ -21,7 +23,16 @@ main()
 							  800, 600,
 							  SDL_WINDOW_OPENGL);
 	GLOBAL.renderer = SDL_CreateRenderer(GLOBAL.window, -1, SDL_RENDERER_ACCELERATED);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+	GLOBAL.glctx = SDL_GL_CreateContext(GLOBAL.window);
+	SDL_GL_MakeCurrent(GLOBAL.window, GLOBAL.glctx);
 
+	if(glewInit() != GLEW_OK)
+		return -1;
+
+	gfx_init();
 	phx_init();
 	ent_init();
 
@@ -48,12 +59,10 @@ main()
 		phx_update(delta);
 		ent_update(delta);
 
-		SDL_SetRenderDrawColor(GLOBAL.renderer, 0, 0, 0, 255);
-		SDL_RenderClear(GLOBAL.renderer);
-		SDL_SetRenderDrawColor(GLOBAL.renderer, 255, 0, 0, 255);
-		phx_draw();
+		gfx_render(800, 600);
 
 		SDL_RenderPresent(GLOBAL.renderer);
+		SDL_GL_SwapWindow(GLOBAL.window);
 		while(SDL_PollEvent(&event)) {
 			switch(event.type) {
 			case SDL_QUIT:
