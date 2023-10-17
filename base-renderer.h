@@ -61,3 +61,7 @@ static inline void intrend_uniform_iv(Uniform uniform, size_t count, size_t size
 static inline void intrend_draw(ShaderProgram *program, GLuint vao, GLenum type, GLsizei num_vertex) {
 	ugl_draw(program->program, vao, type, num_vertex);
 }
+
+static inline void intrend_draw_instanced(ShaderProgram *program, GLuint vao, GLenum type, GLsizei num_vertex, GLsizei n_inst) {
+	ugl_draw_instanced(program->program, vao, type, num_vertex, n_inst);
+}

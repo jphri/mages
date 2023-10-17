@@ -116,6 +116,7 @@ ugl_create_vao(GLuint n_specs, VaoSpec specs[n_specs])
 			GL_FALSE,
 			specs[i].stride,
 			(void*)specs[i].offset);
+		glVertexAttribDivisor(specs[i].name, specs[i].divisor);
 	}
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -131,6 +132,18 @@ ugl_draw(GLuint program, GLuint vao, GLenum type, GLuint vert)
 	glBindVertexArray(vao);
 
 	glDrawArrays(type, 0, vert);
+
+	glBindVertexArray(0);
+	glUseProgram(0);
+}
+
+void
+ugl_draw_instanced(GLuint program, GLuint vao, GLenum type, GLuint vert, GLuint n_inst)
+{
+	glUseProgram(program);
+	glBindVertexArray(vao);
+
+	glDrawArraysInstanced(type, 0, vert, n_inst);
 
 	glBindVertexArray(0);
 	glUseProgram(0);
