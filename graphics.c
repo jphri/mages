@@ -22,7 +22,6 @@ enum Uniform {
 enum VertexAttrib {
 	VATTRIB_POSITION,
 	VATTRIB_TEXCOORD,
-	VATTRIB_COLOR,
 	VATTRIB_INST_POSITION,
 	VATTRIB_INST_SIZE,
 	VATTRIB_INST_COLOR,
@@ -32,32 +31,29 @@ enum VertexAttrib {
 };
 
 #define FBO_SCALE 4
+#define MAX_SPRITES 1024
 
 typedef struct {
 	vec2 position;
 	vec2 texcoord;
-	vec4 color;
 } SpriteVertex;
 
 typedef struct {
-	GLuint texture;
+	TextureAtlas texture;
 	GLuint instance_buffer;
 	GLuint vao;
-	GLuint cols, rows;
 	GLuint sprite_count;
 } SpriteBuffer;
 
 typedef struct {
 	GLuint texture;
 	int cols, rows;
-} TerrainTexture;
+} TextureAtlasData;
 
 typedef struct {
 	vec2 position;
 	vec2 tile_data;
 } TileData;
-
-#define MAX_SPRITES 1024
 
 #include "base-renderer.h"
 
@@ -76,7 +72,6 @@ intrend_bind_attribs(ShaderProgram *shader)
 {
 	intrend_attrib_bind(shader, VATTRIB_POSITION, "v_Position");
 	intrend_attrib_bind(shader, VATTRIB_TEXCOORD, "v_Texcoord");
-	intrend_attrib_bind(shader, VATTRIB_COLOR,    "v_Color");
 
 	intrend_attrib_bind(shader, VATTRIB_INST_POSITION,  "v_InstPosition");
 	intrend_attrib_bind(shader, VATTRIB_INST_SIZE,      "v_InstSize");
@@ -85,28 +80,27 @@ intrend_bind_attribs(ShaderProgram *shader)
 	intrend_attrib_bind(shader, VATTRIB_INST_COLOR,     "v_InstColor");
 }
 
-static void create_texture_buffer(int w, int h);
-static void init_shaders();
-
+static void   create_texture_buffer(int w, int h);
 static void   init_shaders();
 static GLuint load_texture(const char *file);
 
-static SpriteBuffer load_sprite_buffer(const char *file, int cols, int rows);
+static SpriteBuffer load_sprite_buffer(TextureAtlas texture);
 static void         draw_sprite_buffer(SpriteBuffer *buffer);
 static void         insert_sprite_buffer(SpriteBuffer *buffer, Sprite *sprite);
 static void         end_sprite_buffer(SpriteBuffer *buffer);
 
-static TerrainTexture load_terrain(const char *file, int cols, int rows);
-static void           end_terrain(TerrainTexture *texture);
-static void         draw_tmap(GraphicsTileMap *tmap);
+static TextureAtlasData load_texture_atlas(const char *file, int cols, int rows);
+static void             end_texture_atlas(TextureAtlasData *texture);
 
-static void draw_post(ShaderProgram *program);
+static void             draw_tmap(GraphicsTileMap *tmap);
+
+static void             draw_post(ShaderProgram *program);
 
 static GLuint sprite_buffer_gpu;
 static int screen_width, screen_height;
 static ShaderProgram sprite_program, tile_map_program;
 static SpriteBuffer sprite_buffers[LAST_SPRITE];
-static TerrainTexture terrain_texture[LAST_TERRAIN];
+static TextureAtlasData texture_atlas[LAST_TEXTURE_ATLAS];
 static ArrayBuffer tile_maps;
 
 static GLuint albedo_fbo, albedo_texture;
@@ -118,30 +112,31 @@ void
 gfx_init()
 {
 	static SpriteVertex vertex_data[] = {
-		{ .position = { -1.0, -1.0 }, .texcoord = { 0.0, 0.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
-		{ .position = {  1.0, -1.0 }, .texcoord = { 1.0, 0.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
-		{ .position = {  1.0,  1.0 }, .texcoord = { 1.0, 1.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
-		{ .position = {  1.0,  1.0 }, .texcoord = { 1.0, 1.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
-		{ .position = { -1.0,  1.0 }, .texcoord = { 0.0, 1.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
-		{ .position = { -1.0, -1.0 }, .texcoord = { 0.0, 0.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
+		{ .position = { -1.0, -1.0 }, .texcoord = { 0.0, 0.0 }, },
+		{ .position = {  1.0, -1.0 }, .texcoord = { 1.0, 0.0 }, },
+		{ .position = {  1.0,  1.0 }, .texcoord = { 1.0, 1.0 }, },
+		{ .position = {  1.0,  1.0 }, .texcoord = { 1.0, 1.0 }, },
+		{ .position = { -1.0,  1.0 }, .texcoord = { 0.0, 1.0 }, },
+		{ .position = { -1.0, -1.0 }, .texcoord = { 0.0, 0.0 }, },
 	};
 	static SpriteVertex post_process[] = {
-		{ .position = { -1.0, -1.0 }, .texcoord = { 0.0, 0.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
-		{ .position = {  1.0, -1.0 }, .texcoord = { 1.0, 0.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
-		{ .position = {  1.0,  1.0 }, .texcoord = { 1.0, 1.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
-		{ .position = {  1.0,  1.0 }, .texcoord = { 1.0, 1.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
-		{ .position = { -1.0,  1.0 }, .texcoord = { 0.0, 1.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
-		{ .position = { -1.0, -1.0 }, .texcoord = { 0.0, 0.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
+		{ .position = { -1.0, -1.0 }, .texcoord = { 0.0, 0.0 }, },
+		{ .position = {  1.0, -1.0 }, .texcoord = { 1.0, 0.0 }, },
+		{ .position = {  1.0,  1.0 }, .texcoord = { 1.0, 1.0 }, },
+		{ .position = {  1.0,  1.0 }, .texcoord = { 1.0, 1.0 }, },
+		{ .position = { -1.0,  1.0 }, .texcoord = { 0.0, 1.0 }, },
+		{ .position = { -1.0, -1.0 }, .texcoord = { 0.0, 0.0 }, },
 	};
 	init_shaders();
 
 	sprite_buffer_gpu = ugl_create_buffer(GL_STATIC_DRAW, sizeof(vertex_data), vertex_data);
-	sprite_buffers[SPRITE_PLAYER] = load_sprite_buffer("textures/player.png", 2, 1);
-	sprite_buffers[SPRITE_FIRIE] = load_sprite_buffer("textures/fire.png", 1, 1);
+	sprite_buffers[SPRITE_PLAYER] = load_sprite_buffer(TEXTURE_PLAYER);
+	sprite_buffers[SPRITE_FIRIE] = load_sprite_buffer(TEXTURE_FIRIE);
 
 	arrbuf_init(&tile_maps);
 
-	terrain_texture[TERRAIN_NORMAL] = load_terrain("textures/terrain.png", 16, 16);
+	texture_atlas[TEXTURE_PLAYER] = load_texture_atlas("textures/player.png", 2, 1);
+	texture_atlas[TERRAIN_NORMAL] = load_texture_atlas("textures/terrain.png", 16, 16);
 
 	post_process_vbo = ugl_create_buffer(GL_STATIC_DRAW, sizeof(post_process), post_process);
 	post_process_vao = ugl_create_vao(2, (VaoSpec[]){
@@ -161,8 +156,8 @@ gfx_end()
 	for(int i = 0; i < LAST_SPRITE; i++)
 		end_sprite_buffer(&sprite_buffers[i]);
 
-	for(int i = 0; i < LAST_TERRAIN; i++)
-		end_terrain(&terrain_texture[i]);
+	for(int i = 0; i < LAST_TEXTURE_ATLAS; i++)
+		end_texture_atlas(&texture_atlas[i]);
 }
 
 void
@@ -317,19 +312,16 @@ load_texture(const char *file)
 
 
 SpriteBuffer 
-load_sprite_buffer(const char *file, int cols, int rows)
+load_sprite_buffer(TextureAtlas texture)
 {
 	GLuint instance_buffer = ugl_create_buffer(GL_STATIC_DRAW, sizeof(Sprite) * MAX_SPRITES, NULL);
 	return (SpriteBuffer) {
-		.texture         = load_texture(file),
+		.texture         = texture,
 		.instance_buffer = instance_buffer,
-		.cols            = cols,
-		.rows            = rows,
 		.sprite_count    = 0,
-		.vao = ugl_create_vao(8, (VaoSpec[]){
+		.vao = ugl_create_vao(7, (VaoSpec[]){
 			{ .name = VATTRIB_POSITION, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, position), .buffer = sprite_buffer_gpu },
 			{ .name = VATTRIB_TEXCOORD, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, texcoord), .buffer = sprite_buffer_gpu },
-			{ .name = VATTRIB_COLOR,    .size = 4, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, color),    .buffer = sprite_buffer_gpu },
 
 			{ .name = VATTRIB_INST_POSITION,  .size = 2, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, position),  .divisor = 1, .buffer = instance_buffer },
 			{ .name = VATTRIB_INST_SIZE,      .size = 2, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, half_size), .divisor = 1, .buffer = instance_buffer },
@@ -347,10 +339,13 @@ draw_sprite_buffer(SpriteBuffer *buffer)
 		return;
 
 	intrend_bind_shader(&sprite_program);
-	intrend_uniform_fv(U_SPRITE_CR, 1, 2, (float[]){ buffer->cols, buffer->rows });
+	intrend_uniform_fv(U_SPRITE_CR, 1, 2, (float[]){ 
+		texture_atlas[buffer->texture].cols,
+		texture_atlas[buffer->texture].rows
+	});
 
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, buffer->texture);
+	glBindTexture(GL_TEXTURE_2D, texture_atlas[buffer->texture].texture);
 	intrend_draw_instanced(&sprite_program, buffer->vao, GL_TRIANGLES, 6, buffer->sprite_count);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -374,11 +369,10 @@ end_sprite_buffer(SpriteBuffer *buffer)
 {
 	glDeleteVertexArrays(1, &buffer->vao);
 	glDeleteBuffers(1, &buffer->instance_buffer);
-	glDeleteTextures(1, &buffer->texture);
 }
 
 GraphicsTileMap
-gfx_tmap_new(Terrain terrain, int w, int h, int *data) 
+gfx_tmap_new(TextureAtlas terrain, int w, int h, int *data) 
 {
 	unsigned int count_tiles = 0;
 	ArrayBuffer buffer;
@@ -394,8 +388,8 @@ gfx_tmap_new(Terrain terrain, int w, int h, int *data)
 			TileData info = {
 				.position = { x, y },
 				.tile_data = {
-					(int)(spr % terrain_texture[terrain].cols),
-					(int)(spr / terrain_texture[terrain].cols)
+					(int)(spr % texture_atlas[terrain].cols),
+					(int)(spr / texture_atlas[terrain].cols)
 				}
 			};
 			arrbuf_insert(&buffer, sizeof(info), &info);
@@ -404,10 +398,9 @@ gfx_tmap_new(Terrain terrain, int w, int h, int *data)
 	}
 
 	unsigned int gpu_buffer = ugl_create_buffer(GL_STATIC_DRAW, buffer.size, buffer.data);
-	unsigned int gpu_vao    = ugl_create_vao(5, (VaoSpec[]) {
-		{ .name = VATTRIB_POSITION, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, position), .buffer = sprite_buffer_gpu },
-		{ .name = VATTRIB_TEXCOORD, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, texcoord), .buffer = sprite_buffer_gpu },
-		{ .name = VATTRIB_COLOR,    .size = 4, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, color),    .buffer = sprite_buffer_gpu },
+	unsigned int gpu_vao    = ugl_create_vao(4, (VaoSpec[]) {
+		{ .name = VATTRIB_POSITION, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex),    .offset = offsetof(SpriteVertex, position), .buffer = sprite_buffer_gpu },
+		{ .name = VATTRIB_TEXCOORD, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex),    .offset = offsetof(SpriteVertex, texcoord), .buffer = sprite_buffer_gpu },
 		{ .name = VATTRIB_INST_POSITION,   .size = 2, .type = GL_FLOAT, .stride = sizeof(TileData), .offset = offsetof(TileData, position),  .divisor = 1, .buffer = gpu_buffer },
 		{ .name = VATTRIB_INST_SPRITE_ID,  .size = 2, .type = GL_FLOAT, .stride = sizeof(TileData), .offset = offsetof(TileData, tile_data), .divisor = 1, .buffer = gpu_buffer },
 	});
@@ -440,18 +433,18 @@ draw_tmap(GraphicsTileMap *tmap)
 {
 	intrend_bind_shader(&tile_map_program);
 	intrend_uniform_fv(U_SPRITE_CR, 1, 2, (GLfloat[]){ 
-			terrain_texture[tmap->terrain].cols, 
-			terrain_texture[tmap->terrain].rows 
+			texture_atlas[tmap->terrain].cols, 
+			texture_atlas[tmap->terrain].rows 
 	});
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, terrain_texture[tmap->terrain].texture);
+	glBindTexture(GL_TEXTURE_2D, texture_atlas[tmap->terrain].texture);
 	intrend_draw_instanced(&tile_map_program, tmap->vao, GL_TRIANGLES, 6, tmap->count_tiles);
 }
 
-TerrainTexture
-load_terrain(const char *path, int cols, int rows) 
+TextureAtlasData
+load_texture_atlas(const char *path, int cols, int rows) 
 {
-	return (TerrainTexture) {
+	return (TextureAtlasData) {
 		.texture = load_texture(path),
 		.cols = cols,
 		.rows = rows,
@@ -459,7 +452,7 @@ load_terrain(const char *path, int cols, int rows)
 }
 
 void
-end_terrain(TerrainTexture *terrain)
+end_texture_atlas(TextureAtlasData *terrain)
 {
 	glDeleteTextures(1, &terrain->texture);
 }

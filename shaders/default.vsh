@@ -6,7 +6,6 @@ uniform vec2 u_SpriteCR;
 
 in vec2 v_Position; 
 in vec2 v_Texcoord;
-in vec4 v_Color;
 
 in vec2 v_InstPosition;
 in vec2 v_InstSize; 
@@ -29,5 +28,5 @@ void main() {
 	vec3 position = (rotation * vec3(v_Position, 1.0)) * vec3(v_InstSize, 1.0) + vec3(v_InstPosition, 0.0);
 	gl_Position     = vec4(u_Projection * u_View * position, 1.0);
 	vs_out.texcoord = (v_Texcoord + v_InstSpriteID) / u_SpriteCR;
-	vs_out.color    = v_Color * v_InstColor;
+	vs_out.color    = v_InstColor;
 }

@@ -70,7 +70,6 @@ main()
 
 		SDL_GetWindowSize(GLOBAL.window, &w, &h);
 
-
 		ent_render();
 		
 		gfx_tmap_draw(&tmap);

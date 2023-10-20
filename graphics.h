@@ -10,9 +10,11 @@ typedef enum {
 } SpriteType;
 
 typedef enum {
+	TEXTURE_PLAYER,
+	TEXTURE_FIRIE,
 	TERRAIN_NORMAL,
-	LAST_TERRAIN
-} Terrain;
+	LAST_TEXTURE_ATLAS
+} TextureAtlas;
 
 typedef struct {
 	SpriteType sprite_type;
@@ -27,7 +29,7 @@ typedef struct {
 	unsigned int vao;
 	unsigned int buffer;
 	unsigned int count_tiles;
-	Terrain terrain;
+	TextureAtlas terrain;
 } GraphicsTileMap;
 
 void gfx_init();
@@ -37,7 +39,7 @@ void gfx_reset();
 void gfx_draw_sprite(Sprite *sprite);
 void gfx_render(int w, int h);
 
-GraphicsTileMap  gfx_tmap_new(Terrain terrain, int w, int h, int *data);
+GraphicsTileMap  gfx_tmap_new(TextureAtlas terrain, int w, int h, int *data);
 void             gfx_tmap_free(GraphicsTileMap *tmap);
 void             gfx_tmap_draw(GraphicsTileMap *tmap);
 
