@@ -33,6 +33,7 @@ main()
 		return -1;
 
 	gfx_init();
+	gfx_scene_setup();
 	phx_init();
 	ent_init();
 
@@ -47,15 +48,14 @@ main()
 		.collision_mask  = 0x1,
 		.is_static = true
 	};
-	ent_player_new((vec2){ 400, 300 });
-	GraphicsTileMap tmap = gfx_tmap_new(TERRAIN_NORMAL, 3, 4, (int[]){
+	gfx_scene_set_tilemap(0, TERRAIN_NORMAL, 3, 4, (int[]){
 		1, 1, 1,
 		1, 2, 1,
 		1, 0, 1,
 		1, 1, 1
 	});
-	(void)tmap;
 
+	ent_player_new((vec2){ 0.0, 0.0 });
 
 	Uint64 prev_time = SDL_GetPerformanceCounter();
 	while(true) {
@@ -67,13 +67,14 @@ main()
 
 		phx_update(delta);
 		ent_update(delta);
+		ent_render();
 
 		SDL_GetWindowSize(GLOBAL.window, &w, &h);
 
-		ent_render();
-		
-		gfx_tmap_draw(&tmap);
-		gfx_render(w, h);
+		gfx_make_framebuffers(w, h);
+		gfx_clear_framebuffers();
+		gfx_scene_draw();
+		gfx_render_present();
 
 		SDL_GL_SwapWindow(GLOBAL.window);
 		while(SDL_PollEvent(&event)) {
@@ -86,6 +87,10 @@ main()
 
 end_loop:
 	phx_end();
+	ent_end();
+	gfx_end();
+	gfx_scene_cleanup();
+
 	SDL_DestroyRenderer(GLOBAL.renderer);
 	SDL_DestroyWindow(GLOBAL.window);
 	SDL_Quit();

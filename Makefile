@@ -5,6 +5,7 @@ OBJECT=main.o\
 	   graphics.o\
 	   glutil.o\
 	   impl.o\
+	   graphics_scene.o\
 	   entities/player.o
 
 OUTPUT=a.out

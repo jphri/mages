@@ -101,7 +101,6 @@ static int screen_width, screen_height;
 static ShaderProgram sprite_program, tile_map_program;
 static SpriteBuffer sprite_buffers[LAST_SPRITE];
 static TextureAtlasData texture_atlas[LAST_TEXTURE_ATLAS];
-static ArrayBuffer tile_maps;
 
 static GLuint albedo_fbo, albedo_texture;
 static GLuint post_process_vbo, post_process_vao;
@@ -132,8 +131,6 @@ gfx_init()
 	sprite_buffer_gpu = ugl_create_buffer(GL_STATIC_DRAW, sizeof(vertex_data), vertex_data);
 	sprite_buffers[SPRITE_PLAYER] = load_sprite_buffer(TEXTURE_PLAYER);
 	sprite_buffers[SPRITE_FIRIE] = load_sprite_buffer(TEXTURE_FIRIE);
-
-	arrbuf_init(&tile_maps);
 
 	texture_atlas[TEXTURE_PLAYER] = load_texture_atlas("textures/player.png", 2, 1);
 	texture_atlas[TERRAIN_NORMAL] = load_texture_atlas("textures/terrain.png", 16, 16);
@@ -167,21 +164,13 @@ gfx_draw_sprite(Sprite *sprite)
 }
 
 void
-gfx_render(int w, int h) 
+gfx_make_framebuffers(int w, int h) 
 {
 	mat3 view, projection;
 	mat3_ident(view);
 	affine2d_ortho_window(projection, w, h);
 
 	create_texture_buffer(w, h);
-
-	glBindFramebuffer(GL_FRAMEBUFFER, albedo_fbo);
-	glViewport(0, 0, w / FBO_SCALE, h / FBO_SCALE);
-	
-	glClearColor(0.2, 0.3, 0.7, 1.0);
-	glClear(GL_COLOR_BUFFER_BIT);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	intrend_bind_shader(&sprite_program);
 	intrend_uniform_mat3(U_VIEW,       view);
@@ -192,22 +181,53 @@ gfx_render(int w, int h)
 	intrend_uniform_mat3(U_VIEW,       view);
 	intrend_uniform_mat3(U_PROJECTION, projection);
 	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
+}
 
-	GraphicsTileMap *tmap_list = tile_maps.data;
-	for(size_t i = 0; 
-		i < arrbuf_length(&tile_maps, sizeof(GraphicsTileMap)); 
-		i++) 
-	{
-		draw_tmap(&tmap_list[i]);
-	}
-	arrbuf_clear(&tile_maps);
+void
+gfx_clear_framebuffers()
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, albedo_fbo);
+	glViewport(0, 0, screen_width / FBO_SCALE, screen_height / FBO_SCALE);
+	
+	glClearColor(0.2, 0.3, 0.7, 1.0);
+	glClear(GL_COLOR_BUFFER_BIT);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+}
+
+void
+gfx_setup_draw_framebuffers()
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, albedo_fbo);
+	glViewport(0, 0, screen_width / FBO_SCALE, screen_height / FBO_SCALE);
+}
+
+void
+gfx_end_draw_framebuffers()
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(0, 0, screen_width, screen_height);
+}
+
+void
+gfx_draw_begin(GraphicsTileMap *tmap) 
+{
+	glViewport(0, 0, screen_width / FBO_SCALE, screen_height / FBO_SCALE);
+	if(tmap)
+		draw_tmap(tmap);
+}
+
+void
+gfx_draw_end()
+{
 	for(int i = 0; i < LAST_SPRITE; i++)
 		draw_sprite_buffer(&sprite_buffers[i]);
+}
 
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glViewport(0, 0, w, h);
-
+void
+gfx_render_present() 
+{
 	draw_post(&post_clean);
 }
 
@@ -314,7 +334,7 @@ load_texture(const char *file)
 SpriteBuffer 
 load_sprite_buffer(TextureAtlas texture)
 {
-	GLuint instance_buffer = ugl_create_buffer(GL_STATIC_DRAW, sizeof(Sprite) * MAX_SPRITES, NULL);
+	GLuint instance_buffer = ugl_create_buffer(GL_STREAM_DRAW, sizeof(Sprite) * MAX_SPRITES, NULL);
 	return (SpriteBuffer) {
 		.texture         = texture,
 		.instance_buffer = instance_buffer,
@@ -423,18 +443,12 @@ gfx_tmap_free(GraphicsTileMap *tmap)
 }
 
 void
-gfx_tmap_draw(GraphicsTileMap *tmap) 
-{
-	arrbuf_insert(&tile_maps, sizeof(*tmap), tmap);
-}
-
-void
 draw_tmap(GraphicsTileMap *tmap) 
 {
 	intrend_bind_shader(&tile_map_program);
 	intrend_uniform_fv(U_SPRITE_CR, 1, 2, (GLfloat[]){ 
-			texture_atlas[tmap->terrain].cols, 
-			texture_atlas[tmap->terrain].rows 
+		texture_atlas[tmap->terrain].cols, 
+		texture_atlas[tmap->terrain].rows 
 	});
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture_atlas[tmap->terrain].texture);

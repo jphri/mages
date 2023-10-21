@@ -1,6 +1,8 @@
 typedef unsigned int EntityID;
 typedef unsigned int BodyID;
 
+typedef unsigned int SceneSpriteID;
+
 typedef float vec2[2];
 
 typedef enum {
@@ -11,6 +13,7 @@ typedef enum {
 
 typedef struct {
 	BodyID body;
+	SceneSpriteID sprite;
 } EntityPlayer;
 
 void ent_init();
