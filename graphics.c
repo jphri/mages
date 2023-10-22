@@ -22,6 +22,7 @@ enum Uniform {
 enum VertexAttrib {
 	VATTRIB_POSITION,
 	VATTRIB_TEXCOORD,
+	VATTRIB_COLOR,
 	VATTRIB_INST_POSITION,
 	VATTRIB_INST_SIZE,
 	VATTRIB_INST_COLOR,
@@ -55,6 +56,11 @@ typedef struct {
 	vec2 tile_data;
 } TileData;
 
+typedef struct {
+	vec2 position;
+	vec4 color;
+} DebugVertex;
+
 #include "base-renderer.h"
 
 void
@@ -72,6 +78,7 @@ intrend_bind_attribs(ShaderProgram *shader)
 {
 	intrend_attrib_bind(shader, VATTRIB_POSITION, "v_Position");
 	intrend_attrib_bind(shader, VATTRIB_TEXCOORD, "v_Texcoord");
+	intrend_attrib_bind(shader, VATTRIB_COLOR, "v_Color");
 
 	intrend_attrib_bind(shader, VATTRIB_INST_POSITION,  "v_InstPosition");
 	intrend_attrib_bind(shader, VATTRIB_INST_SIZE,      "v_InstSize");
@@ -91,19 +98,24 @@ static void         end_sprite_buffer(SpriteBuffer *buffer);
 
 static TextureAtlasData load_texture_atlas(const char *file, int cols, int rows);
 static void             end_texture_atlas(TextureAtlasData *texture);
-
 static void             draw_tmap(GraphicsTileMap *tmap);
-
 static void             draw_post(ShaderProgram *program);
 
 static GLuint sprite_buffer_gpu;
 static int screen_width, screen_height;
 static ShaderProgram sprite_program, tile_map_program;
+static ShaderProgram debug_program;
+
 static SpriteBuffer sprite_buffers[LAST_SPRITE];
 static TextureAtlasData texture_atlas[LAST_TEXTURE_ATLAS];
 
 static GLuint albedo_fbo, albedo_texture;
 static GLuint post_process_vbo, post_process_vao;
+
+static GLuint debug_lines_buffer, debug_quad_buffer, debug_fill_quad_buffer;
+static GLuint debug_lines_vao, debug_quad_vao, debug_fill_quad_vao;
+static GLuint debug_lines_count, debug_quad_count, debug_fill_quad_count;
+static vec4 debug_color;
 
 static ShaderProgram post_clean;
 
@@ -131,6 +143,7 @@ gfx_init()
 	sprite_buffer_gpu = ugl_create_buffer(GL_STATIC_DRAW, sizeof(vertex_data), vertex_data);
 	sprite_buffers[SPRITE_PLAYER] = load_sprite_buffer(TEXTURE_PLAYER);
 	sprite_buffers[SPRITE_FIRIE] = load_sprite_buffer(TEXTURE_FIRIE);
+	sprite_buffers[SPRITE_TERRAIN] = load_sprite_buffer(TERRAIN_NORMAL);
 
 	texture_atlas[TEXTURE_PLAYER] = load_texture_atlas("textures/player.png", 2, 1);
 	texture_atlas[TERRAIN_NORMAL] = load_texture_atlas("textures/terrain.png", 16, 16);
@@ -140,6 +153,20 @@ gfx_init()
 		{ .name = VATTRIB_POSITION, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, position), .buffer = post_process_vbo },
 		{ .name = VATTRIB_TEXCOORD, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, texcoord), .buffer = post_process_vbo },
 	});
+
+	debug_lines_buffer     = ugl_create_buffer(GL_STREAM_DRAW, sizeof(DebugVertex) * 4096, NULL);
+	debug_quad_buffer      = ugl_create_buffer(GL_STREAM_DRAW, sizeof(DebugVertex) * 4096, NULL);
+	debug_fill_quad_buffer = ugl_create_buffer(GL_STREAM_DRAW, sizeof(DebugVertex) * 4096, NULL);
+
+	#define CREATE_DEBUG_VAO(BUFFER) \
+		ugl_create_vao(2, (VaoSpec[]) {\
+			{ .name = VATTRIB_POSITION, .size = 2, .type = GL_FLOAT, .stride = sizeof(DebugVertex), .offset = offsetof(DebugVertex, position), .buffer = BUFFER },\
+			{ .name = VATTRIB_COLOR,    .size = 4, .type = GL_FLOAT, .stride = sizeof(DebugVertex), .offset = offsetof(DebugVertex, color),    .buffer = BUFFER },\
+		})
+
+	debug_lines_vao = CREATE_DEBUG_VAO(debug_lines_buffer);
+	debug_quad_vao = CREATE_DEBUG_VAO(debug_quad_buffer);
+	debug_fill_quad_vao = CREATE_DEBUG_VAO(debug_fill_quad_buffer);
 }
 
 void
@@ -178,6 +205,11 @@ gfx_make_framebuffers(int w, int h)
 	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
 
 	intrend_bind_shader(&tile_map_program);
+	intrend_uniform_mat3(U_VIEW,       view);
+	intrend_uniform_mat3(U_PROJECTION, projection);
+	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
+	
+	intrend_bind_shader(&debug_program);
 	intrend_uniform_mat3(U_VIEW,       view);
 	intrend_uniform_mat3(U_PROJECTION, projection);
 	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
@@ -225,6 +257,84 @@ gfx_draw_end()
 		draw_sprite_buffer(&sprite_buffers[i]);
 }
 
+void 
+gfx_debug_begin()
+{
+	debug_quad_count = 0;
+	debug_lines_count = 0;
+	debug_fill_quad_count = 0;
+}
+
+void 
+gfx_debug_set_color(vec4 color)
+{
+	vec4_dup(debug_color, color);
+}
+
+#define DEBUG_FILL_COLOR { debug_color[0], debug_color[1], debug_color[2], debug_color[3] }
+inline void pass_data_buffer(GLuint buffer, size_t offset, size_t buffer_size, void *data)
+{
+	glBindBuffer(GL_ARRAY_BUFFER, buffer);
+	glBufferSubData(GL_ARRAY_BUFFER,
+			offset * sizeof(DebugVertex),
+			buffer_size,
+			data);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void 
+gfx_debug_line(vec2 p1, vec2 p2)
+{
+	DebugVertex data[] = {
+		{ .position = { p1[0], p1[1] }, .color = DEBUG_FILL_COLOR },
+		{ .position = { p2[0], p2[1] }, .color = DEBUG_FILL_COLOR },
+	};
+	pass_data_buffer(debug_lines_buffer, debug_lines_count, sizeof(data), data);
+	debug_lines_count += 2;
+}
+
+void 
+gfx_debug_quad(vec2 p, vec2 hs)
+{
+	DebugVertex data[] = {
+		{ .position = { p[0] - hs[0], p[1] - hs[1] }, .color = DEBUG_FILL_COLOR },
+		{ .position = { p[0] + hs[0], p[1] - hs[1] }, .color = DEBUG_FILL_COLOR },
+		{ .position = { p[0] + hs[0], p[1] + hs[1] }, .color = DEBUG_FILL_COLOR },
+		{ .position = { p[0] + hs[0], p[1] + hs[1] }, .color = DEBUG_FILL_COLOR },
+		{ .position = { p[0] - hs[0], p[1] + hs[1] }, .color = DEBUG_FILL_COLOR },
+		{ .position = { p[0] - hs[0], p[1] - hs[1] }, .color = DEBUG_FILL_COLOR },
+	};
+	pass_data_buffer(debug_quad_buffer, debug_quad_count, sizeof(data), data);
+	debug_quad_count += 6;
+}
+
+void 
+gfx_debug_fill_quad(vec2 p, vec2 hs)
+{
+	DebugVertex data[] = {
+		{ .position = { p[0] - hs[0], p[1] - hs[1] }, .color = DEBUG_FILL_COLOR },
+		{ .position = { p[0] + hs[0], p[1] - hs[1] }, .color = DEBUG_FILL_COLOR },
+		{ .position = { p[0] + hs[0], p[1] + hs[1] }, .color = DEBUG_FILL_COLOR },
+		{ .position = { p[0] + hs[0], p[1] + hs[1] }, .color = DEBUG_FILL_COLOR },
+		{ .position = { p[0] - hs[0], p[1] + hs[1] }, .color = DEBUG_FILL_COLOR },
+		{ .position = { p[0] - hs[0], p[1] - hs[1] }, .color = DEBUG_FILL_COLOR },
+	};
+	pass_data_buffer(debug_fill_quad_buffer, debug_fill_quad_count, sizeof(data), data);
+	debug_fill_quad_count += 6;
+}
+
+void 
+gfx_debug_end()
+{
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	intrend_draw(&debug_program, debug_lines_vao, GL_LINES, debug_lines_count);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	intrend_draw(&debug_program, debug_quad_vao, GL_TRIANGLES, debug_quad_count);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	intrend_draw(&debug_program, debug_fill_quad_vao, GL_TRIANGLES, debug_fill_quad_count);
+}
+
+
 void
 gfx_render_present() 
 {
@@ -243,7 +353,9 @@ init_shaders()
 		SHADER(tilemap_vertex,   "shaders/tilemap.vsh", GL_VERTEX_SHADER) \
 		\
 		SHADER(post_vertex,      "shaders/post.vsh", GL_VERTEX_SHADER)\
-		SHADER(post_clean_fsh,   "shaders/post_clean.fsh", GL_FRAGMENT_SHADER)
+		SHADER(post_clean_fsh,   "shaders/post_clean.fsh", GL_FRAGMENT_SHADER)\
+		SHADER(debug_vertex,     "shaders/debug.vsh", GL_VERTEX_SHADER)\
+		SHADER(debug_fragment,   "shaders/debug.fsh", GL_FRAGMENT_SHADER)
 
 	#define SHADER(shader_name, shader_path, shader_type) \
 		GLuint shader_name = ugl_compile_shader_file(shader_path, shader_type);
@@ -253,6 +365,7 @@ init_shaders()
 	SHADER_PROGRAM(sprite_program, default_vertex, default_fragment);
 	SHADER_PROGRAM(tile_map_program, tilemap_vertex, default_fragment);
 	SHADER_PROGRAM(post_clean, post_vertex, post_clean_fsh);
+	SHADER_PROGRAM(debug_program, debug_vertex, debug_fragment);
 
 	#define SHADER(shader_name, shader_path, shader_type) \
 		glDeleteShader(shader_name);
@@ -485,3 +598,5 @@ draw_post(ShaderProgram *program)
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
+
+

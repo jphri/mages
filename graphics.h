@@ -7,6 +7,7 @@ typedef float vec4[4];
 typedef enum {
 	SPRITE_PLAYER,
 	SPRITE_FIRIE,
+	SPRITE_TERRAIN,
 	LAST_SPRITE
 } SpriteType;
 
@@ -48,10 +49,16 @@ void gfx_setup_draw_framebuffers();
 void gfx_end_draw_framebuffers();
 void gfx_render_present();
 
-
 void gfx_draw_begin(GraphicsTileMap *tmap);
 void gfx_draw_sprite(Sprite *sprite);
 void gfx_draw_end();
+
+void gfx_debug_begin();
+void gfx_debug_set_color(vec4 color);
+void gfx_debug_line(vec2 p1, vec2 p2);
+void gfx_debug_quad(vec2 p, vec2 hs);
+void gfx_debug_fill_quad(vec2 p, vec2 hs);
+void gfx_debug_end();
 
 GraphicsTileMap  gfx_tmap_new(TextureAtlas terrain, int w, int h, int *data);
 void             gfx_tmap_free(GraphicsTileMap *tmap);

@@ -15,7 +15,7 @@ ent_player_new(vec2 position)
 	#define self_sprite gfx_scene_spr_data(self->sprite)
 
 	self->body = phx_new();
-	self->sprite = gfx_scene_new_spr(1);
+	self->sprite = gfx_scene_new_spr(0);
 	vec2_dup(self_body->position, position);
 	vec2_dup(self_body->half_size, (vec2){ 15, 15 });
 	vec2_dup(self_body->velocity, (vec2){ 0.0, 0.0 });

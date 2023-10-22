@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <ctype.h>
 
 #include "util.h"
 static void *readline_proc(FILE *fp, ArrayBuffer *buffer);
@@ -117,6 +118,25 @@ arrbuf_newptr_at(ArrayBuffer *buffer, size_t size, size_t pos)
 	return ptr;
 }
 
+void
+arrbuf_printf(ArrayBuffer *buffer, const char *fmt, ...) 
+{
+	va_list va;
+	size_t print_size;
+
+	va_start(va, fmt);
+	print_size = vsnprintf(NULL, 0, fmt, va);
+	va_end(va);
+	
+	char *ptr = arrbuf_newptr(buffer, print_size + 1);
+
+	va_start(va, fmt);
+	vsnprintf(ptr, print_size + 1, fmt, va);
+	va_end(va);
+
+	buffer->size --;
+}
+
 char *
 readline_mem(FILE *fp, void *data, size_t size) 
 {
@@ -171,6 +191,39 @@ strview_token(StrView *str, const char *delim)
 	result.end = str->begin;
 
 	return result;
+}
+
+int
+strview_cmp(StrView str, const char *str2)
+{
+	if(str.end - str.begin == 0)
+		return strlen(str2) == 0 ? 0 : 1;
+	return strncmp(str.begin, str2, str.end - str.begin - 1);
+}
+
+int
+strview_int(StrView str, int *result)
+{
+	const char *s = str.begin;
+	int is_negative = 0;
+
+	if(*s == '-') {
+		is_negative = 1;
+		s++;
+	}
+
+	*result = 0;
+	while(s != str.end) {
+		if(!isdigit(*s))
+			return 0;
+		*result = *result * 10 + *s - '0';	
+		s++;
+	}
+
+	if(is_negative)
+		*result = *result * -1;
+	
+	return 1;
 }
 
 char *

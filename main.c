@@ -8,8 +8,10 @@
 #include "physics.h"
 #include "entity.h"
 #include "graphics.h"
+#include "map.h"
 
 Global GLOBAL;
+static Map *map;
 
 int
 main()
@@ -37,6 +39,9 @@ main()
 	phx_init();
 	ent_init();
 
+	map = map_load("maps/test_map.map");
+	map_set_gfx_scene(map);
+
 	BodyID body2 = phx_new();
 	*phx_data(body2) = (Body) {
 		.position = { 330, 300 },
@@ -48,12 +53,6 @@ main()
 		.collision_mask  = 0x1,
 		.is_static = true
 	};
-	gfx_scene_set_tilemap(0, TERRAIN_NORMAL, 3, 4, (int[]){
-		1, 1, 1,
-		1, 2, 1,
-		1, 0, 1,
-		1, 1, 1
-	});
 
 	ent_player_new((vec2){ 0.0, 0.0 });
 

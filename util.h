@@ -38,8 +38,9 @@ void   arrbuf_clear(ArrayBuffer *buffer);
 
 void   *arrbuf_peektop(ArrayBuffer *buffer, size_t element_size);
 void    arrbuf_poptop(ArrayBuffer *buffer, size_t element_size);
-
 void   arrbuf_free(ArrayBuffer *buffer);
+
+void arrbuf_printf(ArrayBuffer *buffer, const char *fmt, ...);
 
 /* 
  * use only for IN-PLACE STRUCT FILLING, do not save the pointer, 
@@ -54,8 +55,11 @@ char *readline_mem(FILE *fp, void *data, size_t size);
 
 StrView to_strview(const char *str);
 StrView strview_token(StrView *str, const char *delim);
+int     strview_cmp(StrView str, const char *str2);
 char   *strview_str(StrView view);
 void    strview_str_mem(StrView view, char *data, size_t size);
+
+int strview_int(StrView str, int *result);
 
 void die(const char *fmt, ...);
 char *read_file(const char *path, size_t *size);
