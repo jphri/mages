@@ -39,22 +39,12 @@ main()
 	phx_init();
 	ent_init();
 
-	map = map_load("maps/test_map.map");
+	map = map_load("maps/test_map_2.map");
 	map_set_gfx_scene(map);
+	map_set_phx_scene(map);
+	map_free(map);
 
-	BodyID body2 = phx_new();
-	*phx_data(body2) = (Body) {
-		.position = { 330, 300 },
-		.half_size = { 45, 15 },
-		.velocity = { 0.0, 0.0 },
-		.solve_layer     =   0,
-		.solve_mask      = 0x1,
-		.collision_layer =   0,
-		.collision_mask  = 0x1,
-		.is_static = true
-	};
-
-	ent_player_new((vec2){ 0.0, 0.0 });
+	EntityID player_id = ent_player_new((vec2){ 15.0, 15.0 });
 
 	Uint64 prev_time = SDL_GetPerformanceCounter();
 	while(true) {
@@ -67,6 +57,13 @@ main()
 		phx_update(delta);
 		ent_update(delta);
 		ent_render();
+		
+		#define PLAYER ((EntityPlayer*)ent_data(player_id))
+		#define PLAYER_BODY phx_data(PLAYER->body)
+		vec2 offset;
+		vec2_add_scaled(offset, (vec2){ 0.0, 0.0 }, PLAYER_BODY->position, -32);
+		vec2_add(offset, offset, (vec2){ 400, 300 });
+		gfx_set_camera(offset, (vec2){ 32.0, 32.0 });
 
 		SDL_GetWindowSize(GLOBAL.window, &w, &h);
 

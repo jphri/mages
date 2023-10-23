@@ -89,45 +89,37 @@ MATH_FUNC void vec3_cross(vec3 r, vec3 const a, vec3 const b)
 #define DEFINE_MATRIX(SIZE)\
 typedef float mat##SIZE[SIZE][SIZE];\
 \
-MATH_FUNC void mat##SIZE##_add(mat##SIZE r, mat##SIZE const a, mat##SIZE const b)\
+MATH_FUNC void mat##SIZE##_add(mat##SIZE r, mat##SIZE a, mat##SIZE b)\
 {\
 	for(int y = 0; y < SIZE; y++)\
 	for(int x = 0; x < SIZE; x++)\
 		r[y][x] = a[y][x] + b[y][x];\
 }\
 \
-MATH_FUNC void mat##SIZE##_sub(mat##SIZE r, mat##SIZE const a, mat##SIZE const b)\
+MATH_FUNC void mat##SIZE##_sub(mat##SIZE r, mat##SIZE a, mat##SIZE b)\
 {\
 	for(int y = 0; y < SIZE; y++)\
 	for(int x = 0; x < SIZE; x++)\
 		r[y][x] = a[y][x] - b[y][x];\
 }\
 \
-MATH_FUNC void mat##SIZE##_mul(mat##SIZE r, mat##SIZE const a, mat##SIZE const b)\
+MATH_FUNC void mat##SIZE##_mul(mat##SIZE r, mat##SIZE a, mat##SIZE b)\
 {\
 	mat##SIZE result = {0};\
 	for(int y = 0; y < SIZE; y++)\
 	for(int x = 0; x < SIZE; x++) {\
 		for(int i = 0; i < SIZE; i++) {\
-			result[y][x] = a[y][i] * b[i][x];\
+			result[x][y] += a[i][y] * b[x][i];\
 		}\
 	}\
 	memcpy(r, result, sizeof(result));\
-}\
-\
-MATH_FUNC void mat##SIZE##_mul_vec##SIZE(vec##SIZE r, mat##SIZE const a, vec##SIZE const b)\
-{\
-	for(int y = 0; y < SIZE; y++)\
-		for(int i = 0; i < SIZE; i++) {\
-			r[i] = a[y][i] * b[i];\
-		}\
 }\
 \
 MATH_FUNC void mat##SIZE##_ident(mat##SIZE r)\
 {\
 	for(int y = 0; y < SIZE; y++)\
 	for(int x = 0; x < SIZE; x++) {\
-		r[y][x] = x == y;\
+		r[x][y] = x == y ? 1.0 : 0.0;\
 	}\
 }
 
@@ -148,8 +140,22 @@ MATH_FUNC void affine2d_rotate(mat3 r, float angle)
 
 MATH_FUNC void affine2d_translate(mat3 r, vec2 pos)
 {
-	r[0][2] += pos[0];
-	r[1][2] += pos[1];
+	mat3 trans = {
+		{ 1, 0, 0 },
+		{ 0, 1, 0 },
+		{ pos[0], pos[1], 1 }
+	};
+	mat3_mul(r, trans, r);
+}
+
+MATH_FUNC void affine2d_scale(mat3 r, vec2 s)
+{
+	mat3 trans = {
+		{ s[0], 0, 0 },
+		{ 0, s[1], 0 },
+		{ 0, 0, 1 }
+	};
+	mat3_mul(r, trans, r);
 }
 
 MATH_FUNC void affine2d_ortho_window(mat3 r, const float w, const float h)

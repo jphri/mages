@@ -5,6 +5,7 @@
 #include "vecmath.h"
 #include "physics.h"
 #include "global.h"
+#include "graphics.h"
 
 typedef struct {
 	BodyID next, prev;
@@ -75,6 +76,8 @@ phx_draw()
 {
 	BodyID body_id = _sys_list;
 	#define body phx_data(body_id)
+
+	gfx_debug_begin();
 	while(body_id) {
 		vec2 pos, size;
 
@@ -82,12 +85,12 @@ phx_draw()
 		vec2_sub(pos, body->position, body->half_size);
 		vec2_mul(size, body->half_size, (vec2){ 2, 2 });
 		
-		SDL_RenderDrawRectF(GLOBAL.renderer, &(SDL_FRect){
-			.x = pos[0], .y = pos[1],
-			.w = size[0], .h = size[1]
-		});
+		gfx_debug_set_color((vec4){ 1.0, 1.0, 1.0, 1.0 });
+		gfx_debug_quad(body->position, body->half_size);
+
 		body_id = next;
 	}
+	gfx_debug_end();
 }
 
 void

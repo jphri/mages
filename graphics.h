@@ -49,6 +49,9 @@ void gfx_setup_draw_framebuffers();
 void gfx_end_draw_framebuffers();
 void gfx_render_present();
 
+void gfx_set_camera(vec2 position, vec2 scale);
+void gfx_pixel_to_world(vec2 pixel, vec2 world_out);
+
 void gfx_draw_begin(GraphicsTileMap *tmap);
 void gfx_draw_sprite(Sprite *sprite);
 void gfx_draw_end();

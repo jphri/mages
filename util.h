@@ -60,6 +60,7 @@ char   *strview_str(StrView view);
 void    strview_str_mem(StrView view, char *data, size_t size);
 
 int strview_int(StrView str, int *result);
+int strview_float(StrView str, float *result);
 
 void die(const char *fmt, ...);
 char *read_file(const char *path, size_t *size);

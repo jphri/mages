@@ -15,11 +15,15 @@ OUTPUT=a.out
 
 EDITOR_OBJECTS=\
 		tile_map_editor.o\
+		physics.o\
 		util.o\
 		graphics.o\
 		graphics_scene.o\
 		glutil.o\
-		map.o
+		map.o\
+		editor_states/edit_tiles.o\
+		editor_states/select_tiles.o\
+		editor_states/edit_collisions.o
 
 EDITOR=editor
 

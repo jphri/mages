@@ -187,8 +187,8 @@ strview_token(StrView *str, const char *delim)
 			break;
 		str->begin++;
 	}
-	str->begin++;
 	result.end = str->begin;
+	str->begin++;
 
 	return result;
 }
@@ -226,13 +226,53 @@ strview_int(StrView str, int *result)
 	return 1;
 }
 
+int
+strview_float(StrView str, float *result)
+{
+	const char *s;
+	int is_negative = 0;
+
+	int integer_part = 0;
+	float fract_part = 0;
+	
+	StrView ss = str;
+	StrView number = strview_token(&ss, ".");
+
+	if(*number.begin == '-') {
+		is_negative = 1;
+		number.begin ++;
+	}
+
+	*result = 0;
+	if(!strview_int(number, &integer_part))
+		return 0;
+	*result += integer_part;
+	
+	number = strview_token(&ss, ".");
+	
+	s = number.begin;
+	float f = 0.1;
+	for(; s != number.end; s++, f *= 0.1) {
+		if(!isdigit(*s))
+			return 0;
+		fract_part += (float)(*s - '0') * f;
+		s++;
+	}
+
+	*result += fract_part;
+	if(is_negative)
+		*result *= -1;
+
+	return 1;
+}
+
 char *
 strview_str(StrView view)
 {
 	size_t size = view.end - view.begin;
-	char *ptr = malloc(size);
+	char *ptr = malloc(size + 1);
 
-	strview_str_mem(view, ptr, size);
+	strview_str_mem(view, ptr, size + 1);
 
 	return ptr;
 }
@@ -240,7 +280,7 @@ strview_str(StrView view)
 void
 strview_str_mem(StrView view, char *data, size_t size) 
 {
-	size = (size > (size_t)(view.end - view.begin)) ? (size_t)(view.end - view.begin) : size;
+	size = (size > (size_t)(view.end - view.begin) + 1) ? (size_t)(view.end - view.begin) + 1 : size;
 	strncpy(data, view.begin, size);
 	data[size-1] = 0;
 }

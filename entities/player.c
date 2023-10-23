@@ -17,24 +17,23 @@ ent_player_new(vec2 position)
 	self->body = phx_new();
 	self->sprite = gfx_scene_new_spr(0);
 	vec2_dup(self_body->position, position);
-	vec2_dup(self_body->half_size, (vec2){ 15, 15 });
+	vec2_dup(self_body->half_size, (vec2){ 1, 1 });
 	vec2_dup(self_body->velocity, (vec2){ 0.0, 0.0 });
 	self_body->is_static = false;
 	self_body->solve_layer     = 0x00;
-	self_body->solve_mask      = 0x01;
+	self_body->solve_mask      = 0x02;
 	self_body->collision_layer = 0x00;
-	self_body->collision_mask  = 0x01;
+	self_body->collision_mask  = 0x02;
 
 	self_sprite->sprite_type = SPRITE_PLAYER;
 	vec2_dup(self_sprite->position, position);
-	vec2_dup(self_sprite->half_size, (vec2){ 15, 15 });
+	vec2_dup(self_sprite->half_size, (vec2){ 1, 1 });
 	vec4_dup(self_sprite->color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 	self_sprite->rotation = 0.0;
 	self_sprite->sprite_id[0] = 0.0; self_sprite->sprite_id[1] = 0.0;
 
 	return self_id;
-
-	#undef self_id
+#undef self_id
 	#undef self_body
 	#undef self_sprite
 }
@@ -53,13 +52,13 @@ ent_player_update(EntityID self_id, float delta)
 
 	vec2_dup(self_body->velocity, (vec2){ 0.0, 0.0 });
 	if(keys[SDL_SCANCODE_W])
-		self_body->velocity[1] -= 100;
+		self_body->velocity[1] -= 10;
 	if(keys[SDL_SCANCODE_S])
-		self_body->velocity[1] += 100;
+		self_body->velocity[1] += 10;
 	if(keys[SDL_SCANCODE_A])
-		self_body->velocity[0] -= 100;
+		self_body->velocity[0] -= 10;
 	if(keys[SDL_SCANCODE_D])
-		self_body->velocity[0] += 100;
+		self_body->velocity[0] += 10;
 
 	if(keys[SDL_SCANCODE_K])
 		ent_del(self_id);

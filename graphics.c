@@ -119,6 +119,8 @@ static vec4 debug_color;
 
 static ShaderProgram post_clean;
 
+static mat3 view_matrix;
+
 void
 gfx_init()
 {
@@ -139,6 +141,8 @@ gfx_init()
 		{ .position = { -1.0, -1.0 }, .texcoord = { 0.0, 0.0 }, },
 	};
 	init_shaders();
+
+	gfx_set_camera((vec2){ 0.0, 0.0 }, (vec2){ 16, 16 });
 
 	sprite_buffer_gpu = ugl_create_buffer(GL_STATIC_DRAW, sizeof(vertex_data), vertex_data);
 	sprite_buffers[SPRITE_PLAYER] = load_sprite_buffer(TEXTURE_PLAYER);
@@ -193,24 +197,23 @@ gfx_draw_sprite(Sprite *sprite)
 void
 gfx_make_framebuffers(int w, int h) 
 {
-	mat3 view, projection;
-	mat3_ident(view);
-	affine2d_ortho_window(projection, w, h);
+	mat3 projection;
 
+	affine2d_ortho_window(projection, w, h);
 	create_texture_buffer(w, h);
 
 	intrend_bind_shader(&sprite_program);
-	intrend_uniform_mat3(U_VIEW,       view);
+	intrend_uniform_mat3(U_VIEW,       view_matrix);
 	intrend_uniform_mat3(U_PROJECTION, projection);
 	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
 
 	intrend_bind_shader(&tile_map_program);
-	intrend_uniform_mat3(U_VIEW,       view);
+	intrend_uniform_mat3(U_VIEW,       view_matrix);
 	intrend_uniform_mat3(U_PROJECTION, projection);
 	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
 	
 	intrend_bind_shader(&debug_program);
-	intrend_uniform_mat3(U_VIEW,       view);
+	intrend_uniform_mat3(U_VIEW,       view_matrix);
 	intrend_uniform_mat3(U_PROJECTION, projection);
 	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
 }
@@ -225,7 +228,6 @@ gfx_clear_framebuffers()
 	glClear(GL_COLOR_BUFFER_BIT);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
 }
 
 void
@@ -334,11 +336,25 @@ gfx_debug_end()
 	intrend_draw(&debug_program, debug_fill_quad_vao, GL_TRIANGLES, debug_fill_quad_count);
 }
 
-
 void
 gfx_render_present() 
 {
 	draw_post(&post_clean);
+}
+
+void
+gfx_set_camera(vec2 position, vec2 scale)
+{
+	mat3_ident(view_matrix);
+	affine2d_scale(view_matrix,     scale);
+	affine2d_translate(view_matrix, position);
+}
+
+void
+gfx_pixel_to_world(vec2 pixel, vec2 world_out) 
+{
+	world_out[0] = (pixel[0] - view_matrix[2][0]) / view_matrix[0][0];
+	world_out[1] = (pixel[1] - view_matrix[2][1]) / view_matrix[1][1];
 }
 
 void
@@ -598,5 +614,4 @@ draw_post(ShaderProgram *program)
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
-
 
