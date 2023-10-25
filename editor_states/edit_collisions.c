@@ -45,7 +45,7 @@ collision_keyboard(SDL_Event *event)
 void
 collision_mouse_motion(SDL_Event *event)
 {
-	vec2 full_size;
+	vec2 full_size, begin_position;
 	vec2 v;
 
 	switch(mouse_state) {
@@ -58,7 +58,20 @@ collision_mouse_motion(SDL_Event *event)
 
 		vec2_sub(full_size, v, begin_offset);
 		vec2_div(current_collision.half_size, full_size, (vec2){ 2.0, 2.0 });
-		vec2_add(current_collision.position, begin_offset, current_collision.half_size);
+		current_collision.half_size[0] = fabs(current_collision.half_size[0]);
+		current_collision.half_size[1] = fabs(current_collision.half_size[1]);
+		
+		if(full_size[0] > 0)
+			begin_position[0] = begin_offset[0];
+		else
+			begin_position[0] = begin_offset[0] + full_size[0];
+
+		if(full_size[1] > 0)
+			begin_position[1] = begin_offset[1];
+		else
+			begin_position[1] = begin_offset[1] + full_size[1];
+		
+		vec2_add(current_collision.position, begin_position, current_collision.half_size);
 		break;
 	default:
 		do {} while(0);
