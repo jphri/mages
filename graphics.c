@@ -8,6 +8,7 @@
 
 #include "graphics.h"
 #include "third/stb_image.h"
+#include "third/stb_truetype.h"
 
 enum Uniform {
 	U_PROJECTION,
@@ -36,6 +37,13 @@ enum VertexAttrib {
 
 typedef struct {
 	vec2 position;
+	vec2 half_size;
+	vec2 sprite_id;
+	vec4 color;
+} FontInstance;
+
+typedef struct {
+	vec2 position;
 	vec2 texcoord;
 } SpriteVertex;
 
@@ -60,6 +68,18 @@ typedef struct {
 	vec2 position;
 	vec4 color;
 } DebugVertex;
+
+typedef struct {
+	TextureAtlas texture;
+	GLuint instance_buffer;
+	GLuint vao;
+	GLuint char_count;
+} FontBuffer;
+
+typedef enum {
+	TEXTURE_FORMAT_RGBA32,
+	TEXTURE_FORMAT_RED
+} TextureFormat;
 
 #include "base-renderer.h"
 
@@ -89,25 +109,31 @@ intrend_bind_attribs(ShaderProgram *shader)
 
 static void   create_texture_buffer(int w, int h);
 static void   init_shaders();
-static GLuint load_texture(const char *file);
+static GLuint load_texture(const char *file, TextureFormat format);
 
 static SpriteBuffer load_sprite_buffer(TextureAtlas texture);
 static void         draw_sprite_buffer(SpriteBuffer *buffer);
 static void         insert_sprite_buffer(SpriteBuffer *buffer, Sprite *sprite);
 static void         end_sprite_buffer(SpriteBuffer *buffer);
 
-static TextureAtlasData load_texture_atlas(const char *file, int cols, int rows);
+static TextureAtlasData load_texture_atlas(const char *file, int cols, int rows, TextureFormat format);
 static void             end_texture_atlas(TextureAtlasData *texture);
 static void             draw_tmap(GraphicsTileMap *tmap);
 static void             draw_post(ShaderProgram *program);
 
+static void             load_font_buffer(FontBuffer *buffer, TextureAtlas atlas); 
+static void             insert_character(FontBuffer *buffer, vec2 position, vec2 size, vec4 color, int c);
+static void             draw_characters(FontBuffer *buffer);
+static void             end_font_buffer(FontBuffer *buffer);
+
 static GLuint sprite_buffer_gpu;
 static int screen_width, screen_height;
-static ShaderProgram sprite_program, tile_map_program;
+static ShaderProgram sprite_program, tile_map_program, font_program;
 static ShaderProgram debug_program;
 
 static SpriteBuffer sprite_buffers[LAST_SPRITE];
 static TextureAtlasData texture_atlas[LAST_TEXTURE_ATLAS];
+static FontBuffer font_buffers[LAST_FONT];
 
 static GLuint albedo_fbo, albedo_texture;
 static GLuint post_process_vbo, post_process_vao;
@@ -149,8 +175,11 @@ gfx_init()
 	sprite_buffers[SPRITE_FIRIE] = load_sprite_buffer(TEXTURE_FIRIE);
 	sprite_buffers[SPRITE_TERRAIN] = load_sprite_buffer(TERRAIN_NORMAL);
 
-	texture_atlas[TEXTURE_PLAYER] = load_texture_atlas("textures/player.png", 2, 1);
-	texture_atlas[TERRAIN_NORMAL] = load_texture_atlas("textures/terrain.png", 16, 16);
+	load_font_buffer(&font_buffers[FONT_CELLPHONE], TEXTURE_FONT_CELLPHONE);
+
+	texture_atlas[TEXTURE_PLAYER]         = load_texture_atlas("textures/player.png", 2, 1, TEXTURE_FORMAT_RGBA32);
+	texture_atlas[TERRAIN_NORMAL]         = load_texture_atlas("textures/terrain.png", 16, 16, TEXTURE_FORMAT_RGBA32);
+	texture_atlas[TEXTURE_FONT_CELLPHONE] = load_texture_atlas("textures/charmap-cellphone.png", 18, 7, TEXTURE_FORMAT_RED);
 
 	post_process_vbo = ugl_create_buffer(GL_STATIC_DRAW, sizeof(post_process), post_process);
 	post_process_vao = ugl_create_vao(2, (VaoSpec[]){
@@ -184,6 +213,9 @@ gfx_end()
 	for(int i = 0; i < LAST_SPRITE; i++)
 		end_sprite_buffer(&sprite_buffers[i]);
 
+	for(int i = 0; i < LAST_FONT; i++)
+		end_font_buffer(&font_buffers[i]);
+
 	for(int i = 0; i < LAST_TEXTURE_ATLAS; i++)
 		end_texture_atlas(&texture_atlas[i]);
 }
@@ -195,6 +227,33 @@ gfx_draw_sprite(Sprite *sprite)
 }
 
 void
+gfx_draw_font(Font font, vec2 position, vec2 char_size, vec4 color, const char *fmt, ...) 
+{
+	char buffer[1024];
+	va_list va;
+	int characters;
+
+	va_start(va, fmt);
+	characters = vsnprintf(buffer, sizeof(buffer), fmt, va);
+	va_end(va);
+
+	vec2 p;
+	vec2_dup(p, position);
+
+	for(int i = 0; i < characters; i++) {
+		switch(buffer[i]) {
+		case '\n':
+			p[0] = position[0];
+			p[1] += char_size[1] * 2.0;
+			break;
+		default:
+			insert_character(&font_buffers[font], p, char_size, color, buffer[i]);
+			p[0] += char_size[0] * 2.0;
+		}
+	}
+}
+
+void
 gfx_make_framebuffers(int w, int h) 
 {
 	mat3 projection;
@@ -203,6 +262,11 @@ gfx_make_framebuffers(int w, int h)
 	create_texture_buffer(w, h);
 
 	intrend_bind_shader(&sprite_program);
+	intrend_uniform_mat3(U_VIEW,       view_matrix);
+	intrend_uniform_mat3(U_PROJECTION, projection);
+	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
+
+	intrend_bind_shader(&font_program);
 	intrend_uniform_mat3(U_VIEW,       view_matrix);
 	intrend_uniform_mat3(U_PROJECTION, projection);
 	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
@@ -257,6 +321,8 @@ gfx_draw_end()
 {
 	for(int i = 0; i < LAST_SPRITE; i++)
 		draw_sprite_buffer(&sprite_buffers[i]);
+	for(int i = 0; i < LAST_FONT; i++)
+		draw_characters(&font_buffers[i]);
 }
 
 void 
@@ -367,11 +433,12 @@ init_shaders()
 		SHADER(default_vertex,   "shaders/default.vsh", GL_VERTEX_SHADER)\
 		SHADER(default_fragment, "shaders/default.fsh", GL_FRAGMENT_SHADER)\
 		SHADER(tilemap_vertex,   "shaders/tilemap.vsh", GL_VERTEX_SHADER) \
+		SHADER(font_fragment,    "shaders/font.fsh",    GL_FRAGMENT_SHADER) \
+		SHADER(debug_vertex,     "shaders/debug.vsh", GL_VERTEX_SHADER)\
+		SHADER(debug_fragment,   "shaders/debug.fsh", GL_FRAGMENT_SHADER)\
 		\
 		SHADER(post_vertex,      "shaders/post.vsh", GL_VERTEX_SHADER)\
-		SHADER(post_clean_fsh,   "shaders/post_clean.fsh", GL_FRAGMENT_SHADER)\
-		SHADER(debug_vertex,     "shaders/debug.vsh", GL_VERTEX_SHADER)\
-		SHADER(debug_fragment,   "shaders/debug.fsh", GL_FRAGMENT_SHADER)
+		SHADER(post_clean_fsh,   "shaders/post_clean.fsh", GL_FRAGMENT_SHADER)
 
 	#define SHADER(shader_name, shader_path, shader_type) \
 		GLuint shader_name = ugl_compile_shader_file(shader_path, shader_type);
@@ -382,6 +449,7 @@ init_shaders()
 	SHADER_PROGRAM(tile_map_program, tilemap_vertex, default_fragment);
 	SHADER_PROGRAM(post_clean, post_vertex, post_clean_fsh);
 	SHADER_PROGRAM(debug_program, debug_vertex, debug_fragment);
+	SHADER_PROGRAM(font_program, default_vertex, font_fragment);
 
 	#define SHADER(shader_name, shader_path, shader_type) \
 		glDeleteShader(shader_name);
@@ -429,26 +497,42 @@ create_texture_buffer(int w, int h)
 }
 
 GLuint
-load_texture(const char *file)
+load_texture(const char *file, TextureFormat format)
 {
 	GLuint texture;
 	int image_width, image_height;
 	unsigned char *image_data;
+	
+	GLenum internal_format, data_format, channels;
 
-	image_data = stbi_load(file, &image_width, &image_height, NULL, 4);
+	switch(format) {
+	case TEXTURE_FORMAT_RED:
+		internal_format = GL_R8;
+		data_format = GL_RED;
+		channels = 1;
+		break;
+	case TEXTURE_FORMAT_RGBA32:
+		internal_format = GL_RGBA8;
+		data_format = GL_RGBA;
+		channels = 4;
+		break;
+	}
+
+	image_data = stbi_load(file, &image_width, &image_height, NULL, channels);
 	if(!image_data) {
 		printf("Could not load the texture %s\n", file);
 		return -1;
 	}
 
+
 	glGenTextures(1, &texture);
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glTexImage2D(GL_TEXTURE_2D,
 			0,
-			GL_RGBA8,
+			internal_format,
 			image_width, image_height,
 			0, 
-			GL_RGBA,
+			data_format,
 			GL_UNSIGNED_BYTE,
 			image_data);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -585,10 +669,10 @@ draw_tmap(GraphicsTileMap *tmap)
 }
 
 TextureAtlasData
-load_texture_atlas(const char *path, int cols, int rows) 
+load_texture_atlas(const char *path, int cols, int rows, TextureFormat format) 
 {
 	return (TextureAtlasData) {
-		.texture = load_texture(path),
+		.texture = load_texture(path, format),
 		.cols = cols,
 		.rows = rows,
 	};
@@ -615,3 +699,66 @@ draw_post(ShaderProgram *program)
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+void
+load_font_buffer(FontBuffer *atlas, TextureAtlas texture) 
+{
+	atlas->texture = texture;
+	atlas->instance_buffer = ugl_create_buffer(GL_STREAM_DRAW, sizeof(FontInstance) * MAX_SPRITES, NULL);
+	atlas->vao = ugl_create_vao(6, (VaoSpec[]){
+		{ .name = VATTRIB_POSITION, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, position), .buffer = sprite_buffer_gpu },
+		{ .name = VATTRIB_TEXCOORD, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, texcoord), .buffer = sprite_buffer_gpu },
+
+		{ .name = VATTRIB_INST_POSITION,  .size = 2, .type = GL_FLOAT, .stride = sizeof(FontInstance), .offset = offsetof(FontInstance, position),  .divisor = 1, .buffer = atlas->instance_buffer },
+		{ .name = VATTRIB_INST_SIZE,      .size = 2, .type = GL_FLOAT, .stride = sizeof(FontInstance), .offset = offsetof(FontInstance, half_size), .divisor = 1, .buffer = atlas->instance_buffer },
+		{ .name = VATTRIB_INST_SPRITE_ID, .size = 2, .type = GL_FLOAT, .stride = sizeof(FontInstance), .offset = offsetof(FontInstance, sprite_id), .divisor = 1, .buffer = atlas->instance_buffer },
+		{ .name = VATTRIB_INST_COLOR,     .size = 4, .type = GL_FLOAT, .stride = sizeof(FontInstance), .offset = offsetof(FontInstance, color),     .divisor = 1, .buffer = atlas->instance_buffer },
+	});
+	atlas->char_count = 0;
+}
+
+void
+insert_character(FontBuffer *buffer, vec2 position, vec2 character_size, vec4 color, int c)
+{
+	if(buffer->char_count >= MAX_SPRITES) 
+		return;
+
+	c -= 32;
+	glBindBuffer(GL_ARRAY_BUFFER, buffer->instance_buffer);
+	glBufferSubData(GL_ARRAY_BUFFER, buffer->char_count * sizeof(FontInstance), sizeof(FontInstance), &(FontInstance){
+		.position  = { position[0], position[1] },
+		.half_size = { character_size[0], character_size[1] },
+		.color     = { color[0], color[1], color[2], color[3] },
+		.sprite_id = {
+			(float)(c % texture_atlas[buffer->texture].cols),
+			(float)(c / texture_atlas[buffer->texture].cols)
+		}
+	});
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	buffer->char_count++;
+}
+
+void
+draw_characters(FontBuffer *buffer) 
+{
+	if(buffer->char_count == 0)
+		return;
+
+	intrend_bind_shader(&font_program);
+	intrend_uniform_fv(U_SPRITE_CR, 1, 2, (float[]){ 
+		texture_atlas[buffer->texture].cols,
+		texture_atlas[buffer->texture].rows
+	});
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texture_atlas[buffer->texture].texture);
+	intrend_draw_instanced(&font_program, buffer->vao, GL_TRIANGLES, 6, buffer->char_count);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	buffer->char_count = 0;
+}
+
+void
+end_font_buffer(FontBuffer *buffer)
+{
+	glDeleteVertexArrays(1, &buffer->vao);
+	glDeleteBuffers(1, &buffer->instance_buffer);
+}

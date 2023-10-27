@@ -69,7 +69,15 @@ main()
 
 		gfx_make_framebuffers(w, h);
 		gfx_clear_framebuffers();
+
 		gfx_scene_draw();
+
+		gfx_setup_draw_framebuffers();
+		gfx_draw_begin(NULL);
+		gfx_draw_font(FONT_CELLPHONE, (vec2){ 0.0, 0.0 }, (vec2){ 1.0, 1.0 }, (vec4){ 1.0, 1.0, 0.0, 0.5 }, "Hello");
+		gfx_draw_end();
+		gfx_end_draw_framebuffers();
+		
 		gfx_render_present();
 
 		SDL_GL_SwapWindow(GLOBAL.window);

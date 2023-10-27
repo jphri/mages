@@ -15,8 +15,14 @@ typedef enum {
 	TEXTURE_PLAYER,
 	TEXTURE_FIRIE,
 	TERRAIN_NORMAL,
+	TEXTURE_FONT_CELLPHONE,
 	LAST_TEXTURE_ATLAS
 } TextureAtlas;
+
+typedef enum {
+	FONT_CELLPHONE,
+	LAST_FONT
+} Font;
 
 typedef struct {
 	SpriteType sprite_type;
@@ -26,6 +32,7 @@ typedef struct {
 	vec4 color;
 	float rotation;
 } Sprite;
+
 
 typedef struct {
 	unsigned int vao;
@@ -54,6 +61,7 @@ void gfx_pixel_to_world(vec2 pixel, vec2 world_out);
 
 void gfx_draw_begin(GraphicsTileMap *tmap);
 void gfx_draw_sprite(Sprite *sprite);
+void gfx_draw_font(Font font, vec2 position, vec2 char_size, vec4 color, const char *fmt, ...);
 void gfx_draw_end();
 
 void gfx_debug_begin();
