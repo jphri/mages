@@ -8,7 +8,6 @@
 
 #include "graphics.h"
 #include "third/stb_image.h"
-#include "third/stb_truetype.h"
 
 enum Uniform {
 	U_PROJECTION,
