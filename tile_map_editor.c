@@ -141,6 +141,7 @@ export_map(const char *map_file)
 		printf("File saved at %s\n", map_file);
 	
 	fclose(fp);
+	
 error_open:
 	free(map_data);
 }

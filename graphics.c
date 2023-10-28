@@ -261,22 +261,18 @@ gfx_make_framebuffers(int w, int h)
 	create_texture_buffer(w, h);
 
 	intrend_bind_shader(&sprite_program);
-	intrend_uniform_mat3(U_VIEW,       view_matrix);
 	intrend_uniform_mat3(U_PROJECTION, projection);
 	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
 
 	intrend_bind_shader(&font_program);
-	intrend_uniform_mat3(U_VIEW,       view_matrix);
 	intrend_uniform_mat3(U_PROJECTION, projection);
 	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
 
 	intrend_bind_shader(&tile_map_program);
-	intrend_uniform_mat3(U_VIEW,       view_matrix);
 	intrend_uniform_mat3(U_PROJECTION, projection);
 	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
 	
 	intrend_bind_shader(&debug_program);
-	intrend_uniform_mat3(U_VIEW,       view_matrix);
 	intrend_uniform_mat3(U_PROJECTION, projection);
 	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
 }
@@ -310,7 +306,18 @@ gfx_end_draw_framebuffers()
 void
 gfx_draw_begin(GraphicsTileMap *tmap) 
 {
-	glViewport(0, 0, screen_width / FBO_SCALE, screen_height / FBO_SCALE);
+	intrend_bind_shader(&sprite_program);
+	intrend_uniform_mat3(U_VIEW,       view_matrix);
+	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
+
+	intrend_bind_shader(&font_program);
+	intrend_uniform_mat3(U_VIEW,       view_matrix);
+	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
+
+	intrend_bind_shader(&tile_map_program);
+	intrend_uniform_mat3(U_VIEW,       view_matrix);
+	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
+	
 	if(tmap)
 		draw_tmap(tmap);
 }
@@ -330,6 +337,10 @@ gfx_debug_begin()
 	debug_quad_count = 0;
 	debug_lines_count = 0;
 	debug_fill_quad_count = 0;
+
+	intrend_bind_shader(&debug_program);
+	intrend_uniform_mat3(U_VIEW, view_matrix);
+	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
 }
 
 void 
@@ -339,7 +350,7 @@ gfx_debug_set_color(vec4 color)
 }
 
 #define DEBUG_FILL_COLOR { debug_color[0], debug_color[1], debug_color[2], debug_color[3] }
-inline void pass_data_buffer(GLuint buffer, size_t offset, size_t buffer_size, void *data)
+static inline void pass_data_buffer(GLuint buffer, size_t offset, size_t buffer_size, void *data)
 {
 	glBindBuffer(GL_ARRAY_BUFFER, buffer);
 	glBufferSubData(GL_ARRAY_BUFFER,
@@ -399,6 +410,29 @@ gfx_debug_end()
 	intrend_draw(&debug_program, debug_quad_vao, GL_TRIANGLES, debug_quad_count);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	intrend_draw(&debug_program, debug_fill_quad_vao, GL_TRIANGLES, debug_fill_quad_count);
+}
+
+void
+gfx_begin_scissor(vec2 position, vec2 size)
+{
+	vec2 scissor_pos, scissor_size;
+
+	glEnable(GL_SCISSOR_TEST);
+	vec2_sub(scissor_pos, position, size);
+	vec2_add(scissor_size, size, size);
+
+	#define F(X, Y, W, H) \
+		glScissor((X), (Y), (W), (H)); 
+
+	F(scissor_pos[0], screen_height - scissor_pos[1] - scissor_size[1], scissor_size[0], scissor_size[1]);
+
+	#undef F
+}
+
+void
+gfx_end_scissor()
+{
+	glDisable(GL_SCISSOR_TEST);
 }
 
 void
@@ -706,7 +740,7 @@ load_font_buffer(FontBuffer *atlas, TextureAtlas texture)
 	atlas->vao = ugl_create_vao(6, (VaoSpec[]){
 		{ .name = VATTRIB_POSITION, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, position), .buffer = sprite_buffer_gpu },
 		{ .name = VATTRIB_TEXCOORD, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, texcoord), .buffer = sprite_buffer_gpu },
-
+		
 		{ .name = VATTRIB_INST_POSITION,  .size = 2, .type = GL_FLOAT, .stride = sizeof(FontInstance), .offset = offsetof(FontInstance, position),  .divisor = 1, .buffer = atlas->instance_buffer },
 		{ .name = VATTRIB_INST_SIZE,      .size = 2, .type = GL_FLOAT, .stride = sizeof(FontInstance), .offset = offsetof(FontInstance, half_size), .divisor = 1, .buffer = atlas->instance_buffer },
 		{ .name = VATTRIB_INST_SPRITE_ID, .size = 2, .type = GL_FLOAT, .stride = sizeof(FontInstance), .offset = offsetof(FontInstance, sprite_id), .divisor = 1, .buffer = atlas->instance_buffer },

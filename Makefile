@@ -9,7 +9,8 @@ OUTPUT_OBJECTS=\
 		glutil.o\
 		graphics_scene.o\
 		entities/player.o\
-		map.o
+		map.o\
+		ui.o
 
 OUTPUT=a.out
 
@@ -23,7 +24,8 @@ EDITOR_OBJECTS=\
 		map.o\
 		editor_states/edit_tiles.o\
 		editor_states/select_tiles.o\
-		editor_states/edit_collisions.o
+		editor_states/edit_collisions.o\
+		ui.o
 
 EDITOR=editor
 

@@ -118,20 +118,22 @@ ugl_create_vao(GLuint n_specs, VaoSpec specs[n_specs])
 		case GL_UNSIGNED_BYTE:
 		case GL_UNSIGNED_SHORT:
 			glVertexAttribIPointer(
-					specs[i].name,
-					specs[i].size,
-					specs[i].type,
-					specs[i].stride,
-					(void*)offset);
+				specs[i].name,
+				specs[i].size,
+				specs[i].type,
+				specs[i].stride,
+				(void*)offset
+			);
 			break;
 		default:
 			glVertexAttribPointer(
-					specs[i].name,
-					specs[i].size,
-					specs[i].type,
-					GL_FALSE,
-					specs[i].stride,
-					(void*)offset);
+				specs[i].name,
+				specs[i].size,
+				specs[i].type,
+				GL_FALSE,
+				specs[i].stride,
+				(void*)offset
+			);
 		}
 		glVertexAttribDivisor(specs[i].name, specs[i].divisor);
 	}

@@ -45,8 +45,7 @@ map_load(const char *file)
 				goto error_load;
 
 			map = map_alloc(w, h);
-		} else
-		if(strview_cmp(word, "tile") == 0) {
+		} else if(strview_cmp(word, "tile") == 0) {
 			int tile_id, tile;
 			if(!strview_int(strview_token(&tokenview, " "), &tile_id))
 				goto error_load;
@@ -54,8 +53,7 @@ map_load(const char *file)
 				goto error_load;
 			
 			map->tiles[tile_id] = tile;
-		} else
-		if(strview_cmp(word, "collision") == 0) {
+		} else if(strview_cmp(word, "collision") == 0) {
 			CollisionData *data = malloc(sizeof(*data));
 			if(!strview_float(strview_token(&tokenview, " "), &data->position[0]))
 				goto error_load;
@@ -65,12 +63,6 @@ map_load(const char *file)
 				goto error_load;
 			if(!strview_float(strview_token(&tokenview, " "), &data->half_size[1]))
 				goto error_load;
-
-			printf("new collision at %f %f %f %f\n",
-					data->position[0],
-					data->position[1],
-					data->half_size[0],
-					data->half_size[1]);
 
 			data->next = map->collision;
 			map->collision = data;
@@ -84,6 +76,7 @@ map_load(const char *file)
 	}
 
 	return map;
+
 error_load:
 	if(map)
 		free(map);

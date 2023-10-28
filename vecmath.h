@@ -121,6 +121,16 @@ MATH_FUNC void mat##SIZE##_ident(mat##SIZE r)\
 	for(int x = 0; x < SIZE; x++) {\
 		r[x][y] = x == y ? 1.0 : 0.0;\
 	}\
+}\
+MATH_FUNC void mat##SIZE##_mul_vec##SIZE(vec##SIZE r, mat##SIZE m, vec##SIZE v)\
+{\
+	vec##SIZE result = {0};\
+	for(int i = 0; i < SIZE; i++) {\
+		for(int y = 0; y < SIZE; y++) {\
+			result[i] += m[i][y] * v[i];\
+		}\
+	}\
+	memcpy(r, result, sizeof(result));\
 }
 
 DEFINE_MATRIX(2)

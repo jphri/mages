@@ -33,7 +33,6 @@ typedef struct {
 	float rotation;
 } Sprite;
 
-
 typedef struct {
 	unsigned int vao;
 	unsigned int buffer;
@@ -70,6 +69,9 @@ void gfx_debug_line(vec2 p1, vec2 p2);
 void gfx_debug_quad(vec2 p, vec2 hs);
 void gfx_debug_fill_quad(vec2 p, vec2 hs);
 void gfx_debug_end();
+
+void gfx_begin_scissor(vec2 position, vec2 size);
+void gfx_end_scissor();
 
 GraphicsTileMap  gfx_tmap_new(TextureAtlas terrain, int w, int h, int *data);
 void             gfx_tmap_free(GraphicsTileMap *tmap);
