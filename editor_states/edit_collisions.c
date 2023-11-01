@@ -155,41 +155,48 @@ collision_wheel(SDL_Event *event)
 void
 collision_render()
 {
-	vec2 pos;
 	gfx_set_camera(offset, (vec2){ zoom, zoom });
 
-	gfx_debug_begin();
-	for(CollisionData *c = editor.map->collision; c; c = c->next) {
-		vec2_dup(pos, c->position);
-		gfx_debug_quad(pos, c->half_size);
-	}
+	//gfx_debug_begin();
+	//for(CollisionData *c = editor.map->collision; c; c = c->next) {
+	//	vec2_dup(pos, c->position);
+	//	gfx_debug_quad(pos, c->half_size);
+	//}
 
-	if(mouse_state == MOUSE_DRAWING) {
-		gfx_debug_set_color((vec4){ 1.0, 1.0, 1.0, 1.0 });
-		gfx_debug_quad(current_collision.position, current_collision.half_size);
-	}
-	gfx_debug_end();
+	//if(mouse_state == MOUSE_DRAWING) {
+	//	gfx_debug_set_color((vec4){ 1.0, 1.0, 1.0, 1.0 });
+	//	gfx_debug_quad(current_collision.position, current_collision.half_size);
+	//}
+	//gfx_debug_end();
 
 	gfx_draw_begin(NULL);
 	for(int k = 0; k < SCENE_LAYERS; k++)
-		for(int i = 0; i < editor.map->w * editor.map->h; i++) {
-			float x = (     (i % editor.map->w) + 0.5);
-			float y = ((int)(i / editor.map->w) + 0.5);
+	for(int i = 0; i < editor.map->w * editor.map->h; i++) {
+		float x = (     (i % editor.map->w) + 0.5);
+		float y = ((int)(i / editor.map->w) + 0.5);
 
-			if(editor.map->tiles[i + k * editor.map->w * editor.map->h] <= 0)
-				continue;
+		int spr = editor.map->tiles[i + k * editor.map->w * editor.map->h] - 1;
+		if(spr < 0)
+			continue;
+		int spr_x = spr % 16;
+		int spr_y = spr / 16;
 
-			int spr = editor.map->tiles[i + k * editor.map->w * editor.map->h] - 1;
-			int spr_x = spr % 16;
-			int spr_y = spr / 16;
+		gfx_draw_sprite(&(Sprite){
+				.position = { x, y },
+				.sprite_id = { spr_x, spr_y },
+				.color = { 1.0, 1.0, 1.0, 1.0 },
+				.half_size = { 0.5, 0.5 },
+				.type = editor.map_atlas,
+				.clip_region = { 0, 0, 1000, 1000 }
+				});
+	}
 
-			gfx_draw_sprite(&(Sprite){
-					.position = { x, y },
-					.sprite_id = { spr_x, spr_y },
-					.color = { 1.0, 1.0, 1.0, 1.0 },
-					.sprite_type = editor.map_atlas,
-					.half_size = { 0.5, 0.5 }
-					});
-		}
+	for(CollisionData *c = editor.map->collision; c; c = c->next) {
+		gfx_draw_rect(TEXTURE_UI, c->position, c->half_size, 0.15, (vec4){ 1.0, 1.0, 1.0, 1.0 }, (vec4){ 0.0, 0.0, 1000, 1000 });
+	}
+
+	if(mouse_state == MOUSE_DRAWING) {
+		gfx_draw_rect(TEXTURE_UI, current_collision.position, current_collision.half_size, 0.15, (vec4){ 1.0, 1.0, 1.0, 1.0 }, (vec4){ 0.0, 0.0, 1000, 1000 });
+	}
 	gfx_draw_end();
 }

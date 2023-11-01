@@ -43,6 +43,10 @@ static void hello3_callback(void *ptr)
 int
 main()
 {
+	(void)hello_callback;
+	(void)hello2_callback;
+	(void)hello3_callback;
+
 	if(SDL_Init(SDL_INIT_VIDEO) < 0)
 		return -1;
 
@@ -113,7 +117,7 @@ main()
 	label = ui_new_object(layout3, UI_LABEL);
 	ui_label_set_color(label, (vec4){ 1.0, 1.0, 0.0, 1.0 });
 	ui_label_set_border(label, (vec2){ 10.0, 10.0 });
-	ui_label_set_text(label, label_ptr.data);
+	ui_label_set_text(label, "Hello");
 
 	map = map_load("maps/test_map_2.map");
 	map_set_gfx_scene(map);
@@ -121,8 +125,9 @@ main()
 	map_free(map);
 
 	EntityID player_id = ent_player_new((vec2){ 15.0, 15.0 });
-
 	Uint64 prev_time = SDL_GetPerformanceCounter();
+
+	(void)player_id;
 	while(true) {
 		int w, h;
 		SDL_Event event;
@@ -140,23 +145,37 @@ main()
 		vec2_add_scaled(offset, (vec2){ 0.0, 0.0 }, PLAYER_BODY->position, -32);
 		vec2_add(offset, offset, (vec2){ 400, 300 });
 		gfx_set_camera(offset, (vec2){ 32.0, 32.0 });
-
+		
 		SDL_GetWindowSize(GLOBAL.window, &w, &h);
 
 		gfx_make_framebuffers(w, h);
 		gfx_clear_framebuffers();
-
+	
+		gfx_setup_draw_framebuffers();
 		gfx_scene_draw();
 
-		gfx_setup_draw_framebuffers();
-		gfx_draw_begin(NULL);
-		gfx_draw_font(FONT_CELLPHONE, (vec2){ 0.0, 0.0 }, (vec2){ 1.0, 1.0 }, (vec4){ 1.0, 1.0, 0.0, 0.5 }, "Hello");
-		gfx_draw_end();
-		gfx_end_draw_framebuffers();
-
-		gfx_render_present();
 
 		gfx_set_camera((vec2){0.0, 0.0}, (vec2){ 1.0, 1.0 });
+		gfx_draw_begin(NULL);
+		gfx_draw_sprite(&(Sprite) {
+			.type = TEXTURE_UI,
+			.color = { 1.0, 0.0, 1.0, 1.0 },
+			.position = { 30, 30 },
+			.clip_region = { 0, 0, 1000, 1000 }, 
+			.half_size = { 10, 10 }
+		});
+		gfx_draw_sprite(&(Sprite) {
+			.type = TEXTURE_UI,
+			.color = { 1.0, 0.0, 1.0, 1.0 },
+			.position = { 150, SDL_GetTicks() / 10.0 },
+			.clip_region = { 0, 0, 1000, 1000 }, 
+			.half_size = { 10, 10 }
+		});
+		gfx_draw_line(TEXTURE_UI, (vec2){ 30, 30 }, (vec2){ 150, SDL_GetTicks() / 10.0 }, 10.0, (vec4){ 1.0, 1.0, 1.0, 1.0 }, (vec4){ 0, 0, 1000, 1000 });
+		gfx_draw_end();
+
+		gfx_end_draw_framebuffers();
+		gfx_render_present();
 		ui_draw();
 
 		ui_order();

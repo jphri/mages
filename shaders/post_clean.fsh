@@ -3,7 +3,6 @@
 uniform sampler2D u_AlbedoTexture;
 
 in vec2 in_Texcoord;
-
 out vec4 out_FragColor;
 
 void

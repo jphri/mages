@@ -178,8 +178,10 @@ ui_del_object(UIObject object)
 void
 ui_draw() 
 {
+	gfx_draw_begin(NULL);
 	for(UIObject child = _sys_list; child; child = _sys_node(child)->next)
 		process_draw(child);
+	gfx_draw_end();
 }
 
 void
@@ -267,17 +269,7 @@ void
 dummy_draw(UIObject object)
 {
 	#define OBJECT _sys_node(object)
-
-	gfx_debug_begin();
-	
-	gfx_debug_set_color((vec4){ 1.0, 1.0, 1.0, 1.0 });
-	gfx_debug_fill_quad(
-			(vec2){ OBJECT->global_position[0], OBJECT->global_position[1] }, 
-			(vec2){ OBJECT->global_size[0], OBJECT->global_size[1] }
-	);
-
-	gfx_debug_end();
-
+	(void)object;
 	#undef OBJECT
 }
 
@@ -314,18 +306,17 @@ button_draw(UIObject object)
 	label_position[0] = OBJECT->global_position[0] - OBJECT->global_size[0] + label_character_size[0] + BUTTON.label_border[0];
 	label_position[1] = OBJECT->global_position[1];
 
-	gfx_begin_scissor(OBJECT->global_position, OBJECT->global_size);
-	gfx_debug_begin();
-	gfx_debug_set_color((vec4){ 0.7 + color_offset, 0.7 + color_offset, 0.7 + color_offset, 1.0 });
-	gfx_debug_fill_quad(OBJECT->global_position, OBJECT->global_size);
-	gfx_debug_end();
-
-	gfx_draw_begin(NULL);
-	gfx_draw_font(FONT_CELLPHONE, label_position, label_character_size, (vec4){ 0.0, 0.0, 0.0, 1.0 }, "%s", BUTTON.label);
-	gfx_draw_end();
+	gfx_draw_sprite(&(Sprite) {
+		.type = SPRITE_UI,
+		.position = { OBJECT->global_position[0], OBJECT->global_position[1] },
+		.color = { 0.7 + color_offset, 0.7 + color_offset, 0.7 + color_offset, 1.0 },
+		.rotation = 0.0,
+		.half_size = { OBJECT->global_size[0], OBJECT->global_size[1] },
+		.sprite_id = { 0.0, 0.0 },
+		.clip_region = { OBJECT->global_position[0], OBJECT->global_position[1], OBJECT->global_size[0], OBJECT->global_size[1] }
+	});
+	gfx_draw_font(TEXTURE_FONT_CELLPHONE, label_position, label_character_size, (vec4){ 0.0, 0.0, 0.0, 1.0 }, (vec4){ OBJECT->global_position[0], OBJECT->global_position[1], OBJECT->global_size[0], OBJECT->global_size[1] }, "%s", BUTTON.label);
 	
-	gfx_end_scissor();
-
 	#undef BUTTON
 	#undef OBJECT
 }
@@ -343,14 +334,8 @@ label_draw(UIObject object)
 	label_position[0] = OBJECT->global_position[0] - OBJECT->global_size[0] + label_character_size[0] + LABEL.border[0];
 	label_position[1] = OBJECT->global_position[1];
 
-	gfx_begin_scissor(OBJECT->global_position, OBJECT->global_size);
-
-	gfx_draw_begin(NULL);
-	gfx_draw_font(FONT_CELLPHONE, label_position, label_character_size, LABEL.color, "%s", LABEL.label_ptr);
-	gfx_draw_end();
+	gfx_draw_font(TEXTURE_FONT_CELLPHONE, label_position, label_character_size, LABEL.color, (vec4){ OBJECT->global_position[0], OBJECT->global_position[1], OBJECT->global_size[0], OBJECT->global_size[1] }, "%s", LABEL.label_ptr);
 	
-	gfx_end_scissor();
-
 	#undef LABEL
 	#undef OBJECT
 }
@@ -361,15 +346,25 @@ window_draw(UIObject object)
 	#define OBJECT _sys_node(object)
 	#define WINDOW _sys_node(object)->data.window
 
-	gfx_begin_scissor(OBJECT->global_position, OBJECT->global_size);
-	gfx_debug_begin(); {
+	{
 		vec2 size;
 		vec2_sub(size, OBJECT->global_size, WINDOW.border);
-		gfx_debug_set_color(WINDOW.border_color);
-		gfx_debug_fill_quad(OBJECT->global_position, OBJECT->global_size);
-		gfx_debug_set_color(WINDOW.background);
-		gfx_debug_fill_quad(OBJECT->global_position, size);
-	} gfx_debug_end();
+		gfx_draw_sprite(&(Sprite) {
+			.type = SPRITE_UI,
+			.color = { WINDOW.border_color[0], WINDOW.border_color[1], WINDOW.border_color[2], WINDOW.border_color[3] },
+			.position = { OBJECT->global_position[0], OBJECT->global_position[1] },
+			.half_size = { OBJECT->global_size[0], OBJECT->global_size[1] },
+			.clip_region = { OBJECT->global_position[0], OBJECT->global_position[1], OBJECT->global_size[0], OBJECT->global_size[1] }
+		});
+
+		gfx_draw_sprite(&(Sprite) {
+			.type = SPRITE_UI,
+			.color = { WINDOW.background[0], WINDOW.background[1], WINDOW.background[2], WINDOW.background[3] },
+			.position = { OBJECT->global_position[0], OBJECT->global_position[1] },
+			.half_size = { size[0], size[1] },
+			.clip_region = { OBJECT->global_position[0], OBJECT->global_position[1], OBJECT->global_size[0], OBJECT->global_size[1] }
+		});
+	}
 
 	#undef OBJECT
 	#undef WINDOW

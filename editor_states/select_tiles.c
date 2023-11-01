@@ -23,22 +23,6 @@ select_tile_render()
 {
 	gfx_set_camera(edit_offset, (vec2){ edit_zoom, edit_zoom });
 
-	gfx_debug_begin();
-	gfx_debug_set_color((vec4){ 1.0, 1.0, 1.0, 1.0 });
-	for(int x = 0; x < editor.map->w + 1; x++) {
-		gfx_debug_line(
-			(vec2){ (x), (0.0) }, 
-			(vec2){ (x), (editor.map->h) }
-		);
-	}
-	for(int y = 0; y < editor.map->h + 1; y++) {
-		gfx_debug_line(
-			(vec2){ (0.0),           (y) }, 
-			(vec2){ (editor.map->w), (y) }
-		);
-	}
-	gfx_debug_end();
-	
 	gfx_draw_begin(NULL);
 	for(int i = 0; i < 16 * 16; i++) {
 		float x = (     (i % editor.map->w) + 0.5);
@@ -52,9 +36,30 @@ select_tile_render()
 				.position = { x, y },
 				.sprite_id = { spr_x, spr_y },
 				.color = { 1.0, 1.0, 1.0, 1.0 },
-				.sprite_type = editor.map_atlas,
-				.half_size = { 0.5, 0.5 }
+				.half_size = { 0.5, 0.5 },
+				.type = editor.map_atlas,
+				.clip_region = { 0, 0, 1000, 1000 }
 				});
+	}
+	for(int x = 0; x < 17; x++) {
+		gfx_draw_line(
+			TEXTURE_UI,
+			(vec2){ (x - 0.1), (0.0) }, 
+			(vec2){ (x - 0.1), (editor.map->h) },
+			0.1,
+			(vec4){ 1.0, 1.0, 1.0, 1.0 },
+			(vec4){ 0.0, 0.0, 1000, 1000 }
+		);
+	}
+	for(int y = 0; y < editor.map->h + 1; y++) {
+		gfx_draw_line(
+			TEXTURE_UI,
+			(vec2){ (0.0),           (y - 0.1) }, 
+			(vec2){ (editor.map->w), (y - 0.1) },
+			0.1,
+			(vec4){ 1.0, 1.0, 1.0, 1.0 },
+			(vec4){ 0.0, 0.0, 1000, 1000 }
+		);
 	}
 	gfx_draw_end();
 }

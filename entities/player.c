@@ -25,12 +25,12 @@ ent_player_new(vec2 position)
 	self_body->collision_layer = 0x00;
 	self_body->collision_mask  = 0x02;
 
-	self_sprite->sprite_type = SPRITE_PLAYER;
-	vec2_dup(self_sprite->position, position);
-	vec2_dup(self_sprite->half_size, (vec2){ 1, 1 });
-	vec4_dup(self_sprite->color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
-	self_sprite->rotation = 0.0;
-	self_sprite->sprite_id[0] = 0.0; self_sprite->sprite_id[1] = 0.0;
+	self_sprite->type = SPRITE_ENTITIES;
+	vec2_dup(self_sprite->sprite.position, position);
+	vec2_dup(self_sprite->sprite.half_size, (vec2){ 1, 1 });
+	vec4_dup(self_sprite->sprite.color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+	self_sprite->sprite.rotation = 0.0;
+	self_sprite->sprite.sprite_id[0] = 0.0; self_sprite->sprite.sprite_id[1] = 0.0;
 
 	return self_id;
 #undef self_id
@@ -67,7 +67,7 @@ ent_player_update(EntityID self_id, float delta)
 	for(unsigned int i = 0; i < hit_count; i++)
 		printf("Hit ID: %d\n", info->id);
 
-	vec2_dup(self_sprite->position, self_body->position);
+	vec2_dup(self_sprite->sprite.position, self_body->position);
 
 	#undef self_id
 	#undef self_body

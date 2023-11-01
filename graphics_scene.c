@@ -14,7 +14,7 @@ typedef struct {
 	int layer;
 	
 	union {
-		Sprite sprite;
+		SceneSprite sprite;
 	} data;
 } SceneObjectNode;
 
@@ -80,15 +80,22 @@ gfx_scene_cleanup()
 void 
 gfx_scene_draw()
 {
-	gfx_setup_draw_framebuffers();
+	//gfx_setup_draw_framebuffers();
 	for(int i = 0; i < SCENE_LAYERS; i++) {
 		SceneSpriteID object_id = layer_objects[i];
+		SceneSprite *ss = gfx_scene_spr_data(object_id);
 		
 		gfx_draw_begin(layer_tmap_set & (1 << i) ? &layer_tmaps[i] : NULL);
+		//gfx_draw_begin(NULL);
 		while(object_id) {
 			switch(_sys_node(object_id)->type) {
 			case SCENE_OBJECT_SPRITE:
-				gfx_draw_sprite(gfx_scene_spr_data(object_id));
+				ss->sprite.type = TEXTURE_ENTITIES;
+				ss->sprite.clip_region[0] = ss->sprite.position[0];
+				ss->sprite.clip_region[1] = ss->sprite.position[1];
+				ss->sprite.clip_region[2] = 100.0;
+				ss->sprite.clip_region[3] = 100.0;
+				gfx_draw_sprite(&ss->sprite);
 				break;
 			default: 
 				assert(0 && "invalid object type");
@@ -98,7 +105,7 @@ gfx_scene_draw()
 		}
 		gfx_draw_end();
 	}
-	gfx_end_draw_framebuffers();
+	//gfx_end_draw_framebuffers();
 }
 
 SceneSpriteID  
@@ -113,7 +120,7 @@ gfx_scene_del_spr(SceneSpriteID spr_id)
 	del_object(spr_id);
 }
 
-Sprite *
+SceneSprite *
 gfx_scene_spr_data(SceneSpriteID spr_id)
 {
 	return &_sys_node(spr_id)->data.sprite;

@@ -1,7 +1,10 @@
 #version 330 core
 
-uniform mat3 u_Projection;
-uniform mat3 u_View;
+layout(std140) uniform u_TransformBlock 
+{
+	mat4 u_Projection;
+	mat4 u_View;
+};
 
 in vec2 v_Position; 
 in vec4 v_Color;
@@ -11,6 +14,6 @@ out VS_OUT {
 } vs_out;
 
 void main() {
-	gl_Position     = vec4(u_Projection * u_View * vec3(v_Position, 1.0), 1.0);
+	gl_Position     = u_Projection * u_View * vec4(v_Position, 0.0, 1.0);
 	vs_out.color    = v_Color;
 }

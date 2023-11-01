@@ -76,16 +76,10 @@ main(int argc, char *argv[])
 		SDL_GetWindowSize(GLOBAL.window, &w, &h);
 
 		gfx_make_framebuffers(w, h);
-		gfx_clear_framebuffers();
-		gfx_setup_draw_framebuffers();
+		glClear(GL_COLOR_BUFFER_BIT);
 		
 		if(state_vtable[editor.editor_state].render)
 			state_vtable[editor.editor_state].render();
-		
-		gfx_debug_end();
-		
-		gfx_end_draw_framebuffers();
-		gfx_render_present();
 		
 		SDL_GL_SwapWindow(GLOBAL.window);
 		while(SDL_PollEvent(&event)) {

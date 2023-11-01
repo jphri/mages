@@ -73,6 +73,13 @@ MATH_FUNC void vec##SIZE##_reflect(vec##SIZE r, vec##SIZE const incid, vec##SIZE
 	for(int i = 0; i < SIZE; i++) {\
 		r[i] = incid[i] - 2 * dot * normal[i];\
 	}\
+}\
+MATH_FUNC void vec##SIZE##_print(vec##SIZE r)\
+{\
+	for(int i = 0; i < SIZE; i++) {\
+		printf("%f ", r[i]);\
+	}\
+	printf("\n");\
 }
 
 DEFINE_VECTOR(2)
@@ -131,48 +138,68 @@ MATH_FUNC void mat##SIZE##_mul_vec##SIZE(vec##SIZE r, mat##SIZE m, vec##SIZE v)\
 		}\
 	}\
 	memcpy(r, result, sizeof(result));\
-}
+}\
+MATH_FUNC void mat##SIZE##_print(mat##SIZE r)\
+{\
+	float *f = &r[0][0];\
+	for(int i = 0; i < SIZE * SIZE; i++) {\
+		if(i % SIZE == 0)\
+			printf("\n");\
+		printf("%f ", f[i]);\
+	}\
+	printf("\n-----------\n");\
+}\
 
 DEFINE_MATRIX(2)
 DEFINE_MATRIX(3)
 DEFINE_MATRIX(4)
 
-MATH_FUNC void affine2d_rotate(mat3 r, float angle)
+MATH_FUNC void affine2d_rotate(mat4 r, float angle)
 {
 	const float sinv = sinf(angle),
 		        cosv = cosf(angle);
 
-	r[0][0] = cosv;
-	r[0][1] = -sinv;
-	r[1][0] = sinv;
-	r[1][1] = cosv;
-}
-
-MATH_FUNC void affine2d_translate(mat3 r, vec2 pos)
-{
-	mat3 trans = {
-		{ 1, 0, 0 },
-		{ 0, 1, 0 },
-		{ pos[0], pos[1], 1 }
+	mat4 trans = {
+		{ cosv,  sinv, 0, 0 },
+		{ -sinv, cosv, 0, 0 },
+		{ 0,        0, 1, 0 },
+		{ 0,        0, 0, 1 }
 	};
-	mat3_mul(r, trans, r);
+	mat4_mul(r, trans, r);
 }
 
-MATH_FUNC void affine2d_scale(mat3 r, vec2 s)
+MATH_FUNC void affine2d_translate(mat4 r, vec2 pos)
 {
-	mat3 trans = {
-		{ s[0], 0, 0 },
-		{ 0, s[1], 0 },
-		{ 0, 0, 1 }
+	mat4 trans = {
+		{ 1, 0,           0, 0 },
+		{ 0, 1,           0, 0 },
+		{ 0, 0,           1, 0 },
+		{ pos[0], pos[1], 0, 1 }
 	};
-	mat3_mul(r, trans, r);
+	mat4_mul(r, trans, r);
 }
 
-MATH_FUNC void affine2d_ortho_window(mat3 r, const float w, const float h)
+MATH_FUNC void affine2d_scale(mat4 r, vec2 s)
 {
-	mat3_ident(r);
-	r[0][0] =  2.0f / w; r[2][0] = -1.0;
-	r[1][1] = -2.0f / h; r[2][1] =  1.0;
+	mat4 trans = {
+		{ s[0], 0, 0, 0 },
+		{ 0, s[1], 0, 0 },
+		{ 0, 0,    1, 0 },
+		{ 0, 0,    0, 1 }
+	};
+	mat4_mul(r, trans, r);
+
+}
+
+MATH_FUNC void affine2d_setup_ortho_window(mat4 r, const float w, const float h)
+{
+	r[0][0] =  2.0 / w;
+	r[1][1] = -2.0 / h;
+	r[2][2] = -1.0;
+	r[3][0] = -1.0;
+	r[3][1] =  1.0;
+	r[3][2] =  0.0;
+	r[3][3] =  1.0;
 }
 
 #undef MATH_FUNC

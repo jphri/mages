@@ -16,6 +16,7 @@ enum Uniform {
 	U_SPRITE_CR,
 	U_TILE_MAP_SIZE,
 	U_ALBEDO_TEXTURE,
+
 	LAST_UNIFORM
 };
 
@@ -28,6 +29,8 @@ enum VertexAttrib {
 	VATTRIB_INST_COLOR,
 	VATTRIB_INST_ROTATION,
 	VATTRIB_INST_SPRITE_ID,
+	VATTRIB_INST_SPRITE_TYPE,
+	VATTRIB_INST_CLIP,
 	LAST_VATTRIB
 };
 
@@ -36,22 +39,8 @@ enum VertexAttrib {
 
 typedef struct {
 	vec2 position;
-	vec2 half_size;
-	vec2 sprite_id;
-	vec4 color;
-} FontInstance;
-
-typedef struct {
-	vec2 position;
 	vec2 texcoord;
 } SpriteVertex;
-
-typedef struct {
-	TextureAtlas texture;
-	GLuint instance_buffer;
-	GLuint vao;
-	GLuint sprite_count;
-} SpriteBuffer;
 
 typedef struct {
 	GLuint texture;
@@ -68,13 +57,6 @@ typedef struct {
 	vec4 color;
 } DebugVertex;
 
-typedef struct {
-	TextureAtlas texture;
-	GLuint instance_buffer;
-	GLuint vao;
-	GLuint char_count;
-} FontBuffer;
-
 typedef enum {
 	TEXTURE_FORMAT_RGBA32,
 	TEXTURE_FORMAT_RED
@@ -90,6 +72,18 @@ intrend_bind_uniforms(ShaderProgram *shader)
 	intrend_uniform_bind(shader, U_PROJECTION,     "u_Projection");
 	intrend_uniform_bind(shader, U_SPRITE_CR,      "u_SpriteCR");
 	intrend_uniform_bind(shader, U_ALBEDO_TEXTURE, "u_AlbedoTexture");
+
+	glUniformBlockBinding(
+		shader->program,
+		glGetUniformBlockIndex(shader->program, "u_TransformBlock"),
+		0
+	);
+
+	glUniformBlockBinding(
+		shader->program,
+		glGetUniformBlockIndex(shader->program, "u_SpriteDataBlock"),
+		1
+	);
 }
 
 void
@@ -104,47 +98,41 @@ intrend_bind_attribs(ShaderProgram *shader)
 	intrend_attrib_bind(shader, VATTRIB_INST_SPRITE_ID, "v_InstSpriteID");
 	intrend_attrib_bind(shader, VATTRIB_INST_ROTATION,  "v_InstRotation");
 	intrend_attrib_bind(shader, VATTRIB_INST_COLOR,     "v_InstColor");
+	intrend_attrib_bind(shader, VATTRIB_INST_SPRITE_TYPE, "v_InstSpriteType");
+	intrend_attrib_bind(shader, VATTRIB_INST_CLIP, "v_ClipRegion");
 }
 
 static void   create_texture_buffer(int w, int h);
 static void   init_shaders();
 static GLuint load_texture(const char *file, TextureFormat format);
 
-static SpriteBuffer load_sprite_buffer(TextureAtlas texture);
-static void         draw_sprite_buffer(SpriteBuffer *buffer);
-static void         insert_sprite_buffer(SpriteBuffer *buffer, Sprite *sprite);
-static void         end_sprite_buffer(SpriteBuffer *buffer);
-
 static TextureAtlasData load_texture_atlas(const char *file, int cols, int rows, TextureFormat format);
 static void             end_texture_atlas(TextureAtlasData *texture);
 static void             draw_tmap(GraphicsTileMap *tmap);
 static void             draw_post(ShaderProgram *program);
 
-static void             load_font_buffer(FontBuffer *buffer, TextureAtlas atlas); 
-static void             insert_character(FontBuffer *buffer, vec2 position, vec2 size, vec4 color, int c);
-static void             draw_characters(FontBuffer *buffer);
-static void             end_font_buffer(FontBuffer *buffer);
+static void             insert_character(TextureAtlas atlas, vec2 position, vec2 size, vec4 color, vec4 clip_region, int c);
 
 static GLuint sprite_buffer_gpu;
 static int screen_width, screen_height;
 static ShaderProgram sprite_program, tile_map_program, font_program;
 static ShaderProgram debug_program;
 
-static SpriteBuffer sprite_buffers[LAST_SPRITE];
 static TextureAtlasData texture_atlas[LAST_TEXTURE_ATLAS];
-static FontBuffer font_buffers[LAST_FONT];
 
 static GLuint albedo_fbo, albedo_texture;
 static GLuint post_process_vbo, post_process_vao;
 
-static GLuint debug_lines_buffer, debug_quad_buffer, debug_fill_quad_buffer;
-static GLuint debug_lines_vao, debug_quad_vao, debug_fill_quad_vao;
-static GLuint debug_lines_count, debug_quad_count, debug_fill_quad_count;
-static vec4 debug_color;
-
 static ShaderProgram post_clean;
 
-static mat3 view_matrix;
+static mat4 projection;
+static mat4 view_matrix;
+
+static GLuint matrix_buffer;
+static GLuint sprite_colrow_inv_buffer;
+static GraphicsTileMap *current_tmap;
+
+static GLuint sprite_buffer, sprite_vao, sprite_count;
 
 void
 gfx_init()
@@ -169,16 +157,12 @@ gfx_init()
 
 	gfx_set_camera((vec2){ 0.0, 0.0 }, (vec2){ 16, 16 });
 
-	sprite_buffer_gpu = ugl_create_buffer(GL_STATIC_DRAW, sizeof(vertex_data), vertex_data);
-	sprite_buffers[SPRITE_PLAYER] = load_sprite_buffer(TEXTURE_PLAYER);
-	sprite_buffers[SPRITE_FIRIE] = load_sprite_buffer(TEXTURE_FIRIE);
-	sprite_buffers[SPRITE_TERRAIN] = load_sprite_buffer(TERRAIN_NORMAL);
+	sprite_buffer_gpu               = ugl_create_buffer(GL_STATIC_DRAW, sizeof(vertex_data), vertex_data);
 
-	load_font_buffer(&font_buffers[FONT_CELLPHONE], TEXTURE_FONT_CELLPHONE);
-
-	texture_atlas[TEXTURE_PLAYER]         = load_texture_atlas("textures/player.png", 2, 1, TEXTURE_FORMAT_RGBA32);
+	texture_atlas[TEXTURE_ENTITIES]       = load_texture_atlas("textures/entities.png", 16, 16, TEXTURE_FORMAT_RGBA32);
 	texture_atlas[TERRAIN_NORMAL]         = load_texture_atlas("textures/terrain.png", 16, 16, TEXTURE_FORMAT_RGBA32);
-	texture_atlas[TEXTURE_FONT_CELLPHONE] = load_texture_atlas("textures/charmap-cellphone.png", 18, 7, TEXTURE_FORMAT_RED);
+	texture_atlas[TEXTURE_FONT_CELLPHONE] = load_texture_atlas("textures/charmap-cellphone.png", 18, 7, TEXTURE_FORMAT_RGBA32);
+	texture_atlas[TEXTURE_UI] = load_texture_atlas("textures/ui.png", 32, 32, TEXTURE_FORMAT_RGBA32);
 
 	post_process_vbo = ugl_create_buffer(GL_STATIC_DRAW, sizeof(post_process), post_process);
 	post_process_vao = ugl_create_vao(2, (VaoSpec[]){
@@ -186,19 +170,56 @@ gfx_init()
 		{ .name = VATTRIB_TEXCOORD, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, texcoord), .buffer = post_process_vbo },
 	});
 
-	debug_lines_buffer     = ugl_create_buffer(GL_STREAM_DRAW, sizeof(DebugVertex) * 4096, NULL);
-	debug_quad_buffer      = ugl_create_buffer(GL_STREAM_DRAW, sizeof(DebugVertex) * 4096, NULL);
-	debug_fill_quad_buffer = ugl_create_buffer(GL_STREAM_DRAW, sizeof(DebugVertex) * 4096, NULL);
+	intrend_bind_shader(&sprite_program);
+	intrend_uniform_iv(U_IMAGE_TEXTURE, 8, 1, (GLint[]){ 0, 1, 2, 3, 4, 5, 6, 7 });
 
-	#define CREATE_DEBUG_VAO(BUFFER) \
-		ugl_create_vao(2, (VaoSpec[]) {\
-			{ .name = VATTRIB_POSITION, .size = 2, .type = GL_FLOAT, .stride = sizeof(DebugVertex), .offset = offsetof(DebugVertex, position), .buffer = BUFFER },\
-			{ .name = VATTRIB_COLOR,    .size = 4, .type = GL_FLOAT, .stride = sizeof(DebugVertex), .offset = offsetof(DebugVertex, color),    .buffer = BUFFER },\
-		})
+	intrend_bind_shader(&font_program);
+	intrend_uniform_iv(U_IMAGE_TEXTURE, 8, 1, (GLint[]){ 0, 1, 2, 3, 4, 5, 6, 7 });
 
-	debug_lines_vao = CREATE_DEBUG_VAO(debug_lines_buffer);
-	debug_quad_vao = CREATE_DEBUG_VAO(debug_quad_buffer);
-	debug_fill_quad_vao = CREATE_DEBUG_VAO(debug_fill_quad_buffer);
+	intrend_bind_shader(&tile_map_program);
+	intrend_uniform_iv(U_IMAGE_TEXTURE, 8, 1, (GLint[]){ 0, 1, 2, 3, 4, 5, 6, 7 });
+	
+	intrend_bind_shader(&debug_program);
+	intrend_uniform_iv(U_IMAGE_TEXTURE, 8, 1, (GLint[]){ 0, 1, 2, 3, 4, 5, 6, 7 });
+
+	glGenBuffers(1, &matrix_buffer);
+	glBindBuffer(GL_UNIFORM_BUFFER, matrix_buffer);
+	glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(mat4), NULL, GL_STREAM_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+	vec2 data[] = {
+		#define TEX(TEXTURE_ATLAS) { 1.0 / texture_atlas[TEXTURE_ATLAS].cols, 1.0 / texture_atlas[TEXTURE_ATLAS].rows }
+		TEX(TEXTURE_ENTITIES),
+		{0},
+		TEX(TERRAIN_NORMAL),
+		{0},
+		TEX(TEXTURE_FONT_CELLPHONE),
+		{0},
+		TEX(TEXTURE_UI),
+		{0},
+		#undef TEX
+	};
+	glGenBuffers(1, &sprite_colrow_inv_buffer);
+	glBindBuffer(GL_UNIFORM_BUFFER, sprite_colrow_inv_buffer);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(data), data, GL_STATIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+	mat4_ident(projection);
+	mat4_ident(view_matrix);
+
+	sprite_buffer = ugl_create_buffer(GL_STREAM_DRAW, sizeof(Sprite) * MAX_SPRITES, NULL);
+	sprite_vao = ugl_create_vao(9, (VaoSpec[]){
+		{ .name = VATTRIB_POSITION, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, position), .buffer = sprite_buffer_gpu },
+		{ .name = VATTRIB_TEXCOORD, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, texcoord), .buffer = sprite_buffer_gpu },
+		{ .name = VATTRIB_INST_SPRITE_TYPE, .size = 1, .type = GL_INT,   .stride = sizeof(Sprite), .offset = offsetof(Sprite, type),        .divisor = 1, .buffer = sprite_buffer },
+		{ .name = VATTRIB_INST_POSITION,    .size = 2, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, position),    .divisor = 1, .buffer = sprite_buffer },
+		{ .name = VATTRIB_INST_SIZE,        .size = 2, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, half_size),   .divisor = 1, .buffer = sprite_buffer },
+		{ .name = VATTRIB_INST_SPRITE_ID,   .size = 2, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, sprite_id),   .divisor = 1, .buffer = sprite_buffer },
+		{ .name = VATTRIB_INST_COLOR,       .size = 4, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, color),       .divisor = 1, .buffer = sprite_buffer },
+		{ .name = VATTRIB_INST_ROTATION,    .size = 1, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, rotation),    .divisor = 1, .buffer = sprite_buffer },
+		{ .name = VATTRIB_INST_CLIP,        .size = 4, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, clip_region), .divisor = 1, .buffer = sprite_buffer },
+	});
+	sprite_count = 0;
 }
 
 void
@@ -206,14 +227,9 @@ gfx_end()
 {
 	glDeleteProgram(sprite_program.program);
 	glDeleteBuffers(1, (GLuint[]) {
-		sprite_buffer_gpu
+		sprite_buffer_gpu,
+		sprite_buffer,
 	});
-
-	for(int i = 0; i < LAST_SPRITE; i++)
-		end_sprite_buffer(&sprite_buffers[i]);
-
-	for(int i = 0; i < LAST_FONT; i++)
-		end_font_buffer(&font_buffers[i]);
 
 	for(int i = 0; i < LAST_TEXTURE_ATLAS; i++)
 		end_texture_atlas(&texture_atlas[i]);
@@ -222,11 +238,16 @@ gfx_end()
 void
 gfx_draw_sprite(Sprite *sprite) 
 {
-	insert_sprite_buffer(&sprite_buffers[sprite->sprite_type], sprite);
+	if(sprite_count >= MAX_SPRITES)
+		return;
+	glBindBuffer(GL_ARRAY_BUFFER, sprite_buffer);
+	glBufferSubData(GL_ARRAY_BUFFER, sprite_count * sizeof(*sprite), sizeof(*sprite), sprite);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	sprite_count++;
 }
 
 void
-gfx_draw_font(Font font, vec2 position, vec2 char_size, vec4 color, const char *fmt, ...) 
+gfx_draw_font(TextureAtlas atlas, vec2 position, vec2 char_size, vec4 color, vec4 clip_region, const char *fmt, ...) 
 {
 	char buffer[1024];
 	va_list va;
@@ -246,35 +267,64 @@ gfx_draw_font(Font font, vec2 position, vec2 char_size, vec4 color, const char *
 			p[1] += char_size[1] * 2.0;
 			break;
 		default:
-			insert_character(&font_buffers[font], p, char_size, color, buffer[i]);
+			insert_character(atlas, p, char_size, color, clip_region, buffer[i]);
 			p[0] += char_size[0] * 2.0;
 		}
 	}
 }
 
 void
+gfx_draw_line(TextureAtlas atlas, vec2 p1, vec2 p2, float thickness, vec4 color, vec4 clip_region)
+{
+	vec2 dir;
+	vec2 sprite_pos, sprite_size;
+
+	vec2_sub(dir, p1, p2);
+	float distance = vec2_dot(dir, dir);
+	distance = sqrtf(distance) / 2.0;
+
+	vec2_add(sprite_pos, p2, p1);
+	sprite_pos[0] = (sprite_pos[0]) / 2.0;
+	sprite_pos[1] = (sprite_pos[1]) / 2.0;
+	sprite_size[0] = distance + thickness;
+	sprite_size[1] = thickness;
+	float rotation = atan2f(-dir[1], dir[0]);
+
+	gfx_draw_sprite(&(Sprite) {
+		.type = atlas,
+		.position = { sprite_pos[0], sprite_pos[1] },
+		.rotation = rotation,
+		.clip_region = { clip_region[0], clip_region[1], clip_region[2], clip_region[3] },
+		.half_size = { sprite_size[0], sprite_size[1] },
+		.color = { color[0], color[1], color[2], color[3] },
+		.sprite_id = { 0, 0 }
+	});
+}
+
+void
+gfx_draw_rect(TextureAtlas atlas, vec2 position, vec2 half_size, float thickness, vec4 color, vec4 clip_region)
+{
+	vec2 min, max;
+	vec2_sub(min, position, half_size);
+	vec2_add(max, position, half_size);
+	
+	#define ADD_LINE(x1, y1, x2, y2) gfx_draw_line(atlas, (vec2){ x1, y1 }, (vec2){ x2, y2 }, thickness, color, clip_region)
+	ADD_LINE(min[0], min[1], max[0], min[1]);
+	ADD_LINE(max[0], min[1], max[0], max[1]);
+	ADD_LINE(max[0], max[1], min[0], max[1]);
+	ADD_LINE(min[0], max[1], min[0], min[1]);
+	#undef ADD_LINE
+}
+
+void
 gfx_make_framebuffers(int w, int h) 
 {
-	mat3 projection;
-
-	affine2d_ortho_window(projection, w, h);
+	affine2d_setup_ortho_window(projection, w, h);
 	create_texture_buffer(w, h);
 
-	intrend_bind_shader(&sprite_program);
-	intrend_uniform_mat3(U_PROJECTION, projection);
-	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
-
-	intrend_bind_shader(&font_program);
-	intrend_uniform_mat3(U_PROJECTION, projection);
-	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
-
-	intrend_bind_shader(&tile_map_program);
-	intrend_uniform_mat3(U_PROJECTION, projection);
-	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
-	
-	intrend_bind_shader(&debug_program);
-	intrend_uniform_mat3(U_PROJECTION, projection);
-	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
+	glBindBuffer(GL_ARRAY_BUFFER, matrix_buffer);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(projection), projection);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void
@@ -306,110 +356,40 @@ gfx_end_draw_framebuffers()
 void
 gfx_draw_begin(GraphicsTileMap *tmap) 
 {
-	intrend_bind_shader(&sprite_program);
-	intrend_uniform_mat3(U_VIEW,       view_matrix);
-	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
-
-	intrend_bind_shader(&font_program);
-	intrend_uniform_mat3(U_VIEW,       view_matrix);
-	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
-
-	intrend_bind_shader(&tile_map_program);
-	intrend_uniform_mat3(U_VIEW,       view_matrix);
-	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
-	
-	if(tmap)
-		draw_tmap(tmap);
+	current_tmap = tmap;
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 void
 gfx_draw_end()
 {
-	for(int i = 0; i < LAST_SPRITE; i++)
-		draw_sprite_buffer(&sprite_buffers[i]);
-	for(int i = 0; i < LAST_FONT; i++)
-		draw_characters(&font_buffers[i]);
-}
+	glBindBuffer(GL_UNIFORM_BUFFER, matrix_buffer);
+	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(projection), sizeof(view_matrix), view_matrix);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-void 
-gfx_debug_begin()
-{
-	debug_quad_count = 0;
-	debug_lines_count = 0;
-	debug_fill_quad_count = 0;
+	for(int i = 0; i < LAST_TEXTURE_ATLAS; i++) {
+		glActiveTexture(GL_TEXTURE0 + i);
+		glBindTexture(GL_TEXTURE_2D, texture_atlas[i].texture);
+	}
 
-	intrend_bind_shader(&debug_program);
-	intrend_uniform_mat3(U_VIEW, view_matrix);
-	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
-}
+	glBindBufferBase(GL_UNIFORM_BUFFER, 1, sprite_colrow_inv_buffer);
+	glBindBufferBase(GL_UNIFORM_BUFFER, 0, matrix_buffer);
+	if(current_tmap)
+		draw_tmap(current_tmap);
 
-void 
-gfx_debug_set_color(vec4 color)
-{
-	vec4_dup(debug_color, color);
-}
+	intrend_draw_instanced(&sprite_program, sprite_vao, GL_TRIANGLES, 6, sprite_count);
 
-#define DEBUG_FILL_COLOR { debug_color[0], debug_color[1], debug_color[2], debug_color[3] }
-static inline void pass_data_buffer(GLuint buffer, size_t offset, size_t buffer_size, void *data)
-{
-	glBindBuffer(GL_ARRAY_BUFFER, buffer);
-	glBufferSubData(GL_ARRAY_BUFFER,
-			offset * sizeof(DebugVertex),
-			buffer_size,
-			data);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-}
+	glBindBufferBase(GL_UNIFORM_BUFFER, 0, 0);
+	glBindBufferBase(GL_UNIFORM_BUFFER, 1, 0);
 
-void 
-gfx_debug_line(vec2 p1, vec2 p2)
-{
-	DebugVertex data[] = {
-		{ .position = { p1[0], p1[1] }, .color = DEBUG_FILL_COLOR },
-		{ .position = { p2[0], p2[1] }, .color = DEBUG_FILL_COLOR },
-	};
-	pass_data_buffer(debug_lines_buffer, debug_lines_count, sizeof(data), data);
-	debug_lines_count += 2;
-}
+	for(int i = 0; i < LAST_TEXTURE_ATLAS; i++) {
+		glActiveTexture(GL_TEXTURE0 + i);
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
 
-void 
-gfx_debug_quad(vec2 p, vec2 hs)
-{
-	DebugVertex data[] = {
-		{ .position = { p[0] - hs[0], p[1] - hs[1] }, .color = DEBUG_FILL_COLOR },
-		{ .position = { p[0] + hs[0], p[1] - hs[1] }, .color = DEBUG_FILL_COLOR },
-		{ .position = { p[0] + hs[0], p[1] + hs[1] }, .color = DEBUG_FILL_COLOR },
-		{ .position = { p[0] + hs[0], p[1] + hs[1] }, .color = DEBUG_FILL_COLOR },
-		{ .position = { p[0] - hs[0], p[1] + hs[1] }, .color = DEBUG_FILL_COLOR },
-		{ .position = { p[0] - hs[0], p[1] - hs[1] }, .color = DEBUG_FILL_COLOR },
-	};
-	pass_data_buffer(debug_quad_buffer, debug_quad_count, sizeof(data), data);
-	debug_quad_count += 6;
-}
-
-void 
-gfx_debug_fill_quad(vec2 p, vec2 hs)
-{
-	DebugVertex data[] = {
-		{ .position = { p[0] - hs[0], p[1] - hs[1] }, .color = DEBUG_FILL_COLOR },
-		{ .position = { p[0] + hs[0], p[1] - hs[1] }, .color = DEBUG_FILL_COLOR },
-		{ .position = { p[0] + hs[0], p[1] + hs[1] }, .color = DEBUG_FILL_COLOR },
-		{ .position = { p[0] + hs[0], p[1] + hs[1] }, .color = DEBUG_FILL_COLOR },
-		{ .position = { p[0] - hs[0], p[1] + hs[1] }, .color = DEBUG_FILL_COLOR },
-		{ .position = { p[0] - hs[0], p[1] - hs[1] }, .color = DEBUG_FILL_COLOR },
-	};
-	pass_data_buffer(debug_fill_quad_buffer, debug_fill_quad_count, sizeof(data), data);
-	debug_fill_quad_count += 6;
-}
-
-void 
-gfx_debug_end()
-{
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	intrend_draw(&debug_program, debug_lines_vao, GL_LINES, debug_lines_count);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	intrend_draw(&debug_program, debug_quad_vao, GL_TRIANGLES, debug_quad_count);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	intrend_draw(&debug_program, debug_fill_quad_vao, GL_TRIANGLES, debug_fill_quad_count);
+	sprite_count = 0;
+	glDisable(GL_BLEND);
 }
 
 void
@@ -444,7 +424,7 @@ gfx_render_present()
 void
 gfx_set_camera(vec2 position, vec2 scale)
 {
-	mat3_ident(view_matrix);
+	mat4_ident(view_matrix);
 	affine2d_scale(view_matrix,     scale);
 	affine2d_translate(view_matrix, position);
 }
@@ -466,7 +446,6 @@ init_shaders()
 		SHADER(default_vertex,   "shaders/default.vsh", GL_VERTEX_SHADER)\
 		SHADER(default_fragment, "shaders/default.fsh", GL_FRAGMENT_SHADER)\
 		SHADER(tilemap_vertex,   "shaders/tilemap.vsh", GL_VERTEX_SHADER) \
-		SHADER(font_fragment,    "shaders/font.fsh",    GL_FRAGMENT_SHADER) \
 		SHADER(debug_vertex,     "shaders/debug.vsh", GL_VERTEX_SHADER)\
 		SHADER(debug_fragment,   "shaders/debug.fsh", GL_FRAGMENT_SHADER)\
 		\
@@ -482,7 +461,6 @@ init_shaders()
 	SHADER_PROGRAM(tile_map_program, tilemap_vertex, default_fragment);
 	SHADER_PROGRAM(post_clean, post_vertex, post_clean_fsh);
 	SHADER_PROGRAM(debug_program, debug_vertex, debug_fragment);
-	SHADER_PROGRAM(font_program, default_vertex, font_fragment);
 
 	#define SHADER(shader_name, shader_path, shader_type) \
 		glDeleteShader(shader_name);
@@ -576,67 +554,6 @@ load_texture(const char *file, TextureFormat format)
 	return texture;
 }
 
-
-SpriteBuffer 
-load_sprite_buffer(TextureAtlas texture)
-{
-	GLuint instance_buffer = ugl_create_buffer(GL_STREAM_DRAW, sizeof(Sprite) * MAX_SPRITES, NULL);
-	return (SpriteBuffer) {
-		.texture         = texture,
-		.instance_buffer = instance_buffer,
-		.sprite_count    = 0,
-		.vao = ugl_create_vao(7, (VaoSpec[]){
-			{ .name = VATTRIB_POSITION, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, position), .buffer = sprite_buffer_gpu },
-			{ .name = VATTRIB_TEXCOORD, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, texcoord), .buffer = sprite_buffer_gpu },
-
-			{ .name = VATTRIB_INST_POSITION,  .size = 2, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, position),  .divisor = 1, .buffer = instance_buffer },
-			{ .name = VATTRIB_INST_SIZE,      .size = 2, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, half_size), .divisor = 1, .buffer = instance_buffer },
-			{ .name = VATTRIB_INST_SPRITE_ID, .size = 2, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, sprite_id), .divisor = 1, .buffer = instance_buffer },
-			{ .name = VATTRIB_INST_COLOR,     .size = 4, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, color),     .divisor = 1, .buffer = instance_buffer },
-			{ .name = VATTRIB_INST_ROTATION,  .size = 1, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, rotation),  .divisor = 1, .buffer = instance_buffer },
-		})
-	};
-}
-
-void
-draw_sprite_buffer(SpriteBuffer *buffer)
-{
-	if(buffer->sprite_count == 0)
-		return;
-
-	intrend_bind_shader(&sprite_program);
-	intrend_uniform_fv(U_SPRITE_CR, 1, 2, (float[]){ 
-		texture_atlas[buffer->texture].cols,
-		texture_atlas[buffer->texture].rows
-	});
-
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture_atlas[buffer->texture].texture);
-	intrend_draw_instanced(&sprite_program, buffer->vao, GL_TRIANGLES, 6, buffer->sprite_count);
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	buffer->sprite_count = 0;
-}
-
-void
-insert_sprite_buffer(SpriteBuffer *buffer, Sprite *sprite)
-{
-	if(buffer->sprite_count >= MAX_SPRITES)
-		return;
-		
-	glBindBuffer(GL_ARRAY_BUFFER,    buffer->instance_buffer);
-	glBufferSubData(GL_ARRAY_BUFFER, buffer->sprite_count * sizeof(Sprite), sizeof(Sprite), sprite);
-	glBindBuffer(GL_ARRAY_BUFFER,    0);
-	buffer->sprite_count ++;
-}
-
-void
-end_sprite_buffer(SpriteBuffer *buffer)
-{
-	glDeleteVertexArrays(1, &buffer->vao);
-	glDeleteBuffers(1, &buffer->instance_buffer);
-}
-
 GraphicsTileMap
 gfx_tmap_new(TextureAtlas terrain, int w, int h, int *data) 
 {
@@ -691,13 +608,6 @@ gfx_tmap_free(GraphicsTileMap *tmap)
 void
 draw_tmap(GraphicsTileMap *tmap) 
 {
-	intrend_bind_shader(&tile_map_program);
-	intrend_uniform_fv(U_SPRITE_CR, 1, 2, (GLfloat[]){ 
-		texture_atlas[tmap->terrain].cols, 
-		texture_atlas[tmap->terrain].rows 
-	});
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture_atlas[tmap->terrain].texture);
 	intrend_draw_instanced(&tile_map_program, tmap->vao, GL_TRIANGLES, 6, tmap->count_tiles);
 }
 
@@ -733,65 +643,25 @@ draw_post(ShaderProgram *program)
 }
 
 void
-load_font_buffer(FontBuffer *atlas, TextureAtlas texture) 
+insert_character(TextureAtlas atlas, vec2 position, vec2 character_size, vec4 color, vec4 clip_region, int c)
 {
-	atlas->texture = texture;
-	atlas->instance_buffer = ugl_create_buffer(GL_STREAM_DRAW, sizeof(FontInstance) * MAX_SPRITES, NULL);
-	atlas->vao = ugl_create_vao(6, (VaoSpec[]){
-		{ .name = VATTRIB_POSITION, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, position), .buffer = sprite_buffer_gpu },
-		{ .name = VATTRIB_TEXCOORD, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, texcoord), .buffer = sprite_buffer_gpu },
-		
-		{ .name = VATTRIB_INST_POSITION,  .size = 2, .type = GL_FLOAT, .stride = sizeof(FontInstance), .offset = offsetof(FontInstance, position),  .divisor = 1, .buffer = atlas->instance_buffer },
-		{ .name = VATTRIB_INST_SIZE,      .size = 2, .type = GL_FLOAT, .stride = sizeof(FontInstance), .offset = offsetof(FontInstance, half_size), .divisor = 1, .buffer = atlas->instance_buffer },
-		{ .name = VATTRIB_INST_SPRITE_ID, .size = 2, .type = GL_FLOAT, .stride = sizeof(FontInstance), .offset = offsetof(FontInstance, sprite_id), .divisor = 1, .buffer = atlas->instance_buffer },
-		{ .name = VATTRIB_INST_COLOR,     .size = 4, .type = GL_FLOAT, .stride = sizeof(FontInstance), .offset = offsetof(FontInstance, color),     .divisor = 1, .buffer = atlas->instance_buffer },
-	});
-	atlas->char_count = 0;
-}
-
-void
-insert_character(FontBuffer *buffer, vec2 position, vec2 character_size, vec4 color, int c)
-{
-	if(buffer->char_count >= MAX_SPRITES) 
+	if(sprite_count >= MAX_SPRITES) 
 		return;
 
 	c -= 32;
-	glBindBuffer(GL_ARRAY_BUFFER, buffer->instance_buffer);
-	glBufferSubData(GL_ARRAY_BUFFER, buffer->char_count * sizeof(FontInstance), sizeof(FontInstance), &(FontInstance){
+	glBindBuffer(GL_ARRAY_BUFFER, sprite_buffer);
+	glBufferSubData(GL_ARRAY_BUFFER, sprite_count * sizeof(Sprite), sizeof(Sprite), &(Sprite){
 		.position  = { position[0], position[1] },
 		.half_size = { character_size[0], character_size[1] },
 		.color     = { color[0], color[1], color[2], color[3] },
 		.sprite_id = {
-			(float)(c % texture_atlas[buffer->texture].cols),
-			(float)(c / texture_atlas[buffer->texture].cols)
-		}
+			(float)(c % texture_atlas[atlas].cols),
+			(float)(c / texture_atlas[atlas].cols)
+		},
+		.clip_region = { clip_region[0], clip_region[1], clip_region[2], clip_region[3] },
+		.type = SPRITE_FONT_CELLPHONE,
+		.rotation = 0
 	});
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	buffer->char_count++;
-}
-
-void
-draw_characters(FontBuffer *buffer) 
-{
-	if(buffer->char_count == 0)
-		return;
-
-	intrend_bind_shader(&font_program);
-	intrend_uniform_fv(U_SPRITE_CR, 1, 2, (float[]){ 
-		texture_atlas[buffer->texture].cols,
-		texture_atlas[buffer->texture].rows
-	});
-
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture_atlas[buffer->texture].texture);
-	intrend_draw_instanced(&font_program, buffer->vao, GL_TRIANGLES, 6, buffer->char_count);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	buffer->char_count = 0;
-}
-
-void
-end_font_buffer(FontBuffer *buffer)
-{
-	glDeleteVertexArrays(1, &buffer->vao);
-	glDeleteBuffers(1, &buffer->instance_buffer);
+	sprite_count++;
 }
