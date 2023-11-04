@@ -83,11 +83,11 @@ gfx_scene_draw()
 	//gfx_setup_draw_framebuffers();
 	for(int i = 0; i < SCENE_LAYERS; i++) {
 		SceneSpriteID object_id = layer_objects[i];
-		SceneSprite *ss = gfx_scene_spr_data(object_id);
 		
 		gfx_draw_begin(layer_tmap_set & (1 << i) ? &layer_tmaps[i] : NULL);
 		//gfx_draw_begin(NULL);
 		while(object_id) {
+			SceneSprite *ss = gfx_scene_spr_data(object_id);
 			switch(_sys_node(object_id)->type) {
 			case SCENE_OBJECT_SPRITE:
 				ss->sprite.type = TEXTURE_ENTITIES;
