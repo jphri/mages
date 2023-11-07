@@ -432,8 +432,8 @@ gfx_set_camera(vec2 position, vec2 scale)
 void
 gfx_pixel_to_world(vec2 pixel, vec2 world_out) 
 {
-	world_out[0] = (pixel[0] - view_matrix[2][0]) / view_matrix[0][0];
-	world_out[1] = (pixel[1] - view_matrix[2][1]) / view_matrix[1][1];
+	world_out[0] = (pixel[0] - view_matrix[3][0]) / view_matrix[0][0];
+	world_out[1] = (pixel[1] - view_matrix[3][1]) / view_matrix[1][1];
 }
 
 void
