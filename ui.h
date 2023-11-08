@@ -52,3 +52,4 @@ void ui_window_set_border_size(UIObject object, vec2 size);
 void ui_order();
 void ui_mouse_motion(float x, float y);
 void ui_mouse_button(UIMouseButton button, bool state);
+void ui_cleanup();

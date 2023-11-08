@@ -84,7 +84,7 @@ arrbuf_poptop(ArrayBuffer *buffer, size_t element_size)
 	if(element_size > buffer->size)
 		buffer->size = 0;
 	else
-		buffer->size = element_size;
+		buffer->size -= element_size;
 }
 
 void

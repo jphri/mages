@@ -137,6 +137,9 @@ map_set_phx_scene(Map *map)
 		phx_data(body)->solve_mask      = 0;
 		phx_data(body)->collision_layer = 1;
 		phx_data(body)->solve_layer     = 1;
+		phx_data(body)->user_data       = 0;
+		phx_data(body)->no_update       = true;
+		phx_data(body)->is_static       = true;
 	}
 }
 

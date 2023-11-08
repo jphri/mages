@@ -18,35 +18,9 @@ static ArrayBuffer label_ptr;
 static int hello_count;
 static UIObject label;
 
-static void hello_callback(void *ptr)
-{
-	(void)ptr;
-	printf("HELLO!\n");
-}
-
-static void hello2_callback(void *ptr)
-{
-	(void)ptr;
-	printf("HELLO! 2\n");
-}
-
-static void hello3_callback(void *ptr)
-{
-	(void)ptr;
-	hello_count++;
-
-	arrbuf_clear(&label_ptr);
-	arrbuf_printf(&label_ptr, "Hello count: %d\n", hello_count);
-	ui_label_set_text(label, label_ptr.data);
-}
-
 int
 main()
 {
-	(void)hello_callback;
-	(void)hello2_callback;
-	(void)hello3_callback;
-
 	if(SDL_Init(SDL_INIT_VIDEO) < 0)
 		return -1;
 
@@ -75,44 +49,16 @@ main()
 	ui_init();
 
 	UIObject window = ui_new_object(0, UI_WINDOW);
-	ui_obj_set_size(window, (vec2){ 90, 90 });
-	ui_obj_set_position(window, (vec2){ 300, 100 });
+	ui_obj_set_size(window, (vec2){ 90, 35 });
+	ui_obj_set_position(window, (vec2){ 800 - 90, 35 });
 	ui_window_set_bg(window, (vec4){ 0.2, 0.2, 0.2, 1.0 });
 	ui_window_set_border(window, (vec4){ 0.6, 0.6, 0.6, 1.0 });
 	ui_window_set_border_size(window, (vec2){ 3, 3 });
 
 	UIObject layout3 = ui_new_object(window, UI_LAYOUT);
-	ui_obj_set_size(layout3, (vec2){ 70, 70 });
-	ui_obj_set_position(layout3, (vec2) { 90, 90 });
+	ui_obj_set_size(layout3, (vec2){ 70, 35 });
+	ui_obj_set_position(layout3, (vec2) { 90, 35 });
 	ui_layout_set_order(layout3, UI_LAYOUT_VERTICAL);
-
-	UIObject layout2 = ui_new_object(layout3, UI_LAYOUT);
-	ui_obj_set_position(layout2, (vec2){ 74, 42 });
-	ui_obj_set_size(layout2, (vec2){ 64, 32 });
-	ui_layout_set_order(layout2, UI_LAYOUT_HORIZONTAL) ;
-
-	UIObject layout = ui_new_object(layout2, UI_LAYOUT);
-	ui_obj_set_position(layout, (vec2){ 42, 42 });
-	ui_obj_set_size(layout, (vec2){ 32, 32 });
-	ui_layout_set_order(layout, UI_LAYOUT_VERTICAL) ;
-
-	UIObject dummy = ui_new_object(layout, UI_BUTTON);
-	ui_button_set_label(dummy, "hello");
-	ui_button_set_userptr(dummy, NULL);
-	ui_button_set_callback(dummy, hello_callback);
-	ui_button_set_label_border(dummy, (vec2){ 5.0, 5.0 });
-
-	UIObject dummy_2 = ui_new_object(layout, UI_BUTTON);
-	ui_button_set_label(dummy_2, "hello 2");
-	ui_button_set_userptr(dummy_2, NULL);
-	ui_button_set_callback(dummy_2, hello2_callback);
-	ui_button_set_label_border(dummy_2, (vec2){ 5.0, 5.0 });
-
-	UIObject dummy_3 = ui_new_object(layout2, UI_BUTTON);
-	ui_button_set_label(dummy_3, "hello 3");
-	ui_button_set_userptr(dummy_3, NULL);
-	ui_button_set_callback(dummy_3, hello3_callback);
-	ui_button_set_label_border(dummy_3, (vec2){ 5.0, 5.0 });
 
 	label = ui_new_object(layout3, UI_LABEL);
 	ui_label_set_color(label, (vec4){ 1.0, 1.0, 0.0, 1.0 });
@@ -125,6 +71,8 @@ main()
 	map_free(map);
 
 	EntityID player_id = ent_player_new((vec2){ 15.0, 15.0 });
+	ent_dummy_new((vec2){ 25.0, 15.0 });
+
 	Uint64 prev_time = SDL_GetPerformanceCounter();
 
 	(void)player_id;
@@ -135,17 +83,22 @@ main()
 		float delta = (float)(curr_time - prev_time) / SDL_GetPerformanceFrequency();
 		prev_time = curr_time;
 
-		phx_update(delta);
-		ent_update(delta);
-		ent_render();
-		
+		arrbuf_clear(&label_ptr);
+		arrbuf_printf(&label_ptr, "FPS: %0.2f", 1.0/delta);
+		ui_label_set_text(label, label_ptr.data);
+
 		#define PLAYER ((EntityPlayer*)ent_data(player_id))
 		#define PLAYER_BODY phx_data(PLAYER->body)
 		vec2 offset;
 		vec2_add_scaled(offset, (vec2){ 0.0, 0.0 }, PLAYER_BODY->position, -32);
 		vec2_add(offset, offset, (vec2){ 400, 300 });
 		gfx_set_camera(offset, (vec2){ 32.0, 32.0 });
+
+		phx_update(delta);
+		ent_update(delta);
+		ent_render();
 		
+
 		SDL_GetWindowSize(GLOBAL.window, &w, &h);
 
 		gfx_make_framebuffers(w, h);
@@ -153,31 +106,13 @@ main()
 	
 		gfx_setup_draw_framebuffers();
 		gfx_scene_draw();
-
-
 		gfx_set_camera((vec2){0.0, 0.0}, (vec2){ 1.0, 1.0 });
-		gfx_draw_begin(NULL);
-		gfx_draw_sprite(&(Sprite) {
-			.type = TEXTURE_UI,
-			.color = { 1.0, 0.0, 1.0, 1.0 },
-			.position = { 30, 30 },
-			.clip_region = { 0, 0, 1000, 1000 }, 
-			.half_size = { 10, 10 }
-		});
-		gfx_draw_sprite(&(Sprite) {
-			.type = TEXTURE_UI,
-			.color = { 1.0, 0.0, 1.0, 1.0 },
-			.position = { 150, SDL_GetTicks() / 10.0 },
-			.clip_region = { 0, 0, 1000, 1000 }, 
-			.half_size = { 10, 10 }
-		});
-		gfx_draw_line(TEXTURE_UI, (vec2){ 30, 30 }, (vec2){ 150, SDL_GetTicks() / 10.0 }, 10.0, (vec4){ 1.0, 1.0, 1.0, 1.0 }, (vec4){ 0, 0, 1000, 1000 });
-		gfx_draw_end();
 
 		gfx_end_draw_framebuffers();
 		gfx_render_present();
-		ui_draw();
 
+		ui_cleanup();
+		ui_draw();
 		ui_order();
 		SDL_GL_SwapWindow(GLOBAL.window);
 		while(SDL_PollEvent(&event)) {

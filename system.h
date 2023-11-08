@@ -9,14 +9,18 @@
 #error "SYS_NODE_TYPE not defined"
 #endif
 
+static void _sys_int_cleanup(SYS_ID_TYPE id);
+
 static ArrayBuffer _sys_buffer;
 static ArrayBuffer _sys_free_stack;
 static SYS_ID_TYPE _sys_list;
+static ArrayBuffer _sys_should_die;
 
 static inline void _sys_init()
 {
 	arrbuf_init(&_sys_buffer);
 	arrbuf_init(&_sys_free_stack);
+	arrbuf_init(&_sys_should_die);
 	_sys_list = 0;
 }
 
@@ -46,11 +50,10 @@ static inline void _sys_remove_list(SYS_ID_TYPE id)
 	SYS_ID_TYPE next = _sys_node(id)->next;
 	SYS_ID_TYPE prev = _sys_node(id)->prev;
 	
-	if(next) _sys_node(next)->prev = _sys_node(id)->prev;
-	if(prev) _sys_node(prev)->next = _sys_node(id)->next;
-	
 	if(id == _sys_list)
 		_sys_list = next;
+	if(next) _sys_node(next)->prev = _sys_node(id)->prev;
+	if(prev) _sys_node(prev)->next = _sys_node(id)->next;
 }
 
 static inline SYS_ID_TYPE _sys_new()
@@ -66,14 +69,30 @@ static inline SYS_ID_TYPE _sys_new()
 		n = (ptr - (SYS_NODE_TYPE*)_sys_buffer.data) + 1;
 	}
 	_sys_insert_list(n);
+	_sys_node(n)->dead = false;
 	
 	return n;
 }
 
 static inline void _sys_del(SYS_ID_TYPE id)
 {
-	_sys_remove_list(id);
-	arrbuf_insert(&_sys_free_stack, sizeof(SYS_ID_TYPE), &id);
+	if(!_sys_node(id)->dead) {
+		arrbuf_insert(&_sys_should_die, sizeof(id), &id);
+		_sys_node(id)->dead = true;
+	}
+}
+
+static inline void _sys_cleanup()
+{
+	for(SYS_ID_TYPE *id = _sys_should_die.data;
+		id != (SYS_ID_TYPE*)((unsigned char*)_sys_should_die.data + _sys_should_die.size);
+		id++)
+	{
+		_sys_int_cleanup(*id);
+		_sys_remove_list(*id);
+		arrbuf_insert(&_sys_free_stack, sizeof(SYS_ID_TYPE), id);
+	}
+	arrbuf_clear(&_sys_should_die);
 }
 
 #endif

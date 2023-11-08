@@ -16,6 +16,7 @@ typedef struct {
 	vec2 size;
 	vec2 global_position;
 	vec2 global_size;
+	bool dead;
 
 	UIObject parent;
 	UIObject sibling_next, sibling_prev;
@@ -69,13 +70,11 @@ static void window_draw(UIObject object);
 
 static void button_mouse_motion(UIObject object, float x, float y);
 static void button_mouse_button(UIObject object, UIMouseButton button, bool state);
-
 static void layout_order(UIObject object);
 static void window_order(UIObject object);
 
 #define SYS_ID_TYPE UIObject
 #define SYS_NODE_TYPE UIObjectNode
-
 #include "system.h"
 
 static inline void add_child(UIObject parent, UIObject child)
@@ -100,6 +99,11 @@ static inline void remove_child(UIObject parent, UIObject child)
 		_sys_node(parent)->child_list = next;
 
 	_sys_node(parent)->child_count --;
+}
+
+static void _sys_int_cleanup(UIObject id)
+{
+	remove_child(_sys_node(id)->parent, id);
 }
 
 static UIElementVTable ui_vtables[] = {
@@ -170,8 +174,6 @@ ui_del_object(UIObject object)
 		ui_del_object(child);
 		child = next;
 	}
-	
-	remove_child(_sys_node(object)->parent, object);
 	_sys_del(object);
 }
 
@@ -382,6 +384,12 @@ ui_mouse_button(UIMouseButton button, bool state)
 {
 	for(UIObject child = _sys_list; child; child = _sys_node(child)->next)
 		process_mouse_button(child, button, state);
+}
+
+void
+ui_cleanup()
+{
+	_sys_cleanup();
 }
 
 void

@@ -11,6 +11,7 @@ typedef struct {
 	BodyID next, prev;
 	Body body;
 	unsigned int hit_info_start, hit_info_end;
+	bool dead;
 } BodyNode;
 
 typedef struct {
@@ -26,6 +27,8 @@ static ArrayBuffer hit_info_arena;
 #define SYS_ID_TYPE   BodyID
 #define SYS_NODE_TYPE BodyNode
 #include "system.h"
+
+void _sys_int_cleanup(BodyID id) { (void)id; }
 
 void
 phx_init()
@@ -64,9 +67,11 @@ phx_update(float delta)
 	BodyID body_id = _sys_list;
 	arrbuf_clear(&hit_info_arena);
 
+	_sys_cleanup();
 	while(body_id) {
 		BodyID next = _sys_node(body_id)->next;
-		update_body(body_id, delta);
+		if(!_sys_node(body_id)->body.no_update)
+			update_body(body_id, delta);
 		body_id = next;
 	}
 }
@@ -99,8 +104,7 @@ update_body(BodyID self, float delta)
 	#define SELF phx_data(self)
 	vec2_add_scaled(SELF->position, SELF->position, SELF->velocity, delta);
 
-	unsigned int info_start = hit_info_arena.size / sizeof(HitInfo);
-	
+	unsigned int info_start = arrbuf_length(&hit_info_arena, sizeof(HitInfo));
 	for(BodyID target_id = _sys_list; target_id; target_id = _sys_node(target_id)->next) {
 		Hit hit;
 
@@ -118,7 +122,7 @@ update_body(BodyID self, float delta)
 			info->id = target_id;
 		}
 	}
-	unsigned int info_end   = hit_info_arena.size / sizeof(HitInfo);
+	unsigned int info_end = arrbuf_length(&hit_info_arena, sizeof(HitInfo));
 	_sys_node(self)->hit_info_start = info_start;
 	_sys_node(self)->hit_info_end   = info_end;
 

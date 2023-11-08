@@ -2,6 +2,7 @@
 #include <GL/glew.h>
 #include <assert.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "util.h"
 #include "glutil.h"
@@ -12,6 +13,7 @@ typedef struct {
 	SceneObjectID next_layer, prev_layer;
 	SceneObjectType type;
 	int layer;
+	bool dead;
 	
 	union {
 		SceneSprite sprite;
@@ -30,10 +32,11 @@ static inline void insert_object_layer(SceneObjectID id)
 {
 	int layer_id = _sys_node(id)->layer;
 	
+	_sys_node(id)->next_layer = layer_objects[layer_id];
+	_sys_node(id)->prev_layer = 0;
+
 	if(layer_objects[layer_id])
 		_sys_node(layer_objects[layer_id])->prev_layer = id;
-
-	_sys_node(id)->next_layer = layer_objects[layer_id];
 	layer_objects[layer_id] = id;
 }
 
@@ -60,8 +63,12 @@ static SceneObjectID new_object(SceneObjectType type, int layer)
 
 static void del_object(SceneObjectID id) 
 {
-	remove_object_layer(id);
 	_sys_del(id);
+}
+
+static void _sys_int_cleanup(SceneObjectID id) 
+{
+	remove_object_layer(id);
 }
 
 void
@@ -80,12 +87,10 @@ gfx_scene_cleanup()
 void 
 gfx_scene_draw()
 {
-	//gfx_setup_draw_framebuffers();
+	_sys_cleanup();
 	for(int i = 0; i < SCENE_LAYERS; i++) {
 		SceneSpriteID object_id = layer_objects[i];
-		
 		gfx_draw_begin(layer_tmap_set & (1 << i) ? &layer_tmaps[i] : NULL);
-		//gfx_draw_begin(NULL);
 		while(object_id) {
 			SceneSprite *ss = gfx_scene_spr_data(object_id);
 			switch(_sys_node(object_id)->type) {
@@ -100,12 +105,10 @@ gfx_scene_draw()
 			default: 
 				assert(0 && "invalid object type");
 			}
-
 			object_id = _sys_node(object_id)->next_layer;
 		}
 		gfx_draw_end();
 	}
-	//gfx_end_draw_framebuffers();
 }
 
 SceneSpriteID  
@@ -131,8 +134,6 @@ gfx_scene_set_tilemap(int layer, TextureAtlas atlas, int w, int h, int *data)
 {
 	if(layer_tmap_set & (1 << layer))
 		gfx_tmap_free(&layer_tmaps[layer]);
-
 	layer_tmaps[layer] = gfx_tmap_new(atlas, w, h, data);
-
 	layer_tmap_set |= (1 << layer);
 }

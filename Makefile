@@ -9,6 +9,8 @@ OUTPUT_OBJECTS=\
 		glutil.o\
 		graphics_scene.o\
 		entities/player.o\
+		entities/dummy.o\
+		entities/fireball.o\
 		map.o\
 		ui.o
 
@@ -29,7 +31,7 @@ EDITOR_OBJECTS=\
 
 EDITOR=editor
 
-CFLAGS=-O3 -pipe -Wall -Wextra -pedantic -Werror -g
+CFLAGS=-O0 -pipe -Wall -Wextra -pedantic -Werror -g
 LFLAGS=-lSDL2 -lGLEW -lGL -lm
 
 all: $(OUTPUT) $(EDITOR)

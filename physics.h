@@ -7,11 +7,11 @@ typedef struct {
 
 	unsigned int solve_layer;
 	unsigned long long int solve_mask;
-
 	unsigned int collision_layer;
 	unsigned long long int collision_mask;
 
-	bool is_static;
+	unsigned int user_data;
+	bool is_static, no_update;
 } Body;
 
 typedef struct {
