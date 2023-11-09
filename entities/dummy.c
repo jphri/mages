@@ -12,7 +12,7 @@ ent_dummy_new(vec2 position)
 {
 	EntityID self_id = ent_new(ENTITY_DUMMY);
 
-	#define self ((EntityDummy*)ent_data(self_id))
+	#define self ENT_DATA(ENTITY_DUMMY, self_id)
 	#define self_body phx_data(self->body)
 	#define self_sprite gfx_scene_spr_data(self->sprite)
 
@@ -45,22 +45,22 @@ ent_dummy_new(vec2 position)
 }
 
 void
-ent_dummy_update(EntityID id, float delta)
+ENTITY_DUMMY_update(EntityID id, float delta)
 {
 	(void)id;
 	(void)delta;
 }
 
 void
-ent_dummy_render(EntityID id)
+ENTITY_DUMMY_render(EntityID id)
 {
 	(void)id;
 }
 
 void
-ent_dummy_del(EntityID self_id)
+ENTITY_DUMMY_del(EntityID self_id)
 {
-	#define self ((EntityDummy*)ent_data(self_id))
+	#define self ENT_DATA(ENTITY_DUMMY, self_id)
 	phx_del(self->body);
 	gfx_scene_del_spr(self->sprite);
 }

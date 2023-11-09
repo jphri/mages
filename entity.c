@@ -8,9 +8,10 @@ typedef struct {
 	EntityType type;
 	bool dead;
 	union {
-		EntityPlayer player;
-		EntityDummy dummy;
-		EntityFireball fireball;
+		#define MAC_ENTITY(NAME) \
+		NAME##_struct __##NAME##_struct;
+			ENTITY_LIST
+		#undef MAC_ENTITY
 	} data;
 } EntityNode;
 
@@ -20,9 +21,10 @@ static struct {
 	void (*delete)(EntityID id);
 } descr[LAST_ENTITY] =
 {
-	[ENTITY_PLAYER] = { .update = ent_player_update, .render = ent_player_render, .delete = ent_player_del },
-	[ENTITY_DUMMY] = { .update = ent_dummy_update, .render = ent_dummy_render, .delete = ent_dummy_del },
-	[ENTITY_FIREBALL] = { .update = ent_fireball_update, .delete = ent_fireball_del }
+	#define MAC_ENTITY(NAME) \
+		[NAME] = { NAME##_update, NAME##_render, NAME##_del },
+		ENTITY_LIST
+	#undef MAC_ENTITY
 };
 
 #define SYS_ID_TYPE EntityID

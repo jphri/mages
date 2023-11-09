@@ -7,7 +7,7 @@
 #include "../entity.h"
 #include "../id.h"
 
-#define SELF ((EntityFireball*)ent_data(self))
+#define SELF      ENT_DATA(ENTITY_FIREBALL, self)
 #define SELF_BODY phx_data(SELF->body)
 #define SELF_SPRITE gfx_scene_spr_data(SELF->sprite)
 
@@ -44,7 +44,7 @@ ent_fireball_new(EntityID caster, vec2 position, vec2 vel)
 }
 
 void
-ent_fireball_update(EntityID self, float delta)
+ENTITY_FIREBALL_update(EntityID self, float delta)
 {
 	unsigned int count;
 
@@ -76,8 +76,11 @@ ent_fireball_update(EntityID self, float delta)
 		ent_del(self);
 }
 
+void 
+ENTITY_FIREBALL_render(EntityID id) {(void)id;} 
+
 void
-ent_fireball_del(EntityID self) 
+ENTITY_FIREBALL_del(EntityID self) 
 {
 	phx_del(SELF->body);
 	gfx_scene_del_spr(SELF->sprite);

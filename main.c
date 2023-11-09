@@ -87,7 +87,7 @@ main()
 		arrbuf_printf(&label_ptr, "FPS: %0.2f", 1.0/delta);
 		ui_label_set_text(label, label_ptr.data);
 
-		#define PLAYER ((EntityPlayer*)ent_data(player_id))
+		#define PLAYER ENT_DATA(ENTITY_PLAYER, player_id)
 		#define PLAYER_BODY phx_data(PLAYER->body)
 		vec2 offset;
 		vec2_add_scaled(offset, (vec2){ 0.0, 0.0 }, PLAYER_BODY->position, -32);

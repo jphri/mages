@@ -11,7 +11,7 @@ EntityID
 ent_player_new(vec2 position)
 {
 	EntityID self_id = ent_new(ENTITY_PLAYER);
-	#define self ((EntityPlayer*)ent_data(self_id))
+	#define self ENT_DATA(ENTITY_PLAYER, self_id)
 	#define self_body phx_data(self->body)
 	#define self_sprite gfx_scene_spr_data(self->sprite)
 
@@ -37,15 +37,15 @@ ent_player_new(vec2 position)
 
 	return self_id;
 
-	#undef self_id
+	#undef self
 	#undef self_body
 	#undef self_sprite
 }
 
 void
-ent_player_update(EntityID self_id, float delta) 
+ENTITY_PLAYER_update(EntityID self_id, float delta) 
 {
-	#define self ((EntityPlayer*)ent_data(self_id))
+	#define self ENT_DATA(ENTITY_PLAYER, self_id)
 	#define self_body phx_data(self->body)
 	#define self_sprite gfx_scene_spr_data(self->sprite)
 
@@ -109,20 +109,15 @@ ent_player_update(EntityID self_id, float delta)
 }
 
 void
-ent_player_render(EntityID self_id)
+ENTITY_PLAYER_render(EntityID self_id)
 {
-	#define self ((EntityPlayer*)ent_data(self_id))
-	#define self_body phx_data(self->body)
 	(void)self_id;
-
-	#undef self
-	#undef self_body
 }
 
 void
-ent_player_del(EntityID self_id) 
+ENTITY_PLAYER_del(EntityID self_id) 
 {
-	#define self ((EntityPlayer*)ent_data(self_id))
+	#define self ENT_DATA(ENTITY_PLAYER, self_id)
 	phx_del(self->body);
 	gfx_scene_del_spr(self->sprite);
 }
