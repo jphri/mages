@@ -9,7 +9,7 @@
 
 #define SELF      ENT_DATA(ENTITY_FIREBALL, self)
 #define SELF_BODY phx_data(SELF->body)
-#define SELF_SPRITE gfx_scene_spr_data(SELF->sprite)
+#define SELF_SPRITE gfx_scene_spr(SELF->sprite)
 
 EntityID 
 ent_fireball_new(EntityID caster, vec2 position, vec2 vel)
@@ -17,7 +17,7 @@ ent_fireball_new(EntityID caster, vec2 position, vec2 vel)
 	EntityID self = ent_new(ENTITY_FIREBALL);
 	
 	SELF->body = phx_new();
-	SELF->sprite = gfx_scene_new_spr(0);
+	SELF->sprite = gfx_scene_new_obj(0, SCENE_OBJECT_SPRITE);
 	SELF->caster = caster;
 	SELF->time = 0;
 
@@ -83,5 +83,5 @@ void
 ENTITY_FIREBALL_del(EntityID self) 
 {
 	phx_del(SELF->body);
-	gfx_scene_del_spr(SELF->sprite);
+	gfx_scene_del_obj(SELF->sprite);
 }

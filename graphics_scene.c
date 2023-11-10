@@ -17,6 +17,7 @@ typedef struct {
 	
 	union {
 		SceneSprite sprite;
+		SceneText   text;
 	} data;
 } SceneObjectNode;
 
@@ -92,7 +93,8 @@ gfx_scene_draw()
 		SceneSpriteID object_id = layer_objects[i];
 		gfx_draw_begin(layer_tmap_set & (1 << i) ? &layer_tmaps[i] : NULL);
 		while(object_id) {
-			SceneSprite *ss = gfx_scene_spr_data(object_id);
+			SceneSprite *ss = gfx_scene_spr(object_id);
+			SceneText *tt = gfx_scene_text(object_id);
 			switch(_sys_node(object_id)->type) {
 			case SCENE_OBJECT_SPRITE:
 				ss->sprite.type = TEXTURE_ENTITIES;
@@ -101,6 +103,15 @@ gfx_scene_draw()
 				ss->sprite.clip_region[2] = 100.0;
 				ss->sprite.clip_region[3] = 100.0;
 				gfx_draw_sprite(&ss->sprite);
+				break;
+			case SCENE_OBJECT_TEXT:
+				gfx_draw_font(TEXTURE_FONT_CELLPHONE,
+						tt->position,
+						tt->char_size,
+						tt->color,
+						(vec4){ 0, 0, 100000, 100000 },
+						"%s",
+						tt->text_ptr);
 				break;
 			default: 
 				assert(0 && "invalid object type");
@@ -112,21 +123,27 @@ gfx_scene_draw()
 }
 
 SceneSpriteID  
-gfx_scene_new_spr(int layer_objects)
+gfx_scene_new_obj(int layer, SceneObjectType type)
 {
-	return new_object(SCENE_OBJECT_SPRITE, layer_objects);
+	return new_object(type, layer);
 }
 
 void 
-gfx_scene_del_spr(SceneSpriteID spr_id)
+gfx_scene_del_obj(SceneObjectID obj_id) 
 {
-	del_object(spr_id);
+	del_object(obj_id);
 }
 
 SceneSprite *
-gfx_scene_spr_data(SceneSpriteID spr_id)
+gfx_scene_spr(SceneSpriteID spr_id)
 {
 	return &_sys_node(spr_id)->data.sprite;
+}
+
+SceneText *
+gfx_scene_text(SceneTextID text_id)
+{
+	return &_sys_node(text_id)->data.text;
 }
 
 void

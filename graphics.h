@@ -36,6 +36,13 @@ typedef struct {
 } SceneSprite;
 
 typedef struct {
+	const char *text_ptr;
+	vec2 position;
+	vec2 char_size;
+	vec4 color;
+} SceneText;
+
+typedef struct {
 	unsigned int vao;
 	unsigned int buffer;
 	unsigned int count_tiles;
@@ -44,6 +51,7 @@ typedef struct {
 
 typedef enum {
 	SCENE_OBJECT_SPRITE,
+	SCENE_OBJECT_TEXT,
 	LAST_SCENE_OBJECT_TYPE,
 } SceneObjectType;
 
@@ -78,10 +86,13 @@ void gfx_scene_setup();
 void gfx_scene_cleanup();
 void gfx_scene_draw();
 
-typedef unsigned int SceneObjectID;
-typedef unsigned int SceneSpriteID;
+typedef unsigned int SceneObjectID, 
+					 SceneSpriteID, 
+					 SceneTextID;
 
-SceneSpriteID  gfx_scene_new_spr(int layer);
-void           gfx_scene_del_spr(SceneSpriteID spr_id);
-SceneSprite   *gfx_scene_spr_data(SceneSpriteID spr_id);
+SceneObjectID gfx_scene_new_obj(int layer, SceneObjectType type);
+void          gfx_scene_del_obj(SceneObjectID id);
+SceneSprite   *gfx_scene_spr(SceneSpriteID spr_id);
+SceneText     *gfx_scene_text(SceneTextID text_id);
+
 void gfx_scene_set_tilemap(int layer, TextureAtlas atlas, int w, int h, int *data);

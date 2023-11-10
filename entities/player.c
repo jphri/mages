@@ -13,10 +13,10 @@ ent_player_new(vec2 position)
 	EntityID self_id = ent_new(ENTITY_PLAYER);
 	#define self ENT_DATA(ENTITY_PLAYER, self_id)
 	#define self_body phx_data(self->body)
-	#define self_sprite gfx_scene_spr_data(self->sprite)
+	#define self_sprite gfx_scene_spr(self->sprite)
 
 	self->body = phx_new();
-	self->sprite = gfx_scene_new_spr(0);
+	self->sprite = gfx_scene_new_obj(0, SCENE_OBJECT_SPRITE);
 	vec2_dup(self_body->position, position);
 	vec2_dup(self_body->half_size, (vec2){ 1, 1 });
 	vec2_dup(self_body->velocity, (vec2){ 0.0, 0.0 });
@@ -47,7 +47,7 @@ ENTITY_PLAYER_update(EntityID self_id, float delta)
 {
 	#define self ENT_DATA(ENTITY_PLAYER, self_id)
 	#define self_body phx_data(self->body)
-	#define self_sprite gfx_scene_spr_data(self->sprite)
+	#define self_sprite gfx_scene_spr(self->sprite)
 
 	(void)delta;
 	int mouse_x, mouse_y;
@@ -119,5 +119,5 @@ ENTITY_PLAYER_del(EntityID self_id)
 {
 	#define self ENT_DATA(ENTITY_PLAYER, self_id)
 	phx_del(self->body);
-	gfx_scene_del_spr(self->sprite);
+	gfx_scene_del_obj(self->sprite);
 }

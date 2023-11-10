@@ -18,6 +18,8 @@ static ArrayBuffer label_ptr;
 static int hello_count;
 static UIObject label;
 
+static const char *text_test = "Hello";
+
 int
 main()
 {
@@ -74,6 +76,12 @@ main()
 	ent_dummy_new((vec2){ 25.0, 15.0 });
 
 	Uint64 prev_time = SDL_GetPerformanceCounter();
+
+	SceneTextID text = gfx_scene_new_obj(0, SCENE_OBJECT_TEXT);
+	vec4_dup(gfx_scene_text(text)->color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+	vec2_dup(gfx_scene_text(text)->position, (vec2){ 0.0, 0.0 });
+	vec2_dup(gfx_scene_text(text)->char_size, (vec2){ 0.35, 0.35 });
+	gfx_scene_text(text)->text_ptr = text_test;
 
 	(void)player_id;
 	while(true) {
