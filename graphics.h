@@ -1,5 +1,8 @@
-typedef float vec2[2];
-typedef float vec4[4];
+#ifndef GRAPHICS_H
+#define GRAPHICS_H
+
+#include "vecmath.h"
+#include "id.h"
 
 #define TILE_SIZE    16
 #define SCENE_LAYERS 64
@@ -102,11 +105,6 @@ void gfx_scene_setup();
 void gfx_scene_cleanup();
 void gfx_scene_draw();
 
-typedef unsigned int SceneObjectID, 
-					 SceneSpriteID, 
-					 SceneTextID,
-					 SceneAnimatedSpriteID;
-
 SceneObjectID gfx_scene_new_obj(int layer, SceneObjectType type);
 void          gfx_scene_del_obj(SceneObjectID id);
 void          gfx_scene_update(float delta);
@@ -115,3 +113,5 @@ SceneText           *gfx_scene_text(SceneTextID text_id);
 SceneAnimatedSprite *gfx_scene_animspr(SceneAnimatedSpriteID anim_id);
 
 void gfx_scene_set_tilemap(int layer, TextureAtlas atlas, int w, int h, int *data);
+
+#endif

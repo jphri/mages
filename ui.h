@@ -1,3 +1,5 @@
+#include "vecmath.h"
+
 typedef enum {
 	UI_NULL,
 	UI_DUMMY,
@@ -17,9 +19,6 @@ typedef enum {
 	UI_LAYOUT_HORIZONTAL,
 	UI_LAYOUT_VERTICAL
 } UILayoutOrder;
-
-typedef float vec2[2];
-typedef float vec4[4];
 
 typedef unsigned int UIObject;
 

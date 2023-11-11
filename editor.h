@@ -1,3 +1,6 @@
+#ifndef EDITOR_H
+#define EDITOR_H
+
 typedef enum {
 	MOUSE_NOTHING,
 	MOUSE_DRAWING,
@@ -52,3 +55,5 @@ void collision_keyboard(SDL_Event *event);
 void collision_wheel(SDL_Event *event);
 
 extern EditorGlobal editor;
+
+#endif

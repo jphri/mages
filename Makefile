@@ -31,7 +31,7 @@ EDITOR_OBJECTS=\
 
 EDITOR=editor
 
-CFLAGS=-O3 -pipe -Wall -Wextra -pedantic -Werror -g
+CFLAGS=-O3 -std=c99 -pipe -Wall -Wextra -pedantic -Werror -g
 LFLAGS=-lSDL2 -lGLEW -lGL -lm
 
 all: $(OUTPUT) $(EDITOR)

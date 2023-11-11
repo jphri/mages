@@ -1,5 +1,9 @@
-typedef float vec2[2];
-typedef unsigned int BodyID;
+#ifndef PHYSICS_H
+#define PHYSICS_H
+
+#include "vecmath.h"
+#include "id.h"
+
 typedef struct {
 	vec2 position;
 	vec2 half_size;
@@ -30,3 +34,5 @@ void   phx_draw();
 Body  *phx_data(BodyID self);
 
 HitInfo *phx_hits(BodyID self_id, unsigned int *count);
+
+#endif

@@ -1,8 +1,7 @@
-typedef unsigned int EntityID;
-typedef unsigned int BodyID;
-typedef unsigned int SceneSpriteID;
+#ifndef ENTITY_H
+#define ENTITY_H
 
-typedef float vec2[2];
+#include "id.h"
 
 #define ENTITY_LIST             \
 	MAC_ENTITY(ENTITY_PLAYER)   \
@@ -61,3 +60,5 @@ EntityID ent_fireball_new(EntityID caster, vec2 position, vec2 vel);
 EntityID ent_dummy_new(vec2 position);
 
 #define ENT_DATA(NAME, ID) ((NAME##_struct*)ent_data(ID))
+
+#endif

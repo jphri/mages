@@ -1,3 +1,6 @@
+#ifndef ID_H
+#define ID_H
+
 typedef enum {
 	ID_TYPE_NULL,
 	ID_TYPE_ENTITY,
@@ -10,6 +13,13 @@ typedef enum {
 #define ID_TYPE_SHIFT (UNSIGNED_INT_BITS - MAX_BITS_PER_TYPE)
 #define ID_TYPE_MASK  (0xFFFFFFFF << ID_TYPE_SHIFT)
 #define ID_MASK       (~ID_TYPE_MASK)
+
+typedef unsigned int BodyID,
+					 EntityID,
+					 SceneObjectID,
+					 SceneSpriteID,
+					 SceneTextID,
+					 SceneAnimatedSpriteID;
 
 static inline unsigned int make_id_descr(IDType type, unsigned int id) 
 {
@@ -25,3 +35,5 @@ static inline unsigned int id(unsigned int id_type)
 {
 	return id_type & ID_MASK; 
 }
+
+#endif
