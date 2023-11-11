@@ -1,4 +1,6 @@
-#version 330 core
+#version 310 es
+#extension GL_OES_shader_io_blocks : require
+precision mediump float;
 
 uniform sampler2D u_ImageTexture[8];
 
@@ -13,7 +15,7 @@ in VS_OUT {
 out vec4 out_FragColor;
 
 vec4 getTextureCoords(int id, vec2 texcoord) {
-	#define ID(I) if(id == I) return texture2D(u_ImageTexture[I], texcoord);
+	#define ID(I) if(id == I) return texture(u_ImageTexture[I], texcoord);
 	ID(0);
 	ID(1);
 	ID(2);

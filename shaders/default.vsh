@@ -1,4 +1,6 @@
-#version 330 core
+#version 310 es
+#extension GL_OES_shader_io_blocks : require
+precision mediump float;
 
 layout(std140) uniform u_TransformBlock 
 {

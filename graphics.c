@@ -1,5 +1,5 @@
 #include <SDL2/SDL.h>
-#include <GL/glew.h>
+#include <glad/gles2.h>
 #include <assert.h>
 
 #include "vecmath.h"
@@ -492,7 +492,7 @@ create_texture_buffer(int w, int h)
 	glBindTexture(GL_TEXTURE_2D, albedo_texture);
 	glTexImage2D(GL_TEXTURE_2D,
 			0,
-			GL_RGBA32F,
+			GL_RGBA,
 			screen_width / FBO_SCALE, screen_height / FBO_SCALE,
 			0, 
 			GL_RGBA,
@@ -500,10 +500,25 @@ create_texture_buffer(int w, int h)
 			NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	
 	glBindFramebuffer(GL_FRAMEBUFFER, albedo_fbo);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, albedo_texture, 0);
+
+	GLenum state = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	switch(state) {
+	#define S(STATUS) case STATUS: printf("framebuffer status " #STATUS "\n"); break;
+	S(GL_FRAMEBUFFER_UNDEFINED);
+	S(GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT);
+	S(GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT);
+	S(GL_FRAMEBUFFER_UNSUPPORTED);
+	S(GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE);
+	S(GL_FRAMEBUFFER_COMPLETE);
+	#undef S
+	}
+	glDrawBuffers(1, (GLenum[]){ GL_COLOR_ATTACHMENT0 });
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 

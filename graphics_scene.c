@@ -1,5 +1,5 @@
 #include <string.h>
-#include <GL/glew.h>
+#include <glad/gles2.h>
 #include <assert.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -33,9 +33,10 @@ typedef struct {
 	vec2 *frames;
 } AnimationData;
 
-#define DEFINE_ANIMATION(ANIMATION_NAME, ...) \
-	[ANIMATION_NAME].frame_count = sizeof((vec2[]){ __VA_ARGS__ })/sizeof(vec2), \
-	[ANIMATION_NAME].frames = (vec2[]){ __VA_ARGS__ }
+#define DEFINE_ANIMATION(ANIMATION_NAME, ...) [ANIMATION_NAME] = { \
+		.frame_count = sizeof((vec2[]){ __VA_ARGS__ })/sizeof(vec2), \
+		.frames = (vec2[]){ __VA_ARGS__ } \
+	}
 
 static AnimationData animations[LAST_ANIMATION] = {
 	DEFINE_ANIMATION(ANIMATION_NULL, { 0.0, 0.0 }),

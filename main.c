@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
-#include <GL/glew.h>
+#include <glad/gles2.h>
 #include <SDL2/SDL.h>
 
 #include "global.h"
@@ -20,11 +20,21 @@ static UIObject label;
 
 static const char *text_test = "Hello";
 
+static GLADapiproc load_proc(const char *name) 
+{
+	GLADapiproc proc;
+
+	*(void**)(&proc)= SDL_GL_GetProcAddress(name);
+	return proc;
+}
+
 int
 main()
 {
-	if(SDL_Init(SDL_INIT_VIDEO) < 0)
+	if(SDL_Init(SDL_INIT_VIDEO) < 0) {
+		printf("Video failed!\n");
 		return -1;
+	}
 
 	arrbuf_init(&label_ptr);
 	arrbuf_printf(&label_ptr, "Hello count: %d\n", hello_count);
@@ -35,14 +45,17 @@ main()
 							  800, 600,
 							  SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 	GLOBAL.renderer = SDL_CreateRenderer(GLOBAL.window, -1, SDL_RENDERER_ACCELERATED);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
 	GLOBAL.glctx = SDL_GL_CreateContext(GLOBAL.window);
+	if(!GLOBAL.glctx) {
+		printf("SDL_GL_CreateContext() failed\n");
+		return 0;
+	}
 	SDL_GL_MakeCurrent(GLOBAL.window, GLOBAL.glctx);
-
-	if(glewInit() != GLEW_OK)
-		return -1;
+	gladLoadGLES2(load_proc);
+	printf("OpenGL Version: %s\n", glGetString(GL_VERSION));
 
 	gfx_init();
 	gfx_scene_setup();
@@ -112,6 +125,8 @@ main()
 
 		gfx_make_framebuffers(w, h);
 		gfx_clear_framebuffers();
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glClear(GL_COLOR_BUFFER_BIT);
 	
 		gfx_setup_draw_framebuffers();
 		gfx_scene_draw();

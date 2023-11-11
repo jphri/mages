@@ -12,7 +12,8 @@ OUTPUT_OBJECTS=\
 		entities/dummy.o\
 		entities/fireball.o\
 		map.o\
-		ui.o
+		ui.o\
+		third/glad/src/gles2.o
 
 OUTPUT=a.out
 
@@ -27,12 +28,13 @@ EDITOR_OBJECTS=\
 		editor_states/edit_tiles.o\
 		editor_states/select_tiles.o\
 		editor_states/edit_collisions.o\
-		ui.o
+		ui.o\
+		third/glad/src/gles2.o
 
 EDITOR=editor
 
-CFLAGS=-O3 -std=c99 -pipe -Wall -Wextra -pedantic -Werror -g
-LFLAGS=-lSDL2 -lGLEW -lGL -lm
+CFLAGS=-O3 -std=c99 -pipe -Wall -Wextra -Werror -pedantic -g -Ithird/glad/include
+LFLAGS=-lSDL2 -lGL -lm
 
 all: $(OUTPUT) $(EDITOR)
 clean:

@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
-#include <GL/glew.h>
+#include <glad/gles2.h>
 #include <SDL2/SDL.h>
 
 #include "global.h"
@@ -14,6 +14,14 @@
 
 Global GLOBAL;
 EditorGlobal editor;
+
+static GLADapiproc load_proc(const char *name) 
+{
+	GLADapiproc proc;
+
+	*(void**)(&proc)= SDL_GL_GetProcAddress(name);
+	return proc;
+}
 
 static State state_vtable[] = {
 	[EDITOR_EDIT_MAP] = {
@@ -64,12 +72,9 @@ main(int argc, char *argv[])
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 	GLOBAL.glctx = SDL_GL_CreateContext(GLOBAL.window);
 	SDL_GL_MakeCurrent(GLOBAL.window, GLOBAL.glctx);
-
-	if(glewInit() != GLEW_OK)
-		return -1;
+	gladLoadGLES2(load_proc);
 
 	gfx_init();
-
 	while(true) {
 		int w, h;
 		SDL_Event event;

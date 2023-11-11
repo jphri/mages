@@ -1,4 +1,4 @@
-#include <GL/glew.h>
+#include <glad/gles2.h>
 #include <stdio.h>
 #include <stdarg.h>
 
