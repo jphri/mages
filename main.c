@@ -104,6 +104,7 @@ main()
 
 		phx_update(delta);
 		ent_update(delta);
+		gfx_scene_update(delta);
 		ent_render();
 		
 

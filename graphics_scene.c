@@ -3,7 +3,9 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
 
+#include "vecmath.h"
 #include "util.h"
 #include "glutil.h"
 #include "graphics.h"
@@ -18,12 +20,36 @@ typedef struct {
 	union {
 		SceneSprite sprite;
 		SceneText   text;
+		SceneAnimatedSprite anim;
 	} data;
 } SceneObjectNode;
 
 #define SYS_ID_TYPE   SceneObjectID
 #define SYS_NODE_TYPE SceneObjectNode
 #include "system.h"
+
+typedef struct {
+	int frame_count;
+	vec2 *frames;
+} AnimationData;
+
+#define DEFINE_ANIMATION(ANIMATION_NAME, ...) \
+	[ANIMATION_NAME].frame_count = sizeof((vec2[]){ __VA_ARGS__ })/sizeof(vec2), \
+	[ANIMATION_NAME].frames = (vec2[]){ __VA_ARGS__ }
+
+static AnimationData animations[LAST_ANIMATION] = {
+	DEFINE_ANIMATION(ANIMATION_NULL, { 0.0, 0.0 }),
+	DEFINE_ANIMATION(ANIMATION_PLAYER_MOVEMENT,
+		{ 0.0, 0.0 }, 
+		{ 1.0, 0.0 }
+	)
+};
+
+static inline int calculate_frame_animation(SceneAnimatedSprite *sprite)
+{
+	int frame = (int)(sprite->time * sprite->fps);
+	return frame % animations[sprite->animation].frame_count;
+}
 
 static SceneObjectID   layer_objects[SCENE_LAYERS];
 static GraphicsTileMap layer_tmaps[SCENE_LAYERS];
@@ -95,13 +121,16 @@ gfx_scene_draw()
 		while(object_id) {
 			SceneSprite *ss = gfx_scene_spr(object_id);
 			SceneText *tt = gfx_scene_text(object_id);
+			SceneAnimatedSprite *as = gfx_scene_animspr(object_id);
+			int frame;
+
 			switch(_sys_node(object_id)->type) {
 			case SCENE_OBJECT_SPRITE:
 				ss->sprite.type = TEXTURE_ENTITIES;
 				ss->sprite.clip_region[0] = ss->sprite.position[0];
 				ss->sprite.clip_region[1] = ss->sprite.position[1];
-				ss->sprite.clip_region[2] = 100.0;
-				ss->sprite.clip_region[3] = 100.0;
+				ss->sprite.clip_region[2] = 100000.0;
+				ss->sprite.clip_region[3] = 100000.0;
 				gfx_draw_sprite(&ss->sprite);
 				break;
 			case SCENE_OBJECT_TEXT:
@@ -112,6 +141,16 @@ gfx_scene_draw()
 						(vec4){ 0, 0, 100000, 100000 },
 						"%s",
 						tt->text_ptr);
+				break;
+			case SCENE_OBJECT_ANIMATED_SPRITE:
+				frame = calculate_frame_animation(as);
+				vec2_add(as->sprite.sprite_id, as->sprite_id, animations[as->animation].frames[frame]);
+				as->sprite.type = TEXTURE_ENTITIES;
+				as->sprite.clip_region[0] = as->sprite.position[0];
+				as->sprite.clip_region[1] = as->sprite.position[1];
+				as->sprite.clip_region[2] = 100000.0;
+				as->sprite.clip_region[3] = 100000.0;
+				gfx_draw_sprite(&as->sprite);
 				break;
 			default: 
 				assert(0 && "invalid object type");
@@ -134,6 +173,27 @@ gfx_scene_del_obj(SceneObjectID obj_id)
 	del_object(obj_id);
 }
 
+void
+gfx_scene_update(float delta)
+{
+	for(int i = 0; i < SCENE_LAYERS; i++) {
+		SceneSpriteID object_id = layer_objects[i];
+
+		while(object_id) {
+			SceneAnimatedSprite *as = gfx_scene_animspr(object_id);
+
+			switch(_sys_node(object_id)->type) {
+			case SCENE_OBJECT_ANIMATED_SPRITE:
+				as->time += delta;
+			default:
+				do {} while(0);
+			}
+
+			object_id = _sys_node(object_id)->next_layer;
+		}
+	}
+}
+
 SceneSprite *
 gfx_scene_spr(SceneSpriteID spr_id)
 {
@@ -144,6 +204,12 @@ SceneText *
 gfx_scene_text(SceneTextID text_id)
 {
 	return &_sys_node(text_id)->data.text;
+}
+
+SceneAnimatedSprite *
+gfx_scene_animspr(SceneAnimatedSpriteID text_id)
+{
+	return &_sys_node(text_id)->data.anim;
 }
 
 void

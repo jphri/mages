@@ -13,10 +13,10 @@ ent_player_new(vec2 position)
 	EntityID self_id = ent_new(ENTITY_PLAYER);
 	#define self ENT_DATA(ENTITY_PLAYER, self_id)
 	#define self_body phx_data(self->body)
-	#define self_sprite gfx_scene_spr(self->sprite)
+	#define self_sprite gfx_scene_animspr(self->sprite)
 
 	self->body = phx_new();
-	self->sprite = gfx_scene_new_obj(0, SCENE_OBJECT_SPRITE);
+	self->sprite = gfx_scene_new_obj(0, SCENE_OBJECT_ANIMATED_SPRITE);
 	vec2_dup(self_body->position, position);
 	vec2_dup(self_body->half_size, (vec2){ 1, 1 });
 	vec2_dup(self_body->velocity, (vec2){ 0.0, 0.0 });
@@ -27,12 +27,16 @@ ent_player_new(vec2 position)
 	self_body->collision_mask  = 0x03;
 	self_body->user_data = make_id_descr(ID_TYPE_ENTITY, self_id);
 
-	self_sprite->type = SPRITE_ENTITIES;
+	self_sprite->sprite.type = SPRITE_ENTITIES;
 	vec2_dup(self_sprite->sprite.position, position);
 	vec2_dup(self_sprite->sprite.half_size, (vec2){ 1, 1 });
 	vec4_dup(self_sprite->sprite.color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 	self_sprite->sprite.rotation = 0.0;
 	self_sprite->sprite.sprite_id[0] = 0.0; self_sprite->sprite.sprite_id[1] = 0.0;
+	self_sprite->fps = 0.0;
+	self_sprite->time = 0.0;
+	self_sprite->sprite_id[0] = 0.0, self_sprite->sprite_id[1] = 0.0;
+	self_sprite->animation = ANIMATION_NULL;
 	self->fired = 0;
 
 	return self_id;
@@ -47,7 +51,7 @@ ENTITY_PLAYER_update(EntityID self_id, float delta)
 {
 	#define self ENT_DATA(ENTITY_PLAYER, self_id)
 	#define self_body phx_data(self->body)
-	#define self_sprite gfx_scene_spr(self->sprite)
+	#define self_sprite gfx_scene_animspr(self->sprite)
 
 	(void)delta;
 	int mouse_x, mouse_y;
@@ -56,19 +60,35 @@ ENTITY_PLAYER_update(EntityID self_id, float delta)
 	unsigned int hit_count;
 	int state = SDL_GetMouseState(&mouse_x, &mouse_y);
 
-
 	vec2_dup(self_body->velocity, (vec2){ 0.0, 0.0 });
 	if(keys[SDL_SCANCODE_W])
 		self_body->velocity[1] -= 10;
 	if(keys[SDL_SCANCODE_S])
 		self_body->velocity[1] += 10;
-	if(keys[SDL_SCANCODE_A])
+	if(keys[SDL_SCANCODE_A]) {
+		self_sprite->sprite.half_size[0] = -1.0;
 		self_body->velocity[0] -= 10;
-	if(keys[SDL_SCANCODE_D])
+	}
+	if(keys[SDL_SCANCODE_D]) {
+		self_sprite->sprite.half_size[0] = 1.0;
 		self_body->velocity[0] += 10;
-
+	}
 	if(keys[SDL_SCANCODE_K])
 		ent_del(self_id);
+
+	if(self_body->velocity[0] != 0 || self_body->velocity[1] != 0) {
+		if(!self->moving) {
+			self_sprite->animation = ANIMATION_PLAYER_MOVEMENT;
+			self_sprite->fps = 2.0;
+			self_sprite->time = 0.0;
+			self->moving = true;
+		}
+	} else {
+		self_sprite->animation = ANIMATION_NULL;
+		self_sprite->fps = 0.0;
+		self_sprite->time = 0.0;
+		self->moving = false;
+	}
 
 	if(SDL_BUTTON(SDL_BUTTON_LEFT) & state) {
 		if(!self->fired) {

@@ -25,6 +25,7 @@ ENTITY_STRUCT(ENTITY_PLAYER) {
 	BodyID body;
 	SceneSpriteID sprite;
 	int fired;
+	bool moving;
 };
 
 ENTITY_STRUCT(ENTITY_DUMMY) {

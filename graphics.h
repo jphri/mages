@@ -20,6 +20,19 @@ typedef enum {
 	LAST_TEXTURE_ATLAS
 } TextureAtlas;
 
+typedef enum {
+	ANIMATION_NULL,
+	ANIMATION_PLAYER_MOVEMENT,
+	LAST_ANIMATION
+} Animation;
+
+typedef enum {
+	SCENE_OBJECT_SPRITE,
+	SCENE_OBJECT_TEXT,
+	SCENE_OBJECT_ANIMATED_SPRITE,
+	LAST_SCENE_OBJECT_TYPE,
+} SceneObjectType;
+
 typedef struct {
 	long unsigned int type;
 	float rotation;
@@ -36,6 +49,15 @@ typedef struct {
 } SceneSprite;
 
 typedef struct {
+	Sprite sprite;
+	vec2 sprite_id;
+
+	Animation animation;
+	float time;
+	float fps;
+} SceneAnimatedSprite;
+
+typedef struct {
 	const char *text_ptr;
 	vec2 position;
 	vec2 char_size;
@@ -48,12 +70,6 @@ typedef struct {
 	unsigned int count_tiles;
 	TextureAtlas terrain;
 } GraphicsTileMap;
-
-typedef enum {
-	SCENE_OBJECT_SPRITE,
-	SCENE_OBJECT_TEXT,
-	LAST_SCENE_OBJECT_TYPE,
-} SceneObjectType;
 
 void gfx_init();
 void gfx_end();
@@ -88,11 +104,14 @@ void gfx_scene_draw();
 
 typedef unsigned int SceneObjectID, 
 					 SceneSpriteID, 
-					 SceneTextID;
+					 SceneTextID,
+					 SceneAnimatedSpriteID;
 
 SceneObjectID gfx_scene_new_obj(int layer, SceneObjectType type);
 void          gfx_scene_del_obj(SceneObjectID id);
-SceneSprite   *gfx_scene_spr(SceneSpriteID spr_id);
-SceneText     *gfx_scene_text(SceneTextID text_id);
+void          gfx_scene_update(float delta);
+SceneSprite         *gfx_scene_spr(SceneSpriteID spr_id);
+SceneText           *gfx_scene_text(SceneTextID text_id);
+SceneAnimatedSprite *gfx_scene_animspr(SceneAnimatedSpriteID anim_id);
 
 void gfx_scene_set_tilemap(int layer, TextureAtlas atlas, int w, int h, int *data);
