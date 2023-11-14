@@ -448,8 +448,8 @@ ui_order()
 void
 layout_order(UIObject object) 
 {
-	float dx, dy;
-	float w, h;
+	float dx = 0, dy = 0;
+	float w = 0, h = 0;
 	vec2 position;
 
 	#define LAYOUT _sys_node(object)->data.layout

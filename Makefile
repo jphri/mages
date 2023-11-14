@@ -1,5 +1,4 @@
 THIRD_OBJECTS=impl.o
-
 OUTPUT_OBJECTS=\
 		main.o\
 		physics.o\
@@ -15,8 +14,6 @@ OUTPUT_OBJECTS=\
 		ui.o\
 		third/glad/src/gles2.o
 
-OUTPUT=a.out
-
 EDITOR_OBJECTS=\
 		tile_map_editor.o\
 		physics.o\
@@ -31,10 +28,14 @@ EDITOR_OBJECTS=\
 		ui.o\
 		third/glad/src/gles2.o
 
+PLATFORM=
+SDL2_PREFIX=/usr
+SDL2_INCLUDE_DIR=$(SDL2_PREFIX)/$(PLATFORM)/include
+SDL2_LIB_DIR=$(SDL2_PREFIX)/$(PLATFORM)/lib
+OUTPUT=game
 EDITOR=editor
-
-CFLAGS=-O3 -std=c99 -pipe -Wall -Wextra -Werror -pedantic -g -Ithird/glad/include
-LFLAGS=-lSDL2 -lGL -lm
+CFLAGS=-O3 -std=c99 -pipe -Wall -Wextra -Werror -pedantic -g -Ithird/glad/include -I$(SDL2_INCLUDE_DIR)
+LFLAGS=-L$(SDL2_LIB_DIR) -lSDL2 -lm
 
 all: $(OUTPUT) $(EDITOR)
 clean:
@@ -47,10 +48,10 @@ nuke: clean
 	rm -f $(THIRD_OBJECTS)
 
 $(OUTPUT): $(OUTPUT_OBJECTS) $(THIRD_OBJECTS)
-	gcc $^ -o $@ $(LFLAGS)
+	$(PLATFORM)-gcc $^ -o $@ $(LFLAGS)
 
 $(EDITOR): $(EDITOR_OBJECTS) $(THIRD_OBJECTS)
-	gcc $^ -o $@ $(LFLAGS)
+	$(PLATFORM)-gcc $^ -o $@ $(LFLAGS)
 
 %.o: %.c
-	gcc $< -c -o $@ $(CFLAGS)
+	$(PLATFORM)-gcc $< -c -o $@ $(CFLAGS)

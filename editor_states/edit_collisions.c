@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdbool.h>
-#include <GL/glew.h>
 #include <SDL2/SDL.h>
 
 #include "../global.h"

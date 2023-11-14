@@ -1,3 +1,4 @@
 *.o
 a.out
 editor
+third/sdl2

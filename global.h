@@ -1,9 +1,7 @@
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
-typedef struct SDL_Renderer SDL_Renderer;
-typedef struct SDL_Window SDL_Window;
-typedef void *SDL_GLContext;
+#include <SDL2/SDL.h>
 
 typedef struct {
 	SDL_Renderer *renderer;
