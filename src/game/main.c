@@ -5,14 +5,14 @@
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
 
-#include "global.h"
-#include "vecmath.h"
-#include "physics.h"
-#include "entity.h"
-#include "graphics.h"
-#include "map.h"
-#include "ui.h"
-#include "util.h"
+#include "../global.h"
+#include "../vecmath.h"
+#include "../physics.h"
+#include "../entity.h"
+#include "../graphics.h"
+#include "../map.h"
+#include "../ui.h"
+#include "../util.h"
 
 Global GLOBAL;
 static Map *map;

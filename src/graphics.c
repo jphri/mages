@@ -1,13 +1,13 @@
 #include <SDL2/SDL.h>
 #include <glad/gles2.h>
 #include <assert.h>
+#include <stb_image.h>
 
 #include "vecmath.h"
 #include "glutil.h"
 #include "util.h"
 
 #include "graphics.h"
-#include "third/stb_image.h"
 
 enum Uniform {
 	U_PROJECTION,

@@ -1,4 +1,6 @@
 *.o
+*.d
 a.out
+game
 editor
 third/sdl2

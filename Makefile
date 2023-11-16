@@ -1,32 +1,17 @@
-THIRD_OBJECTS=impl.o
-OUTPUT_OBJECTS=\
-		main.o\
-		physics.o\
-		util.o\
-		entity.o\
-		graphics.o\
-		glutil.o\
-		graphics_scene.o\
-		entities/player.o\
-		entities/dummy.o\
-		entities/fireball.o\
-		map.o\
-		ui.o\
-		third/glad/src/gles2.o
+THIRD_SRC_FILES=$(wildcard third/src/*.c)
+EDITOR_SOURCE_FILES=$(wildcard src/editor/*.c)
+GAME_SOURCE_FILES=$(wildcard src/game/*.c)
+SRC_FILES=$(wildcard src/*.c src/entities/*.c) 
 
-EDITOR_OBJECTS=\
-		tile_map_editor.o\
-		physics.o\
-		util.o\
-		graphics.o\
-		graphics_scene.o\
-		glutil.o\
-		map.o\
-		editor_states/edit_tiles.o\
-		editor_states/select_tiles.o\
-		editor_states/edit_collisions.o\
-		ui.o\
-		third/glad/src/gles2.o
+OBJ_FILES=$(SRC_FILES:.c=.o)
+EDITOR_OBJ_FILES=$(EDITOR_SOURCE_FILES:.c=.o)
+GAME_OBJ_FILES=$(GAME_SOURCE_FILES:.c=.o)
+THIRD_OBJ_FILES=$(THIRD_SRC_FILES:.c=.o)
+
+DEPFILES  = $(OBJ_FILES:.o=.d)
+DEPFILES += $(EDITOR_OBJ_FILES:.o=.d) 
+DEPFILES += $(GAME_OBJ_FILES:.o=.d) 
+DEPFILES += $(THIRD_OBJ_FILES:.o=.d)
 
 PLATFORM=
 SDL2_PREFIX=/usr
@@ -34,24 +19,33 @@ SDL2_INCLUDE_DIR=$(SDL2_PREFIX)/$(PLATFORM)/include
 SDL2_LIB_DIR=$(SDL2_PREFIX)/$(PLATFORM)/lib
 OUTPUT=game
 EDITOR=editor
-CFLAGS=-O3 -std=c99 -pipe -Wall -Wextra -Werror -pedantic -g -Ithird/glad/include -I$(SDL2_INCLUDE_DIR)
+CC=$(PLATFORM)-gcc
+
+CFLAGS += -O3 -std=c99 -pipe -Wall -Wextra -Werror -pedantic -g
+CFLAGS += -MP -MD
+CFLAGS += -Ithird/glad/include
+CFLAGS += -Ithird
+
 LFLAGS=-L$(SDL2_LIB_DIR) -lSDL2 -lm
 
 all: $(OUTPUT) $(EDITOR)
 clean:
-	rm -f $(OUTPUT_OBJECTS)
-	rm -f $(OUTPUT)
-	rm -f $(EDITOR_OBJECTS)
-	rm -f $(EDITOR)
+	rm -f $(OBJ_FILES)
+	rm -f $(GAME_OBJ_FILES)
+	rm -f $(EDITOR_OBJ_FILES)
+	rm -f $(OUTPUT) $(EDITOR)
+	rm -f $(DEPFILES)
 
 nuke: clean
-	rm -f $(THIRD_OBJECTS)
+	rm -f $(THIRD_OBJ_FILES)
 
-$(OUTPUT): $(OUTPUT_OBJECTS) $(THIRD_OBJECTS)
-	$(PLATFORM)-gcc $^ -o $@ $(LFLAGS)
+$(OUTPUT): $(THIRD_OBJ_FILES) $(OBJ_FILES) $(GAME_OBJ_FILES)
+	$(CC) $^ -o $@ $(LFLAGS)
 
-$(EDITOR): $(EDITOR_OBJECTS) $(THIRD_OBJECTS)
-	$(PLATFORM)-gcc $^ -o $@ $(LFLAGS)
+$(EDITOR): $(THIRD_OBJ_FILES) $(OBJ_FILES) $(EDITOR_OBJ_FILES)
+	$(CC) $^ -o $@ $(LFLAGS)
 
 %.o: %.c
-	$(PLATFORM)-gcc $< -c -o $@ $(CFLAGS)
+	$(CC) $< -c -o $@ $(CFLAGS)
+
+-include $(DEPFILES)
