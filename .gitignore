@@ -1,6 +1,3 @@
 *.o
 *.d
-a.out
-game
-editor
-third/sdl2
+compile_commands.json
