@@ -2,7 +2,6 @@
 #include <stdbool.h>
 #include <glad/gles2.h>
 
-#define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
 
 #include "../global.h"
