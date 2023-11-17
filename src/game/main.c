@@ -30,8 +30,10 @@ static GLADapiproc load_proc(const char *name)
 }
 
 int
-main()
+main(int argc, char *argv[])
 {
+	(void)argc;
+	(void)argv;
 	if(SDL_Init(SDL_INIT_VIDEO) < 0) {
 		printf("Video failed!\n");
 		return -1;

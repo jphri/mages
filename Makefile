@@ -26,6 +26,7 @@ CFLAGS += -MP -MD
 CFLAGS += -Ithird/glad/include
 CFLAGS += -Ithird
 CFLAGS += -I$(SDL2_INCLUDE_DIR)
+CFLAGS += -DSDL_MAIN_HANDLED
 LFLAGS=-L$(SDL2_LIB_DIR) -lSDL2 -lSDL2main -lm
 
 DELETE = rm -f
