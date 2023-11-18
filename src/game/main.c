@@ -91,6 +91,8 @@ main(int argc, char *argv[])
 	EntityID player_id = ent_player_new((vec2){ 15.0, 15.0 });
 	ent_dummy_new((vec2){ 25.0, 15.0 });
 
+	GLOBAL.player_id = player_id;
+
 	Uint64 prev_time = SDL_GetPerformanceCounter();
 
 	SceneTextID text = gfx_scene_new_obj(0, SCENE_OBJECT_TEXT);
@@ -123,7 +125,6 @@ main(int argc, char *argv[])
 		gfx_scene_update(delta);
 		ent_render();
 		
-
 		SDL_GetWindowSize(GLOBAL.window, &w, &h);
 
 		gfx_make_framebuffers(w, h);

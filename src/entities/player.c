@@ -7,14 +7,19 @@
 #include "../entity.h"
 #include "../id.h"
 
+#define self ENT_DATA(ENTITY_PLAYER, self_id)
+#define self_body phx_data(self->body)
+#define self_sprite gfx_scene_animspr(self->sprite)
+
+#define MOB_COMPONENT self->mob
+
+#include "../entity_components.h"
+
 EntityID
 ent_player_new(vec2 position)
 {
 	EntityID self_id = ent_new(ENTITY_PLAYER);
-	#define self ENT_DATA(ENTITY_PLAYER, self_id)
-	#define self_body phx_data(self->body)
-	#define self_sprite gfx_scene_animspr(self->sprite)
-
+	
 	self->body = phx_new();
 	self->sprite = gfx_scene_new_obj(0, SCENE_OBJECT_ANIMATED_SPRITE);
 	vec2_dup(self_body->position, position);
@@ -39,20 +44,15 @@ ent_player_new(vec2 position)
 	self_sprite->animation = ANIMATION_NULL;
 	self->fired = 0;
 
-	return self_id;
+	MOB_COMPONENT.health = 10;
+	MOB_COMPONENT.health_max = 10;
 
-	#undef self
-	#undef self_body
-	#undef self_sprite
+	return self_id;
 }
 
 void
 ENTITY_PLAYER_update(EntityID self_id, float delta) 
 {
-	#define self ENT_DATA(ENTITY_PLAYER, self_id)
-	#define self_body phx_data(self->body)
-	#define self_sprite gfx_scene_animspr(self->sprite)
-
 	(void)delta;
 	int mouse_x, mouse_y;
 
@@ -122,10 +122,8 @@ ENTITY_PLAYER_update(EntityID self_id, float delta)
 		}
 	}
 	vec2_dup(self_sprite->sprite.position, self_body->position);
-
-	#undef self_id
-	#undef self_body
-	#undef self_sprite
+	
+	process_components(self_id);
 }
 
 void
@@ -137,7 +135,6 @@ ENTITY_PLAYER_render(EntityID self_id)
 void
 ENTITY_PLAYER_del(EntityID self_id) 
 {
-	#define self ENT_DATA(ENTITY_PLAYER, self_id)
 	phx_del(self->body);
 	gfx_scene_del_obj(self->sprite);
 }

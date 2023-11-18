@@ -6,15 +6,20 @@
 #include "../physics.h"
 #include "../entity.h"
 #include "../id.h"
+#include "../global.h"
+
+#define self ENT_DATA(ENTITY_DUMMY, self_id)
+#define self_body phx_data(self->body)
+#define self_sprite gfx_scene_spr(self->sprite)
+
+#define MOB_COMPONENT self->mob
+
+#include "../entity_components.h"
 
 EntityID 
 ent_dummy_new(vec2 position)
 {
 	EntityID self_id = ent_new(ENTITY_DUMMY);
-
-	#define self ENT_DATA(ENTITY_DUMMY, self_id)
-	#define self_body phx_data(self->body)
-	#define self_sprite gfx_scene_spr(self->sprite)
 
 	self->body = phx_new();
 	self->sprite = gfx_scene_new_obj(0, SCENE_OBJECT_SPRITE);
@@ -35,20 +40,34 @@ ent_dummy_new(vec2 position)
 	self_sprite->sprite.rotation = 0.0;
 	self_sprite->sprite.sprite_id[0] = 0.0; 
 	self_sprite->sprite.sprite_id[1] = 2.0;
-	self->health = 10.0f;
+	
+	MOB_COMPONENT.health     = 10.0f;
+	MOB_COMPONENT.health_max = 10.0f;
 
 	return self_id;
-
-	#undef self_id
-	#undef self_body
-	#undef self_sprite
 }
 
 void
-ENTITY_DUMMY_update(EntityID id, float delta)
+ENTITY_DUMMY_update(EntityID self_id, float delta)
 {
-	(void)id;
 	(void)delta;
+	vec2 delta_pos;
+
+	#define self ENT_DATA(ENTITY_DUMMY, self_id)
+	#define self_body phx_data(self->body)
+	#define self_sprite gfx_scene_spr(self->sprite)
+
+	#define gb_player ENT_DATA(ENTITY_PLAYER, GLOBAL.player_id)
+	#define gb_player_body phx_data(gb_player->body)
+
+	vec2_sub(delta_pos, gb_player_body->position, self_body->position);
+	vec2_normalize(delta_pos, delta_pos);
+	vec2_mul(delta_pos, delta_pos, (vec2){ 5.0, 5.0 });
+	vec2_dup(self_body->velocity, delta_pos);
+
+	vec2_dup(self_sprite->sprite.position, self_body->position);
+
+	process_components(self_id);
 }
 
 void
@@ -60,7 +79,6 @@ ENTITY_DUMMY_render(EntityID id)
 void
 ENTITY_DUMMY_del(EntityID self_id)
 {
-	#define self ENT_DATA(ENTITY_DUMMY, self_id)
 	phx_del(self->body);
 	gfx_scene_del_obj(self->sprite);
 }

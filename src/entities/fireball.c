@@ -39,6 +39,8 @@ ent_fireball_new(EntityID caster, vec2 position, vec2 vel)
 	SELF_SPRITE->sprite.rotation = 0.0;
 	SELF_SPRITE->sprite.sprite_id[0] = 0.0; SELF_SPRITE->sprite.sprite_id[1] = 1.0;
 	SELF_SPRITE->sprite.rotation = atan2f(-vel[1], vel[0]);
+	
+	SELF->damage.damage = -1.0;
 
 	return self;
 }
@@ -56,13 +58,21 @@ ENTITY_FIREBALL_update(EntityID self, float delta)
 		BodyID who = hits[i].id;
 		EntityID ent_id;
 
+		EntityMob *mob;
+
 		switch(id_type(phx_data(who)->user_data)) {
 		case ID_TYPE_ENTITY:
 			ent_id = id(phx_data(who)->user_data);
-			if(ent_type(ent_id) == ENTITY_DUMMY) {
-				ent_del(ent_id);
+			if(ent_type(ent_id) == ENTITY_PLAYER) 
+				break;
+			
+			mob = ent_component(ent_id, ENTITY_COMP_MOB);
+			if(mob) {
 				ent_del(self);
+				mob->health += SELF->damage.damage;	
+				ent_damage_number(SELF_BODY->position, SELF->damage.damage);
 			}
+			
 			break;
 		case ID_TYPE_NULL:
 			ent_del(self);

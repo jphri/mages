@@ -100,3 +100,19 @@ ent_type(EntityID id)
 {
 	return _sys_node(id)->type;
 }
+
+void *
+ent_component(EntityID id, EntityComponent comp) 
+{
+	unsigned int int_type = ent_type(id) | comp << 8;
+	
+	#define DEFINE_COMPONENT_FOR(TYPE, COMPONENT, MEMBER_NAME) \
+		case (TYPE | (COMPONENT << 8)): return &ENT_DATA(TYPE, id)->MEMBER_NAME; break
+	
+	switch(int_type) {
+	DEFINE_COMPONENT_FOR(ENTITY_DUMMY, ENTITY_COMP_MOB, mob);
+	DEFINE_COMPONENT_FOR(ENTITY_FIREBALL, ENTITY_COMP_DAMAGE, damage);
+	default:
+		return NULL;
+	}
+}
