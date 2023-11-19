@@ -51,6 +51,12 @@ ent_end()
 }
 
 void
+ent_reset()
+{
+	_sys_reset();
+}
+
+void
 ent_update(float delta) 
 {
 	for(EntityID id = _sys_list;

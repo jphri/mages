@@ -112,6 +112,17 @@ gfx_scene_cleanup()
 	_sys_deinit();
 }
 
+void
+gfx_scene_reset()
+{
+	layer_tmap_set = 0;
+	for(int i = 0; i < SCENE_LAYERS; i++) {
+		layer_objects[i] = 0;
+		gfx_tmap_free(&layer_tmaps[i]);
+	}
+	_sys_reset();
+}
+
 void 
 gfx_scene_draw()
 {

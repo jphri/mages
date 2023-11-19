@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 
+#include "../global.h"
 #include "../graphics.h"
 #include "../vecmath.h"
 #include "../physics.h"
@@ -57,7 +58,6 @@ ENTITY_PLAYER_update(EntityID self_id, float delta)
 	int mouse_x, mouse_y;
 
 	const Uint8 *keys = SDL_GetKeyboardState(NULL);
-	unsigned int hit_count;
 	int state = SDL_GetMouseState(&mouse_x, &mouse_y);
 
 	vec2_dup(self_body->velocity, (vec2){ 0.0, 0.0 });
@@ -73,13 +73,11 @@ ENTITY_PLAYER_update(EntityID self_id, float delta)
 		self_sprite->sprite.half_size[0] = 1.0;
 		self_body->velocity[0] += 10;
 	}
-	if(keys[SDL_SCANCODE_K])
-		ent_del(self_id);
 
 	if(self_body->velocity[0] != 0 || self_body->velocity[1] != 0) {
 		if(!self->moving) {
 			self_sprite->animation = ANIMATION_PLAYER_MOVEMENT;
-			self_sprite->fps = 2.0;
+			self_sprite->fps = 5.0;
 			self_sprite->time = 0.0;
 			self->moving = true;
 		}
@@ -106,23 +104,7 @@ ENTITY_PLAYER_update(EntityID self_id, float delta)
 		self->fired = 0;
 	}
 
-	HitInfo *info = phx_hits(self->body, &hit_count);
-	for(unsigned int i = 0; i < hit_count; i++) {
-		EntityID e_id;
-		#define hit_object phx_data(info[i].id)
-
-		switch(id_type(hit_object->user_data)) {
-		case ID_TYPE_ENTITY:
-			e_id = id(hit_object->user_data);
-			if(ent_type(e_id) == ENTITY_DUMMY) {
-				ent_del(e_id);
-			}
-		default:
-			do{}while(0);
-		}
-	}
 	vec2_dup(self_sprite->sprite.position, self_body->position);
-	
 	process_components(self_id);
 }
 
@@ -137,4 +119,6 @@ ENTITY_PLAYER_del(EntityID self_id)
 {
 	phx_del(self->body);
 	gfx_scene_del_obj(self->sprite);
+
+	GLOBAL.player_id = 0;
 }

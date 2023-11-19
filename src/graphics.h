@@ -1,6 +1,8 @@
 #ifndef GRAPHICS_H
 #define GRAPHICS_H
 
+#include <stdbool.h>
+
 #include "vecmath.h"
 #include "id.h"
 
@@ -94,6 +96,8 @@ void gfx_draw_line(TextureAtlas atlas, vec2 p1, vec2 p2, float thickness, vec4 c
 void gfx_draw_rect(TextureAtlas atlas, vec2 position, vec2 half_size, float thickness, vec4 color, vec4 clip_region);
 void gfx_draw_end();
 
+void gfx_camera_set_enabled(bool enabled);
+
 void gfx_begin_scissor(vec2 position, vec2 size);
 void gfx_end_scissor();
 
@@ -104,6 +108,7 @@ void             gfx_tmap_draw(GraphicsTileMap *tmap);
 void gfx_scene_setup(); 
 void gfx_scene_cleanup();
 void gfx_scene_draw();
+void gfx_scene_reset();
 
 SceneObjectID gfx_scene_new_obj(int layer, SceneObjectType type);
 void          gfx_scene_del_obj(SceneObjectID id);

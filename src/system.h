@@ -24,10 +24,19 @@ static inline void _sys_init()
 	_sys_list = 0;
 }
 
+static inline void _sys_reset()
+{
+	arrbuf_clear(&_sys_buffer);
+	arrbuf_clear(&_sys_free_stack);
+	arrbuf_clear(&_sys_should_die);
+	_sys_list = 0;
+}
+
 static inline void _sys_deinit()
 {
 	efree(_sys_buffer.data);
 	efree(_sys_free_stack.data);
+	efree(_sys_should_die.data);
 	_sys_list = 0;
 }
 
@@ -94,5 +103,6 @@ static inline void _sys_cleanup()
 	}
 	arrbuf_clear(&_sys_should_die);
 }
+
 
 #endif

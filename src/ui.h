@@ -23,6 +23,7 @@ typedef enum {
 typedef unsigned int UIObject;
 
 void ui_init();
+void ui_reset();
 void ui_terminate();
 bool ui_is_active();
 

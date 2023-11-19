@@ -44,6 +44,12 @@ phx_end()
 	arrbuf_free(&hit_info_arena);
 }
 
+void
+phx_reset()
+{
+	_sys_reset();
+}
+
 BodyID phx_new()
 {
 	return _sys_new();

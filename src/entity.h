@@ -2,6 +2,7 @@
 #define ENTITY_H
 
 #include "id.h"
+#include <stdbool.h>
 
 #define ENTITY_LIST             \
 	MAC_ENTITY(ENTITY_PLAYER)   \
@@ -68,6 +69,7 @@ void ent_init();
 void ent_end();
 void ent_update(float delta);
 void ent_render();
+void ent_reset();
 
 EntityID   ent_new(EntityType type);
 void       ent_del(EntityID id);

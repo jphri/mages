@@ -4,6 +4,7 @@
 
 #include <SDL2/SDL.h>
 
+#include "../game_state.h"
 #include "../global.h"
 #include "../vecmath.h"
 #include "../physics.h"
@@ -13,17 +14,7 @@
 #include "../map.h"
 #include "editor.h"
 
-Global GLOBAL;
 EditorGlobal editor;
-
-static GLADapiproc load_proc(const char *name) 
-{
-	GLADapiproc proc;
-
-	*(void**)(&proc)= SDL_GL_GetProcAddress(name);
-	return proc;
-}
-
 static State state_vtable[] = {
 	[EDITOR_EDIT_MAP] = {
 		.render = edit_render,
@@ -48,81 +39,62 @@ static State state_vtable[] = {
 	}
 };
 
-int
-main(int argc, char *argv[])
+void
+GAME_STATE_LEVEL_EDIT_init()
 {
-	if(argc == 3) {
-		editor.map = map_alloc(atoi(argv[1]), atoi(argv[2]));
-	}
-	if(argc == 2) {
-		load_map(argv[1]);
-	}
-
 	editor.map_atlas = SPRITE_TERRAIN;
-	if(SDL_Init(SDL_INIT_VIDEO) < 0)
-		return -1;
+	if(editor.map == NULL)
+		editor.map = map_load("maps/test_map_2.map");
+}
 
-	GLOBAL.window = SDL_CreateWindow("hello",
-							  SDL_WINDOWPOS_UNDEFINED,
-							  SDL_WINDOWPOS_UNDEFINED,
-							  800, 600,
-							  SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
-	GLOBAL.renderer = SDL_CreateRenderer(GLOBAL.window, -1, SDL_RENDERER_ACCELERATED);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-	GLOBAL.glctx = SDL_GL_CreateContext(GLOBAL.window);
-	SDL_GL_MakeCurrent(GLOBAL.window, GLOBAL.glctx);
-	gladLoadGLES2(load_proc);
+void
+GAME_STATE_LEVEL_EDIT_render()
+{
+	if(state_vtable[editor.editor_state].render)
+		state_vtable[editor.editor_state].render();
+}
 
-	gfx_init();
-	while(true) {
-		int w, h;
-		SDL_Event event;
-		SDL_GetWindowSize(GLOBAL.window, &w, &h);
+void
+GAME_STATE_LEVEL_EDIT_mouse_button(SDL_Event *event)
+{
+	if(state_vtable[editor.editor_state].mouse_button)
+		state_vtable[editor.editor_state].mouse_button(event);
+}
 
-		gfx_make_framebuffers(w, h);
-		glClear(GL_COLOR_BUFFER_BIT);
-		
-		if(state_vtable[editor.editor_state].render)
-			state_vtable[editor.editor_state].render();
-		
-		SDL_GL_SwapWindow(GLOBAL.window);
-		while(SDL_PollEvent(&event)) {
-			switch(event.type) {
-			case SDL_QUIT:
-				goto end_loop;
-			case SDL_MOUSEBUTTONUP:
-			case SDL_MOUSEBUTTONDOWN:
-				if(state_vtable[editor.editor_state].mouse_button)
-					state_vtable[editor.editor_state].mouse_button(&event);
-				break;
-			case SDL_MOUSEWHEEL:
-				if(state_vtable[editor.editor_state].wheel)
-					state_vtable[editor.editor_state].wheel(&event);
-				break;
-			case SDL_MOUSEMOTION:
-				if(state_vtable[editor.editor_state].mouse_motion)
-					state_vtable[editor.editor_state].mouse_motion(&event);
-				break;
-			case SDL_KEYDOWN:
-				if(state_vtable[editor.editor_state].keyboard)
-					state_vtable[editor.editor_state].keyboard(&event);
-				break;
-			case SDL_KEYUP:
-				if(state_vtable[editor.editor_state].keyboard)
-					state_vtable[editor.editor_state].keyboard(&event);
-			}
-		}
-	}
+void
+GAME_STATE_LEVEL_EDIT_mouse_wheel(SDL_Event *event)
+{
+	if(state_vtable[editor.editor_state].wheel)
+		state_vtable[editor.editor_state].wheel(event);
+}
 
-end_loop:
-	gfx_end();
+void
+GAME_STATE_LEVEL_EDIT_mouse_move(SDL_Event *event) 
+{
+	if(state_vtable[editor.editor_state].mouse_motion)
+		state_vtable[editor.editor_state].mouse_motion(event);
+}
 
-	SDL_DestroyRenderer(GLOBAL.renderer);
-	SDL_DestroyWindow(GLOBAL.window);
-	SDL_Quit();
-	return 0;
+void
+GAME_STATE_LEVEL_EDIT_keyboard(SDL_Event *event)
+{
+	if(state_vtable[editor.editor_state].keyboard)
+		state_vtable[editor.editor_state].keyboard(event);
+	
+	if(event->type == SDL_KEYDOWN && event->key.keysym.scancode == SDL_SCANCODE_K)
+		gstate_set(GAME_STATE_LEVEL);
+}
+
+
+void 
+GAME_STATE_LEVEL_EDIT_update(float delta)
+{
+	(void)delta;
+}
+
+void 
+GAME_STATE_LEVEL_EDIT_end() 
+{
 }
 
 void

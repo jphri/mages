@@ -26,6 +26,7 @@ typedef struct {
 
 void phx_init();
 void phx_end();
+void phx_reset();
 
 BodyID phx_new();
 void   phx_del(BodyID self);

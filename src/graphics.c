@@ -113,6 +113,8 @@ static void             draw_post(ShaderProgram *program);
 
 static void             insert_character(TextureAtlas atlas, vec2 position, vec2 size, vec4 color, vec4 clip_region, int c);
 
+static bool enabled_camera;
+
 static GLuint sprite_buffer_gpu;
 static int screen_width, screen_height;
 static ShaderProgram sprite_program, tile_map_program, font_program;
@@ -133,6 +135,7 @@ static GLuint sprite_colrow_inv_buffer;
 static GraphicsTileMap *current_tmap;
 
 static GLuint sprite_buffer, sprite_vao, sprite_count;
+static mat4 ident_mat;
 
 void
 gfx_init()
@@ -220,6 +223,9 @@ gfx_init()
 		{ .name = VATTRIB_INST_CLIP,        .size = 4, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, clip_region), .divisor = 1, .buffer = sprite_buffer },
 	});
 	sprite_count = 0;
+
+	mat4_ident(ident_mat);
+
 }
 
 void
@@ -365,7 +371,8 @@ void
 gfx_draw_end()
 {
 	glBindBuffer(GL_UNIFORM_BUFFER, matrix_buffer);
-	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(projection), sizeof(view_matrix), view_matrix);
+	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(projection), sizeof(view_matrix), 
+			enabled_camera ? view_matrix : ident_mat);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 	for(int i = 0; i < LAST_TEXTURE_ATLAS; i++) {
@@ -427,6 +434,12 @@ gfx_set_camera(vec2 position, vec2 scale)
 	mat4_ident(view_matrix);
 	affine2d_scale(view_matrix,     scale);
 	affine2d_translate(view_matrix, position);
+}
+
+void
+gfx_camera_set_enabled(bool enabled)
+{
+	enabled_camera = enabled;
 }
 
 void

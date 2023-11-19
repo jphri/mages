@@ -135,6 +135,14 @@ ui_init()
 }
 
 void
+ui_reset()
+{
+	_sys_reset();
+	hot = 0;
+	active = 0;
+}
+
+void
 ui_terminate()
 {
 	_sys_deinit();
@@ -426,12 +434,14 @@ button_mouse_button(UIObject object, UIMouseButton button, bool state)
 	if(!state && active == object) {
 		if(BUTTON.callback)
 			BUTTON.callback(BUTTON.user_ptr);
-		active = 0;
 	}
 
 	if(state) {
 		if(!active && hot == object)
 			active = object;
+	} else {
+		if(active == object)
+			active = 0;
 	}
 
 	#undef BUTTON
