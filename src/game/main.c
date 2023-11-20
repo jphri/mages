@@ -71,22 +71,22 @@ GAME_STATE_LEVEL_init()
 void
 GAME_STATE_LEVEL_update(float delta)
 {
-	vec2 offset;
 	(void)delta;
-	
-	#define PLAYER ENT_DATA(ENTITY_PLAYER, GLOBAL.player_id)
-	#define PLAYER_BODY phx_data(PLAYER->body)
-	
-	if(GLOBAL.player_id) {
-		vec2_add_scaled(offset, (vec2){ 0.0, 0.0 }, PLAYER_BODY->position, -32);
-		vec2_add(offset, offset, (vec2){ 400, 300 });
-		gfx_set_camera(offset, (vec2){ 32.0, 32.0 });
-	}
 }
 
 void
 GAME_STATE_LEVEL_render()
 {
+	vec2 offset;
+	#define PLAYER ENT_DATA(ENTITY_PLAYER, GLOBAL.player_id)
+	#define PLAYER_BODY phx_data(PLAYER->body)
+	if(GLOBAL.player_id) {
+		vec2_add_scaled(offset, (vec2){ 0.0, 0.0 }, PLAYER_BODY->position, -32);
+		vec2_add(offset, offset, (vec2){ 400, 300 });
+		gfx_set_camera(offset, (vec2){ 32.0, 32.0 });
+	}
+	#undef PLAYER
+	#undef PLAYER_BODY
 }
 
 void

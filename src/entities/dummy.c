@@ -27,10 +27,10 @@ ent_dummy_new(vec2 position)
 	vec2_dup(self_body->half_size, (vec2){ 1, 1 });
 	vec2_dup(self_body->velocity, (vec2){ 0.0, 0.0 });
 	self_body->is_static = false;
-	self_body->solve_layer     = 0x00;
-	self_body->solve_mask      = 0x02;
-	self_body->collision_layer = 0x00;
-	self_body->collision_mask  = 0x03;
+	self_body->solve_layer     = -1;
+	self_body->solve_mask      = PHX_LAYER_MAP_BIT | PHX_LAYER_ENTITIES_BIT;
+	self_body->collision_layer = PHX_LAYER_ENTITIES;
+	self_body->collision_mask  = PHX_LAYER_ENTITIES_BIT | PHX_LAYER_MAP_BIT;
 	self_body->user_data = make_id_descr(ID_TYPE_ENTITY, self_id);
 
 	self_sprite->type = SPRITE_ENTITIES;

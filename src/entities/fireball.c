@@ -26,10 +26,10 @@ ent_fireball_new(EntityID caster, vec2 position, vec2 vel)
 	SELF_BODY->half_size[0] = 0.5;
 	SELF_BODY->half_size[1] = 0.5;
 	SELF_BODY->is_static = false;
-	SELF_BODY->solve_layer = 0x00;
-	SELF_BODY->solve_mask  = 0x00;
-	SELF_BODY->collision_layer = 0x00;
-	SELF_BODY->collision_mask  = 0x03;
+	SELF_BODY->solve_layer = -1;
+	SELF_BODY->solve_mask  = 0;
+	SELF_BODY->collision_layer = -1;
+	SELF_BODY->collision_mask  = PHX_LAYER_MAP_BIT | PHX_LAYER_ENTITIES_BIT;
 	SELF_BODY->user_data = make_id_descr(ID_TYPE_ENTITY, self);
 
 	SELF_SPRITE->type = SPRITE_ENTITIES;
@@ -65,18 +65,17 @@ ENTITY_FIREBALL_update(EntityID self, float delta)
 			ent_id = id(phx_data(who)->user_data);
 			if(ent_type(ent_id) == ENTITY_PLAYER) 
 				break;
-			
 			mob = ent_component(ent_id, ENTITY_COMP_MOB);
 			if(mob) {
 				ent_del(self);
 				mob->health += SELF->damage.damage;	
 				ent_damage_number(SELF_BODY->position, SELF->damage.damage);
 			}
-			
 			break;
 		case ID_TYPE_NULL:
 			ent_del(self);
 			break;
+
 		default:
 			do {} while(0);
 		}

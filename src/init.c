@@ -85,6 +85,7 @@ main(int argc, char *argv[])
 		printf("SDL_GL_CreateContext() failed\n");
 		return 0;
 	}
+	SDL_GL_SetSwapInterval(1);
 	SDL_GL_MakeCurrent(GLOBAL.window, GLOBAL.glctx);
 	gladLoadGLES2(load_proc);
 	printf("OpenGL Version: %s\n", glGetString(GL_VERSION));
@@ -102,8 +103,6 @@ main(int argc, char *argv[])
 		SDL_Event event;
 		int w, h;
 
-		Uint64 curr_time = SDL_GetPerformanceCounter();
-		float delta = (float)(curr_time - prev_time) / SDL_GetPerformanceFrequency();
 
 		while(SDL_PollEvent(&event)) {
 			switch(event.type) {
@@ -135,11 +134,14 @@ main(int argc, char *argv[])
 			}
 		}
 
+		Uint64 curr_time = SDL_GetPerformanceCounter();
+		float delta = (float)(curr_time - prev_time) / SDL_GetPerformanceFrequency();
 		prev_time = curr_time;
+
 		state_vtable[current_state].update(delta);
+		gfx_scene_update(delta);
 		phx_update(delta);
 		ent_update(delta);
-		gfx_scene_update(delta);
 
 		SDL_GetWindowSize(GLOBAL.window, &w, &h);
 
@@ -161,7 +163,6 @@ main(int argc, char *argv[])
 		ui_draw();
 
 		SDL_GL_SwapWindow(GLOBAL.window);
-		
 		if(need_change) {
 			state_vtable[current_state].end();
 			current_state = next_state;

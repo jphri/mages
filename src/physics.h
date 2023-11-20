@@ -1,8 +1,28 @@
 #ifndef PHYSICS_H
 #define PHYSICS_H
 
+#include <stdbool.h>
+
 #include "vecmath.h"
 #include "id.h"
+
+#define PHX_LAYERS \
+	PHX_LAYER(MAP) \
+	PHX_LAYER(ENTITIES)
+
+typedef enum {
+	#define PHX_LAYER(LAYER_NAME) \
+		PHX_LAYER_##LAYER_NAME,
+	PHX_LAYERS
+	#undef PHX_LAYER
+} PhxLayers;
+
+enum {
+	#define PHX_LAYER(LAYER_NAME) \
+		PHX_LAYER_##LAYER_NAME##_BIT = (1 << PHX_LAYER_##LAYER_NAME),
+	PHX_LAYERS
+	#undef PHX_LAYER
+};
 
 typedef struct {
 	vec2 position;

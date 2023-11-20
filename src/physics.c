@@ -21,7 +21,6 @@ typedef struct {
 
 static bool body_check_collision(BodyID self, BodyID target, Hit *hit);
 static void update_body(BodyID body, float delta);
-
 static ArrayBuffer hit_info_arena;
 
 #define SYS_ID_TYPE   BodyID
@@ -110,7 +109,7 @@ update_body(BodyID self, float delta)
 	#define SELF phx_data(self)
 	vec2_add_scaled(SELF->position, SELF->position, SELF->velocity, delta);
 
-	unsigned int info_start = arrbuf_length(&hit_info_arena, sizeof(HitInfo));
+	_sys_node(self)->hit_info_start   = arrbuf_length(&hit_info_arena, sizeof(HitInfo));
 	for(BodyID target_id = _sys_list; target_id; target_id = _sys_node(target_id)->next) {
 		Hit hit;
 
@@ -128,9 +127,7 @@ update_body(BodyID self, float delta)
 			info->id = target_id;
 		}
 	}
-	unsigned int info_end = arrbuf_length(&hit_info_arena, sizeof(HitInfo));
-	_sys_node(self)->hit_info_start = info_start;
-	_sys_node(self)->hit_info_end   = info_end;
+	_sys_node(self)->hit_info_end   = arrbuf_length(&hit_info_arena, sizeof(HitInfo));
 
 	#undef SELF
 }

@@ -9,6 +9,8 @@
 #error "SYS_NODE_TYPE not defined"
 #endif
 
+#include "util.h"
+
 static void _sys_int_cleanup(SYS_ID_TYPE id);
 
 static ArrayBuffer _sys_buffer;
@@ -77,6 +79,7 @@ static inline SYS_ID_TYPE _sys_new()
 		SYS_NODE_TYPE *ptr = arrbuf_newptr(&_sys_buffer, sizeof(SYS_NODE_TYPE));
 		n = (ptr - (SYS_NODE_TYPE*)_sys_buffer.data) + 1;
 	}
+	memset(_sys_node(n), 0, sizeof(SYS_NODE_TYPE));
 	_sys_insert_list(n);
 	_sys_node(n)->dead = false;
 	
