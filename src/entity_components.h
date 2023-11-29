@@ -13,8 +13,38 @@ static inline void __process_mob(EntityID self_id)
 }
 #endif
 
+#ifdef BODY_COMPONENT
+static inline void __process_init_body(EntityID self_id)
+{
+	BODY_COMPONENT.body = phx_new();
+	BODY_COMPONENT.pre_solve = NULL;
+}
+
+static inline void __process_del_body(EntityID self_id)
+{
+	phx_del(BODY_COMPONENT.body);
+}
+#endif
+
+static inline void process_init_components(EntityID self_id)
+{
+	(void)self_id;
+	#ifdef BODY_COMPONENT
+	__process_init_body(self_id);
+	#endif
+}
+
+static inline void process_del_components(EntityID self_id) 
+{
+	(void)self_id;
+	#ifdef BODY_COMPONENT 
+	__process_del_body(self_id);
+	#endif
+}
+
 static inline void process_components(EntityID self_id)
 {
+	(void)self_id;
 	#ifdef MOB_COMPONENT
 	__process_mob(self_id);
 	#endif

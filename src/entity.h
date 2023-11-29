@@ -2,17 +2,22 @@
 #define ENTITY_H
 
 #include "id.h"
+#include "vecmath.h"
+#include "math.h"
 #include <stdbool.h>
+#include "physics.h"
 
 #define ENTITY_LIST             \
 	MAC_ENTITY(ENTITY_PLAYER)   \
 	MAC_ENTITY(ENTITY_DUMMY)    \
 	MAC_ENTITY(ENTITY_FIREBALL) \
-	MAC_ENTITY(ENTITY_DAMAGE_NUMBER)
+	MAC_ENTITY(ENTITY_DAMAGE_NUMBER) \
+	MAC_ENTITY(ENTITY_PARTICLE)
 
 typedef enum {
 	ENTITY_COMP_MOB,
 	ENTITY_COMP_DAMAGE,
+	ENTITY_COMP_BODY,
 } EntityComponent;
 
 typedef enum {
@@ -35,27 +40,38 @@ typedef struct {
 	float damage;
 } EntityDamage;
 
-ENTITY_STRUCT(ENTITY_PLAYER) {
+typedef struct {
 	BodyID body;
+	void (*pre_solve)(EntityID self, BodyID other, Contact *contact);
+} EntityBody;
+
+ENTITY_STRUCT(ENTITY_PARTICLE) {
+	SceneSpriteID sprite;
+	EntityBody body;
+	float time;
+};
+
+ENTITY_STRUCT(ENTITY_PLAYER) {
 	SceneSpriteID sprite;
 	int fired;
 	bool moving;
 	EntityMob mob;
+	EntityBody body;
 };
 
 ENTITY_STRUCT(ENTITY_DUMMY) {
-	BodyID body;
 	SceneSpriteID sprite;
 	EntityMob mob;
+	EntityBody body;
 };
 
 ENTITY_STRUCT(ENTITY_FIREBALL) {
-	BodyID body;
 	SceneSpriteID sprite;
 	EntityID caster;
 	float time;
 	
 	EntityDamage damage;
+	EntityBody body;
 };
 
 ENTITY_STRUCT(ENTITY_DAMAGE_NUMBER) {
@@ -87,6 +103,9 @@ EntityID ent_player_new(vec2 position);
 EntityID ent_fireball_new(EntityID caster, vec2 position, vec2 vel);
 EntityID ent_dummy_new(vec2 position);
 EntityID ent_damage_number(vec2 position, float damage);
+
+EntityID ent_particle_new(vec2 position, vec2 velocity, vec4 color, float time);
+void     ent_shot_particles(vec2 position, vec2 velocity, vec4 color, float time, int count);
 
 #define ENT_DATA(NAME, ID) ((NAME##_struct*)ent_data(ID))
 

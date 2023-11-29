@@ -28,6 +28,8 @@ edit_button_cbk(void *ptr)
 	gstate_set(GAME_STATE_LEVEL_EDIT);
 }
 
+static void pre_solve(Contact *contact);
+
 void
 GAME_STATE_LEVEL_init()
 {
@@ -59,13 +61,15 @@ GAME_STATE_LEVEL_init()
 	map_set_phx_scene(map);
 	
 	GLOBAL.player_id = ent_player_new((vec2){ 15.0, 15.0 });
-	ent_dummy_new((vec2){ 25.0, 15.0 });
+	ent_dummy_new((vec2){ 25, 15 });
 	
 	SceneTextID text = gfx_scene_new_obj(0, SCENE_OBJECT_TEXT);
 	vec4_dup(gfx_scene_text(text)->color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 	vec2_dup(gfx_scene_text(text)->position, (vec2){ 0.0, 0.0 });
 	vec2_dup(gfx_scene_text(text)->char_size, (vec2){ 0.35, 0.35 });
 	gfx_scene_text(text)->text_ptr = text_test;
+
+	phx_set_pre_solve(pre_solve);
 }
 
 void
@@ -79,7 +83,7 @@ GAME_STATE_LEVEL_render()
 {
 	vec2 offset;
 	#define PLAYER ENT_DATA(ENTITY_PLAYER, GLOBAL.player_id)
-	#define PLAYER_BODY phx_data(PLAYER->body)
+	#define PLAYER_BODY phx_data(PLAYER->body.body)
 	if(GLOBAL.player_id) {
 		vec2_add_scaled(offset, (vec2){ 0.0, 0.0 }, PLAYER_BODY->position, -32);
 		vec2_add(offset, offset, (vec2){ 400, 300 });
@@ -107,3 +111,26 @@ GAME_STATE_LEVEL_keyboard(SDL_Event *event)
 		gstate_set(GAME_STATE_LEVEL_EDIT);
 }
 void GAME_STATE_LEVEL_mouse_wheel(SDL_Event *event) { (void)event; } 
+
+static void process_entity_collision(EntityID id, BodyID other, Contact *contact)
+{
+	EntityBody *ent_b = ent_component(id, ENTITY_COMP_BODY);
+	if(ent_b && ent_b->pre_solve)
+		ent_b->pre_solve(id, other, contact);
+}
+
+void
+pre_solve(Contact *contact)
+{
+	Body* b1 = phx_data(contact->body1);
+	Body* b2 = phx_data(contact->body2);
+
+	unsigned int id1 = b1->user_data;
+	unsigned int id2 = b2->user_data;
+
+	if(id_type(id1) == ID_TYPE_ENTITY)
+		process_entity_collision(id(id1), contact->body2, contact);
+
+	if(id_type(id2) == ID_TYPE_ENTITY)
+		process_entity_collision(id(id2), contact->body1, contact);
+}

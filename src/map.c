@@ -133,13 +133,15 @@ map_set_phx_scene(Map *map)
 		vec2_dup(phx_data(body)->position,  c->position);
 		vec2_dup(phx_data(body)->half_size, c->half_size);
 		
+		phx_data(body)->collision_layer = PHX_LAYER_MAP_BIT;
+		phx_data(body)->solve_layer     = PHX_LAYER_MAP_BIT;
 		phx_data(body)->collision_mask  = 0;
 		phx_data(body)->solve_mask      = 0;
-		phx_data(body)->collision_layer = PHX_LAYER_MAP;
-		phx_data(body)->solve_layer     = PHX_LAYER_MAP;
 		phx_data(body)->user_data       = 0;
 		phx_data(body)->no_update       = true;
 		phx_data(body)->is_static       = true;
+		phx_data(body)->mass            = 0.0;
+		phx_data(body)->restitution     = 0.0;
 	}
 }
 

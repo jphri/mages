@@ -6,9 +6,12 @@
 #include "vecmath.h"
 #include "id.h"
 
+#define GRID_TILE_SIZE 16
+
 #define PHX_LAYERS \
 	PHX_LAYER(MAP) \
-	PHX_LAYER(ENTITIES)
+	PHX_LAYER(ENTITIES) \
+	PHX_LAYER(PROJECTILE) 
 
 typedef enum {
 	#define PHX_LAYER(LAYER_NAME) \
@@ -25,9 +28,24 @@ enum {
 };
 
 typedef struct {
+	bool active;
+	BodyID body1, body2;
+	vec2 normal, pierce;
+} Contact;
+
+typedef struct {
+	BodyID body1, body2;
+	vec2 normal, pierce;
+} SolveInfo;
+
+typedef struct {
+	vec2 accel;
 	vec2 position;
 	vec2 half_size;
 	vec2 velocity;
+
+	float mass, restitution;
+	float damping;
 
 	unsigned int solve_layer;
 	unsigned long long int solve_mask;
@@ -38,22 +56,17 @@ typedef struct {
 	bool is_static, no_update;
 } Body;
 
-typedef struct {
-	BodyID id;
-	vec2 normal;
-	vec2 pierce;
-} HitInfo;
-
 void phx_init();
 void phx_end();
 void phx_reset();
+
+void phx_set_grid_size(int w, int h);
+void phx_set_pre_solve(void (*)(Contact *contact));
 
 BodyID phx_new();
 void   phx_del(BodyID self);
 void   phx_update(float delta);
 void   phx_draw();
 Body  *phx_data(BodyID self);
-
-HitInfo *phx_hits(BodyID self_id, unsigned int *count);
 
 #endif

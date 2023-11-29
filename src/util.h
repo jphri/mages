@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <stddef.h>
 
 typedef struct ArrayBuffer ArrayBuffer;
@@ -11,6 +12,7 @@ typedef struct StrView StrView;
 struct ArrayBuffer {
 	size_t size;
 	size_t reserved;
+	bool initialized;
 	void *data;
 };
 

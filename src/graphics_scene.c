@@ -138,7 +138,7 @@ gfx_scene_draw()
 
 			switch(_sys_node(object_id)->type) {
 			case SCENE_OBJECT_SPRITE:
-				ss->sprite.type = TEXTURE_ENTITIES;
+				ss->sprite.type = ss->type;
 				ss->sprite.clip_region[0] = ss->sprite.position[0];
 				ss->sprite.clip_region[1] = ss->sprite.position[1];
 				ss->sprite.clip_region[2] = 100000.0;
@@ -157,7 +157,7 @@ gfx_scene_draw()
 			case SCENE_OBJECT_ANIMATED_SPRITE:
 				frame = calculate_frame_animation(as);
 				vec2_add(as->sprite.sprite_id, as->sprite_id, animations[as->animation].frames[frame]);
-				as->sprite.type = TEXTURE_ENTITIES;
+				as->sprite.type = ss->type;
 				as->sprite.clip_region[0] = as->sprite.position[0];
 				as->sprite.clip_region[1] = as->sprite.position[1];
 				as->sprite.clip_region[2] = 100000.0;

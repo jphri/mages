@@ -3,14 +3,20 @@
 #include <string.h>
 #include <stdarg.h>
 #include <ctype.h>
+#include <assert.h>
 
 #include "util.h"
 static void *readline_proc(FILE *fp, ArrayBuffer *buffer);
+static inline void check_buffer_initialized(ArrayBuffer *buffer)
+{
+	assert(buffer->initialized && "You didn't initialize the buffer, you idiot!");
+}
 
 void
 arrbuf_init(ArrayBuffer *buffer) 
 {
 	buffer->size = 0;
+	buffer->initialized = true;
 	buffer->reserved = 1;
 	buffer->data = malloc(1);
 }
@@ -19,6 +25,7 @@ void
 arrbuf_init_mem(ArrayBuffer *buffer, size_t size, char data[size])
 {
 	buffer->size = 0;
+	buffer->initialized = true;
 	buffer->reserved = size;
 	buffer->data = data;
 }
@@ -27,6 +34,7 @@ void
 arrbuf_reserve(ArrayBuffer *buffer, size_t size)
 {
 	int need_change = 0;
+	check_buffer_initialized(buffer);
 
 	while(buffer->reserved < buffer->size + size) {
 		buffer->reserved *= 2;
@@ -40,6 +48,7 @@ arrbuf_reserve(ArrayBuffer *buffer, size_t size)
 void
 arrbuf_insert(ArrayBuffer *buffer, size_t element_size, const void *data)
 {
+	check_buffer_initialized(buffer);
 	void *ptr = arrbuf_newptr(buffer, element_size);
 	memcpy(ptr, data, element_size);
 }
@@ -47,6 +56,7 @@ arrbuf_insert(ArrayBuffer *buffer, size_t element_size, const void *data)
 void
 arrbuf_insert_at(ArrayBuffer *buffer, size_t size, const void *data, size_t pos)
 {
+	check_buffer_initialized(buffer);
 	void *ptr = arrbuf_newptr_at(buffer, size, pos);
 	memcpy(ptr, data, size);
 }
@@ -54,6 +64,7 @@ arrbuf_insert_at(ArrayBuffer *buffer, size_t size, const void *data, size_t pos)
 void
 arrbuf_remove(ArrayBuffer *buffer, size_t size, size_t pos) 
 {
+	check_buffer_initialized(buffer);
 	memmove((unsigned char *)buffer->data + pos, (unsigned char*)buffer->data + pos + size, buffer->size - pos - size);
 	buffer->size -= size;
 }
@@ -61,18 +72,21 @@ arrbuf_remove(ArrayBuffer *buffer, size_t size, size_t pos)
 size_t
 arrbuf_length(ArrayBuffer *buffer, size_t element_size)
 {
+	check_buffer_initialized(buffer);
 	return buffer->size / element_size;
 }
 
 void
 arrbuf_clear(ArrayBuffer *buffer) 
 {
+	check_buffer_initialized(buffer);
 	buffer->size = 0;
 }
 
 void *
 arrbuf_peektop(ArrayBuffer *buffer, size_t element_size)
 {
+	check_buffer_initialized(buffer);
 	if(buffer->size < element_size)
 		return NULL;
 	return (unsigned char*)buffer->data + (buffer->size - element_size);
@@ -81,6 +95,7 @@ arrbuf_peektop(ArrayBuffer *buffer, size_t element_size)
 void
 arrbuf_poptop(ArrayBuffer *buffer, size_t element_size)
 {
+	check_buffer_initialized(buffer);
 	if(element_size > buffer->size)
 		buffer->size = 0;
 	else
@@ -91,6 +106,7 @@ void
 arrbuf_free(ArrayBuffer *buffer)
 {
 	free(buffer->data);
+	buffer->initialized = false;
 }
 
 void *
@@ -98,6 +114,7 @@ arrbuf_newptr(ArrayBuffer *buffer, size_t size)
 {
 	void *ptr;
 
+	check_buffer_initialized(buffer);
 	arrbuf_reserve(buffer, size);
 	ptr = (unsigned char*)buffer->data + buffer->size;
 	buffer->size += size;
@@ -110,6 +127,7 @@ arrbuf_newptr_at(ArrayBuffer *buffer, size_t size, size_t pos)
 {
 	void *ptr;
 
+	check_buffer_initialized(buffer);
 	arrbuf_reserve(buffer, size);
 	memmove((unsigned char *)buffer->data + pos + size, (unsigned char*)buffer->data + pos, buffer->size - pos);
 	ptr = (unsigned char*)buffer->data + pos;
@@ -124,6 +142,7 @@ arrbuf_printf(ArrayBuffer *buffer, const char *fmt, ...)
 	va_list va;
 	size_t print_size;
 
+	check_buffer_initialized(buffer);
 	va_start(va, fmt);
 	print_size = vsnprintf(NULL, 0, fmt, va);
 	va_end(va);
@@ -372,3 +391,5 @@ _erealloc(void *ptr, size_t size, const char *file, int line)
 	}
     return ptr;								   
 }
+
+
