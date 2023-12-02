@@ -16,7 +16,7 @@
 
 #define self_body phx_data(BODY_COMPONENT.body)
 
-#define SPEED 200
+#define SPEED 50
 
 #include "../entity_components.h"
 

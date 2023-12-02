@@ -10,6 +10,8 @@
 
 #define PHYSICS_HZ 480
 #define PHYSICS_TIME (1.0 / PHYSICS_HZ)
+#define SCALE_FACTOR   (1)
+#define DAMPING_FACTOR (1)
 
 typedef unsigned int BodyGridNodeID;
 
@@ -117,7 +119,6 @@ phx_data(BodyID id)
 void
 phx_update(float delta) 
 {
-
 	accumulator_time += delta;
 	while(accumulator_time > PHYSICS_TIME) {
 		_sys_cleanup();
@@ -133,10 +134,12 @@ phx_update(float delta)
 			}
 		}
 		for(BodyID body = _sys_list; body; body = _sys_node(body)->next)
-			update_body(body, PHYSICS_TIME);
+			update_body(body, PHYSICS_TIME * SCALE_FACTOR);
 
 		accumulator_time -= PHYSICS_TIME;
 	}
+	for(BodyID body = _sys_list; body; body = _sys_node(body)->next)
+		vec2_dup(phx_data(body)->accel, (vec2){ 0.0, 0.0 });
 }
 
 void
@@ -165,13 +168,12 @@ void
 update_body(BodyID self, float delta) 
 {
 	#define SELF phx_data(self)
+	vec2 accel;
 
+	vec2_add_scaled(accel, SELF->accel, SELF->velocity, -SELF->damping * DAMPING_FACTOR * SCALE_FACTOR);
+	vec2_add_scaled(SELF->velocity, SELF->velocity, accel, delta);
 	vec2_add_scaled(SELF->position, SELF->position, SELF->velocity, delta);
-	vec2_add_scaled(SELF->accel, SELF->accel, SELF->velocity, -SELF->damping);
-	vec2_add_scaled(SELF->velocity, SELF->velocity, SELF->accel, delta);
 	(void)body_grid_pos;
-
-	vec2_dup(SELF->accel, (vec2){ 0.0, 0.0 });
 
 	#undef SELF
 }
