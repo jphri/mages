@@ -129,13 +129,13 @@ static UIElementVTable ui_vtables[] = {
 static UIObject hot, active;
 
 void 
-ui_init()
+ui_init(void)
 {
 	_sys_init();
 }
 
 void
-ui_reset()
+ui_reset(void)
 {
 	_sys_reset();
 	hot = 0;
@@ -143,13 +143,13 @@ ui_reset()
 }
 
 void
-ui_terminate()
+ui_terminate(void)
 {
 	_sys_deinit();
 }
 
 bool
-ui_is_active()
+ui_is_active(void)
 {
 	return hot || active;
 }
@@ -186,7 +186,7 @@ ui_del_object(UIObject object)
 }
 
 void
-ui_draw() 
+ui_draw(void) 
 {
 	gfx_draw_begin(NULL);
 	for(UIObject child = _sys_list; child; child = _sys_node(child)->next)
@@ -395,7 +395,7 @@ ui_mouse_button(UIMouseButton button, bool state)
 }
 
 void
-ui_cleanup()
+ui_cleanup(void)
 {
 	_sys_cleanup();
 }
@@ -449,7 +449,7 @@ button_mouse_button(UIObject object, UIMouseButton button, bool state)
 }
 
 void
-ui_order()
+ui_order(void)
 {
 	for(UIObject child = _sys_list; child; child = _sys_node(child)->next)
 		process_order(child);

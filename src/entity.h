@@ -1,7 +1,7 @@
 #ifndef ENTITY_H
 #define ENTITY_H
 
-#include "id.h"
+#include "game_objects.h"
 #include "vecmath.h"
 #include "math.h"
 #include <stdbool.h>
@@ -81,11 +81,11 @@ ENTITY_STRUCT(ENTITY_DAMAGE_NUMBER) {
 	unsigned int text_id;
 };
 
-void ent_init();
-void ent_end();
+void ent_init(void);
+void ent_end(void);
 void ent_update(float delta);
-void ent_render();
-void ent_reset();
+void ent_render(void);
+void ent_reset(void);
 
 EntityID   ent_new(EntityType type);
 void       ent_del(EntityID id);
@@ -106,6 +106,8 @@ EntityID ent_damage_number(vec2 position, float damage);
 
 EntityID ent_particle_new(vec2 position, vec2 velocity, vec4 color, float time);
 void     ent_shot_particles(vec2 position, vec2 velocity, vec4 color, float time, int count);
+
+GameObjectRegistry ent_object_descr(void);
 
 #define ENT_DATA(NAME, ID) ((NAME##_struct*)ent_data(ID))
 

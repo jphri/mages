@@ -19,10 +19,10 @@ typedef enum {
 } GameState;
 
 #define GAME_ST_DEF(STATE_NAME) \
-	void STATE_NAME##_init(), \
-		 STATE_NAME##_end(),  \
+	void STATE_NAME##_init(void), \
+		 STATE_NAME##_end(void),  \
 	     STATE_NAME##_update(float delta), \
-		 STATE_NAME##_render(),  \
+		 STATE_NAME##_render(void),  \
 		 STATE_NAME##_keyboard(SDL_Event *event), \
 		 STATE_NAME##_mouse_move(SDL_Event *event), \
 		 STATE_NAME##_mouse_button(SDL_Event *event), \

@@ -161,8 +161,8 @@ MATH_FUNC void affine2d_rotate(mat4 r, float angle)
 		        cosv = cosf(angle);
 
 	mat4 trans = {
-		{ cosv,  sinv, 0, 0 },
-		{ -sinv, cosv, 0, 0 },
+		{ cosv, -sinv, 0, 0 },
+		{ sinv, cosv, 0, 0 },
 		{ 0,        0, 1, 0 },
 		{ 0,        0, 0, 1 }
 	};

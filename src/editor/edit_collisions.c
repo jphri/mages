@@ -152,7 +152,7 @@ collision_wheel(SDL_Event *event)
 }
 
 void
-collision_render()
+collision_render(void)
 {
 	gfx_set_camera(offset, (vec2){ zoom, zoom });
 

@@ -1,4 +1,9 @@
+#ifndef UI_H
+#define UI_H
+
 #include "vecmath.h"
+
+#include <stdbool.h>
 
 typedef enum {
 	UI_NULL,
@@ -22,17 +27,17 @@ typedef enum {
 
 typedef unsigned int UIObject;
 
-void ui_init();
-void ui_reset();
-void ui_terminate();
-bool ui_is_active();
+void ui_init(void);
+void ui_reset(void);
+void ui_terminate(void);
+bool ui_is_active(void);
 
 UIObject ui_new_object(UIObject parent, UIObjectType object_type);
 void     ui_del_object(UIObject object);
 
 void ui_obj_set_position(UIObject object, vec2 position);
 void ui_obj_set_size(UIObject object, vec2 size);
-void ui_draw();
+void ui_draw(void);
 
 void ui_button_set_label(UIObject object, const char *label);
 void ui_button_set_label_border(UIObject object, vec2 border);
@@ -49,7 +54,9 @@ void ui_window_set_bg(UIObject object, vec4 color);
 void ui_window_set_border(UIObject object, vec4 color);
 void ui_window_set_border_size(UIObject object, vec2 size);
 
-void ui_order();
+void ui_order(void);
 void ui_mouse_motion(float x, float y);
 void ui_mouse_button(UIMouseButton button, bool state);
-void ui_cleanup();
+void ui_cleanup(void);
+
+#endif

@@ -2,7 +2,7 @@
 #define GLOBAL_H
 
 #include <SDL2/SDL.h>
-#include "id.h"
+#include "game_objects.h"
 
 typedef struct {
 	SDL_Renderer *renderer;

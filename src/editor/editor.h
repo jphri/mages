@@ -1,6 +1,10 @@
 #ifndef EDITOR_H
 #define EDITOR_H
 
+#include "../map.h"
+#include "../graphics.h"
+#include <SDL2/SDL.h>
+
 typedef enum {
 	MOUSE_NOTHING,
 	MOUSE_DRAWING,
@@ -16,7 +20,7 @@ typedef enum {
 } EditorState;
 
 typedef struct {
-	void (*render)();
+	void (*render)(void);
 	void (*wheel)(SDL_Event *event);
 	void (*mouse_button)(SDL_Event *event);
 	void (*mouse_motion)(SDL_Event *event);
@@ -33,21 +37,21 @@ typedef struct {
 void export_map(const char *map_file);
 void load_map(const char *map_file);
 
-void edit_render();
+void edit_render(void);
 void edit_keyboard(SDL_Event *event);
 void edit_mouse_motion(SDL_Event *event);
 void edit_mouse_button(SDL_Event *event);
 void edit_keyboard(SDL_Event *event);
 void edit_wheel(SDL_Event *event);
 
-void select_tile_render();
+void select_tile_render(void);
 void select_tile_keyboard(SDL_Event *event);
 void select_tile_mouse_motion(SDL_Event *event);
 void select_tile_mouse_button(SDL_Event *event);
 void select_tile_keyboard(SDL_Event *event);
 void select_tile_wheel(SDL_Event *event);
 
-void collision_render();
+void collision_render(void);
 void collision_keyboard(SDL_Event *event);
 void collision_mouse_motion(SDL_Event *event);
 void collision_mouse_button(SDL_Event *event);

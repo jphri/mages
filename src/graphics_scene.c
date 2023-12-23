@@ -5,28 +5,26 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "game_objects.h"
 #include "vecmath.h"
 #include "util.h"
 #include "glutil.h"
 #include "graphics.h"
 
 typedef struct {
-	SceneObjectID next, prev;
-	SceneObjectID next_layer, prev_layer;
-	SceneObjectType type;
-	int layer;
-	bool dead;
-	
 	union {
 		SceneSprite sprite;
 		SceneText   text;
 		SceneAnimatedSprite anim;
 	} data;
-} SceneObjectNode;
+} SceneObjectData;
 
-#define SYS_ID_TYPE   SceneObjectID
-#define SYS_NODE_TYPE SceneObjectNode
-#include "system.h"
+typedef struct {
+	SceneObjectID next, prev;
+	SceneObjectID next_layer, prev_layer;
+	SceneObjectType type;
+	int layer;
+} SceneObjectPrivData;
 
 typedef struct {
 	int frame_count;
@@ -56,34 +54,37 @@ static SceneObjectID   layer_objects[SCENE_LAYERS];
 static GraphicsTileMap layer_tmaps[SCENE_LAYERS];
 static uint64_t        layer_tmap_set;
 
+#define PRIVDATA(ID) ((SceneObjectPrivData*)obj_privdata(ID))
+#define OBJECT_DATA(ID) ((SceneObjectData*)obj_data(ID))
+
 static inline void insert_object_layer(SceneObjectID id) 
 {
-	int layer_id = _sys_node(id)->layer;
+	int layer_id = PRIVDATA(id)->layer;
 	
-	_sys_node(id)->next_layer = layer_objects[layer_id];
-	_sys_node(id)->prev_layer = 0;
+	PRIVDATA(id)->next_layer = layer_objects[layer_id];
+	PRIVDATA(id)->prev_layer = 0;
 
 	if(layer_objects[layer_id])
-		_sys_node(layer_objects[layer_id])->prev_layer = id;
+		PRIVDATA(layer_objects[layer_id])->prev_layer = id;
 	layer_objects[layer_id] = id;
 }
 
 static inline void remove_object_layer(SceneObjectID id) 
 {
-	SceneObjectID next = _sys_node(id)->next_layer,
-				  prev = _sys_node(id)->prev_layer;
-	int lay            = _sys_node(id)->layer;
+	SceneObjectID next = PRIVDATA(id)->next_layer,
+				  prev = PRIVDATA(id)->prev_layer;
+	int lay            = PRIVDATA(id)->layer;
 
-	if(next) _sys_node(next)->prev_layer = _sys_node(id)->prev_layer;
-	if(prev) _sys_node(prev)->next_layer = _sys_node(id)->next_layer;
+	if(next) PRIVDATA(next)->prev_layer = PRIVDATA(id)->prev_layer;
+	if(prev) PRIVDATA(prev)->next_layer = PRIVDATA(id)->next_layer;
 	if(layer_objects[lay] == id) layer_objects[lay] = next;
 }
 
 static SceneObjectID new_object(SceneObjectType type, int layer) 
 {
-	SceneObjectID id = _sys_new();
-	_sys_node(id)->type = type;
-	_sys_node(id)->layer = layer;
+	SceneObjectID id = obj_new(GAME_OBJECT_TYPE_GFX_SCENE);
+	PRIVDATA(id)->type = type;
+	PRIVDATA(id)->layer = layer;
 	insert_object_layer(id);
 
 	return id;
@@ -91,42 +92,34 @@ static SceneObjectID new_object(SceneObjectType type, int layer)
 
 static void del_object(SceneObjectID id) 
 {
-	_sys_del(id);
+	obj_del(id);
 }
 
-static void _sys_int_cleanup(SceneObjectID id) 
+static void cleanup_callback(SceneObjectID id) 
 {
 	remove_object_layer(id);
 }
 
 void
-gfx_scene_setup()
+gfx_scene_setup(void)
 {
-	_sys_init();
 	memset(layer_objects, 0, sizeof(layer_objects));
 }
 
 void
-gfx_scene_cleanup()
-{
-	_sys_deinit();
-}
-
-void
-gfx_scene_reset()
+gfx_scene_reset(void)
 {
 	layer_tmap_set = 0;
 	for(int i = 0; i < SCENE_LAYERS; i++) {
 		layer_objects[i] = 0;
 		gfx_tmap_free(&layer_tmaps[i]);
 	}
-	_sys_reset();
+	obj_reset(GAME_OBJECT_TYPE_GFX_SCENE);
 }
 
 void 
-gfx_scene_draw()
+gfx_scene_draw(void)
 {
-	_sys_cleanup();
 	for(int i = 0; i < SCENE_LAYERS; i++) {
 		SceneSpriteID object_id = layer_objects[i];
 		gfx_draw_begin(layer_tmap_set & (1 << i) ? &layer_tmaps[i] : NULL);
@@ -136,7 +129,7 @@ gfx_scene_draw()
 			SceneAnimatedSprite *as = gfx_scene_animspr(object_id);
 			int frame;
 
-			switch(_sys_node(object_id)->type) {
+			switch(PRIVDATA(object_id)->type) {
 			case SCENE_OBJECT_SPRITE:
 				ss->sprite.type = ss->type;
 				ss->sprite.clip_region[0] = ss->sprite.position[0];
@@ -152,7 +145,7 @@ gfx_scene_draw()
 						tt->color,
 						(vec4){ 0, 0, 100000, 100000 },
 						"%s",
-						tt->text_ptr);
+						to_ptr(tt->text_ptr));
 				break;
 			case SCENE_OBJECT_ANIMATED_SPRITE:
 				frame = calculate_frame_animation(as);
@@ -167,7 +160,7 @@ gfx_scene_draw()
 			default: 
 				assert(0 && "invalid object type");
 			}
-			object_id = _sys_node(object_id)->next_layer;
+			object_id = PRIVDATA(object_id)->next_layer;
 		}
 		gfx_draw_end();
 	}
@@ -194,14 +187,14 @@ gfx_scene_update(float delta)
 		while(object_id) {
 			SceneAnimatedSprite *as = gfx_scene_animspr(object_id);
 
-			switch(_sys_node(object_id)->type) {
+			switch(PRIVDATA(object_id)->type) {
 			case SCENE_OBJECT_ANIMATED_SPRITE:
 				as->time += delta;
 			default:
 				do {} while(0);
 			}
 
-			object_id = _sys_node(object_id)->next_layer;
+			object_id = PRIVDATA(object_id)->next_layer;
 		}
 	}
 }
@@ -209,19 +202,19 @@ gfx_scene_update(float delta)
 SceneSprite *
 gfx_scene_spr(SceneSpriteID spr_id)
 {
-	return &_sys_node(spr_id)->data.sprite;
+	return &OBJECT_DATA(spr_id)->data.sprite;
 }
 
 SceneText *
 gfx_scene_text(SceneTextID text_id)
 {
-	return &_sys_node(text_id)->data.text;
+	return &OBJECT_DATA(text_id)->data.text;
 }
 
 SceneAnimatedSprite *
 gfx_scene_animspr(SceneAnimatedSpriteID text_id)
 {
-	return &_sys_node(text_id)->data.anim;
+	return &OBJECT_DATA(text_id)->data.anim;
 }
 
 void
@@ -231,4 +224,15 @@ gfx_scene_set_tilemap(int layer, TextureAtlas atlas, int w, int h, int *data)
 		gfx_tmap_free(&layer_tmaps[layer]);
 	layer_tmaps[layer] = gfx_tmap_new(atlas, w, h, data);
 	layer_tmap_set |= (1 << layer);
+}
+
+GameObjectRegistry
+gfx_scene_object_descr(void)
+{
+	return (GameObjectRegistry) {
+		.activated = true,
+		.clean_cbk = cleanup_callback,
+		.privdata_size = sizeof(SceneObjectPrivData),
+		.data_size = sizeof(SceneObjectData)
+	};
 }

@@ -4,6 +4,7 @@
 
 #include <SDL2/SDL.h>
 
+#include "game_objects.h"
 #include "global.h"
 #include "game_state.h"
 #include "ui.h"
@@ -16,10 +17,10 @@
 #include "map.h"
 
 typedef struct {
-	void (*init)();
-	void (*end)();
+	void (*init)(void);
+	void (*end)(void);
 	void (*update)(float delta); 
-	void (*render)();
+	void (*render)(void);
 	void (*keyboard)(SDL_Event *event);
 	void (*mouse_move)(SDL_Event *event);
 	void (*mouse_button)(SDL_Event *event);
@@ -90,6 +91,12 @@ main(int argc, char *argv[])
 	gladLoadGLES2(load_proc);
 	printf("OpenGL Version: %s\n", glGetString(GL_VERSION));
 
+	obj_init((GameObjectRegistrar){
+		[GAME_OBJECT_TYPE_BODY]      = phx_object_descr(),
+		[GAME_OBJECT_TYPE_ENTITY]    = ent_object_descr(),
+		[GAME_OBJECT_TYPE_GFX_SCENE] = gfx_scene_object_descr(),
+	});
+
 	gfx_init();
 	gfx_scene_setup();
 	phx_init();
@@ -103,6 +110,7 @@ main(int argc, char *argv[])
 		SDL_Event event;
 		int w, h;
 
+		obj_clean();
 
 		while(SDL_PollEvent(&event)) {
 			switch(event.type) {
@@ -146,13 +154,14 @@ main(int argc, char *argv[])
 		SDL_GetWindowSize(GLOBAL.window, &w, &h);
 
 		gfx_make_framebuffers(w, h);
-		gfx_clear_framebuffers();
-		gfx_setup_draw_framebuffers();
+		//gfx_setup_draw_framebuffers();
+		gfx_clear();
+		
 
 		gfx_camera_set_enabled(true);
 		gfx_scene_draw();
-		gfx_end_draw_framebuffers();
-		gfx_render_present();
+		//gfx_end_draw_framebuffers();
+		//gfx_render_present();
 
 		ent_render();
 		state_vtable[current_state].render();
@@ -177,7 +186,7 @@ end_loop:
 	phx_end();
 	ent_end();
 	gfx_end();
-	gfx_scene_cleanup();
+	obj_terminate();
 
 	SDL_DestroyRenderer(GLOBAL.renderer);
 	SDL_DestroyWindow(GLOBAL.window);

@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stb_image.h>
 
+#include "game_objects.h"
 #include "vecmath.h"
 #include "glutil.h"
 #include "util.h"
@@ -103,7 +104,7 @@ intrend_bind_attribs(ShaderProgram *shader)
 }
 
 static void   create_texture_buffer(int w, int h);
-static void   init_shaders();
+static void   init_shaders(void);
 static GLuint load_texture(const char *file, TextureFormat format);
 
 static TextureAtlasData load_texture_atlas(const char *file, int cols, int rows, TextureFormat format);
@@ -138,7 +139,7 @@ static GLuint sprite_buffer, sprite_vao, sprite_count;
 static mat4 ident_mat;
 
 void
-gfx_init()
+gfx_init(void)
 {
 	static SpriteVertex vertex_data[] = {
 		{ .position = { -1.0, -1.0 }, .texcoord = { 0.0, 0.0 }, },
@@ -229,7 +230,7 @@ gfx_init()
 }
 
 void
-gfx_end()
+gfx_end(void)
 {
 	glDeleteProgram(sprite_program.program);
 	glDeleteBuffers(1, (GLuint[]) {
@@ -334,26 +335,23 @@ gfx_make_framebuffers(int w, int h)
 }
 
 void
-gfx_clear_framebuffers()
+gfx_clear(void)
+{
+	glClearColor(0.2, 0.3, 0.7, 1.0);
+	glClear(GL_COLOR_BUFFER_BIT);
+}
+
+void
+gfx_setup_draw_framebuffers(void)
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, albedo_fbo);
 	glViewport(0, 0, screen_width / FBO_SCALE, screen_height / FBO_SCALE);
-	
-	glClearColor(0.2, 0.3, 0.7, 1.0);
-	glClear(GL_COLOR_BUFFER_BIT);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 void
-gfx_setup_draw_framebuffers()
-{
-	glBindFramebuffer(GL_FRAMEBUFFER, albedo_fbo);
-	glViewport(0, 0, screen_width / FBO_SCALE, screen_height / FBO_SCALE);
-}
-
-void
-gfx_end_draw_framebuffers()
+gfx_end_draw_framebuffers(void)
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glViewport(0, 0, screen_width, screen_height);
@@ -368,7 +366,7 @@ gfx_draw_begin(GraphicsTileMap *tmap)
 }
 
 void
-gfx_draw_end()
+gfx_draw_end(void)
 {
 	glBindBuffer(GL_UNIFORM_BUFFER, matrix_buffer);
 	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(projection), sizeof(view_matrix), 
@@ -417,13 +415,13 @@ gfx_begin_scissor(vec2 position, vec2 size)
 }
 
 void
-gfx_end_scissor()
+gfx_end_scissor(void)
 {
 	glDisable(GL_SCISSOR_TEST);
 }
 
 void
-gfx_render_present() 
+gfx_render_present(void) 
 {
 	draw_post(&post_clean);
 }
@@ -450,7 +448,7 @@ gfx_pixel_to_world(vec2 pixel, vec2 world_out)
 }
 
 void
-init_shaders()
+init_shaders(void)
 {
 	#define SHADER_PROGRAM(symbol, ...) \
 		intrend_link(&symbol, #symbol, sizeof((GLuint[]){ __VA_ARGS__ })/sizeof(GLuint), (GLuint[]){ __VA_ARGS__ })

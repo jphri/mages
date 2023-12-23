@@ -19,7 +19,7 @@
 static Map *map;
 //static UIObject label;
 
-static const char *text_test = "Hello";
+static char *text_test = "Hello";
 
 static void
 edit_button_cbk(void *ptr) 
@@ -31,7 +31,7 @@ edit_button_cbk(void *ptr)
 static void pre_solve(Contact *contact);
 
 void
-GAME_STATE_LEVEL_init()
+GAME_STATE_LEVEL_init(void)
 {
 	UIObject window = ui_new_object(0, UI_WINDOW);
 	ui_obj_set_size(window, (vec2){ 90, 35 });
@@ -67,7 +67,7 @@ GAME_STATE_LEVEL_init()
 	vec4_dup(gfx_scene_text(text)->color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 	vec2_dup(gfx_scene_text(text)->position, (vec2){ 0.0, 0.0 });
 	vec2_dup(gfx_scene_text(text)->char_size, (vec2){ 0.35, 0.35 });
-	gfx_scene_text(text)->text_ptr = text_test;
+	gfx_scene_text(text)->text_ptr = (RelPtr){ .base_pointer = (void**)&text_test, .offset = 0 };
 
 	phx_set_pre_solve(pre_solve);
 }
@@ -79,7 +79,7 @@ GAME_STATE_LEVEL_update(float delta)
 }
 
 void
-GAME_STATE_LEVEL_render()
+GAME_STATE_LEVEL_render(void)
 {
 	vec2 offset;
 	#define PLAYER ENT_DATA(ENTITY_PLAYER, GLOBAL.player_id)
@@ -94,7 +94,7 @@ GAME_STATE_LEVEL_render()
 }
 
 void
-GAME_STATE_LEVEL_end()
+GAME_STATE_LEVEL_end(void)
 {
 	phx_reset();
 	ent_reset();
@@ -128,9 +128,9 @@ pre_solve(Contact *contact)
 	unsigned int id1 = b1->user_data;
 	unsigned int id2 = b2->user_data;
 
-	if(id_type(id1) == ID_TYPE_ENTITY)
-		process_entity_collision(id(id1), contact->body2, contact);
+	if(id_type(id1) == GAME_OBJECT_TYPE_ENTITY)
+		process_entity_collision(id1, contact->body2, contact);
 
-	if(id_type(id2) == ID_TYPE_ENTITY)
-		process_entity_collision(id(id2), contact->body1, contact);
+	if(id_type(id2) == GAME_OBJECT_TYPE_ENTITY)
+		process_entity_collision(id2, contact->body1, contact);
 }

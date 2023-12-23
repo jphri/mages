@@ -40,7 +40,7 @@ static State state_vtable[] = {
 };
 
 void
-GAME_STATE_LEVEL_EDIT_init()
+GAME_STATE_LEVEL_EDIT_init(void)
 {
 	editor.map_atlas = SPRITE_TERRAIN;
 	if(editor.map == NULL)
@@ -48,7 +48,7 @@ GAME_STATE_LEVEL_EDIT_init()
 }
 
 void
-GAME_STATE_LEVEL_EDIT_render()
+GAME_STATE_LEVEL_EDIT_render(void)
 {
 	if(state_vtable[editor.editor_state].render)
 		state_vtable[editor.editor_state].render();
@@ -93,7 +93,7 @@ GAME_STATE_LEVEL_EDIT_update(float delta)
 }
 
 void 
-GAME_STATE_LEVEL_EDIT_end() 
+GAME_STATE_LEVEL_EDIT_end(void) 
 {
 }
 

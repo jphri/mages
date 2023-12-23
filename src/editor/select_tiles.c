@@ -18,7 +18,7 @@ static bool ctrl_pressed = false;
 static MouseState edit_mouse_state;
 
 void
-select_tile_render()
+select_tile_render(void)
 {
 	gfx_set_camera(edit_offset, (vec2){ edit_zoom, edit_zoom });
 

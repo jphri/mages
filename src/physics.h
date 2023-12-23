@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 #include "vecmath.h"
-#include "id.h"
+#include "game_objects.h"
 
 #define GRID_TILE_SIZE 16
 
@@ -56,17 +56,19 @@ typedef struct {
 	bool is_static, no_update;
 } Body;
 
-void phx_init();
-void phx_end();
-void phx_reset();
+void phx_init(void);
+void phx_end(void);
+void phx_reset(void);
 
 void phx_set_grid_size(int w, int h);
 void phx_set_pre_solve(void (*)(Contact *contact));
 
-BodyID phx_new();
+BodyID phx_new(void);
 void   phx_del(BodyID self);
 void   phx_update(float delta);
-void   phx_draw();
+void   phx_draw(void);
 Body  *phx_data(BodyID self);
+
+GameObjectRegistry phx_object_descr(void);
 
 #endif

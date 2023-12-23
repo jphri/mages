@@ -6,7 +6,7 @@ static inline void __process_mob(EntityID self_id)
 		ent_del(self_id);
 		return;
 	}
-	
+
 	if(MOB_COMPONENT.health > MOB_COMPONENT.health_max) {
 		MOB_COMPONENT.health = MOB_COMPONENT.health_max;
 	}
@@ -34,10 +34,10 @@ static inline void process_init_components(EntityID self_id)
 	#endif
 }
 
-static inline void process_del_components(EntityID self_id) 
+static inline void process_del_components(EntityID self_id)
 {
 	(void)self_id;
-	#ifdef BODY_COMPONENT 
+	#ifdef BODY_COMPONENT
 	__process_del_body(self_id);
 	#endif
 }

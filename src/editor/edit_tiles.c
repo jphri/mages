@@ -98,7 +98,7 @@ edit_wheel(SDL_Event *event)
 }
 
 void
-edit_render()
+edit_render(void)
 {
 	gfx_set_camera(offset, (vec2){ zoom, zoom });
 

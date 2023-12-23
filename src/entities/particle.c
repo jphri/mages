@@ -7,7 +7,6 @@
 #include "../vecmath.h"
 #include "../physics.h"
 #include "../entity.h"
-#include "../id.h"
 
 #define SELF      ENT_DATA(ENTITY_PARTICLE, self_id)
 #define SELF_SPRITE gfx_scene_spr(SELF->sprite)
@@ -22,14 +21,15 @@ ent_shot_particles(vec2 position, vec2 velocity, vec4 color, float time, int cou
 {
 	float va = sqrtf(vec2_dot(velocity, velocity));
 	for(; count > 0; count--) {
-		vec2 v;
+		vec2 v, p;
 		float r = (rand() / (float)RAND_MAX);
 		float rr =  (rand() / (float)RAND_MAX);
 
 		v[0] = cosf(r * 3.1415926535 * 2) * va * rr;
 		v[1] = sinf(r * 3.1415926535 * 2) * va * rr;
+		vec2_add_scaled(p, position, v, 0.01);
 
-		ent_particle_new(position, v, color, time);
+		ent_particle_new(p, v, color, time);
 	}
 }
 
@@ -50,9 +50,9 @@ ent_particle_new(vec2 position, vec2 velocity, vec4 color, float time)
 	SELF_BODY->is_static = false;
 	SELF_BODY->solve_layer = 0;
 	SELF_BODY->solve_mask  = 0;
-	SELF_BODY->collision_layer = 0;
+	SELF_BODY->collision_layer = PHX_LAYER_ENTITIES_BIT;
 	SELF_BODY->collision_mask  = PHX_LAYER_MAP_BIT | PHX_LAYER_ENTITIES_BIT;
-	SELF_BODY->user_data = make_id_descr(ID_TYPE_ENTITY, self_id);
+	SELF_BODY->user_data = self_id;
 	SELF_BODY->mass = 0.0000001;
 	SELF_BODY->restitution = 1.0;
 	SELF_BODY->damping = 5.0;

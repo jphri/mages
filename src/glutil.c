@@ -89,7 +89,7 @@ ugl_compile_shader_file(const char *file_path, GLenum shader_type)
 
 	data = emalloc(size);
 
-	fread(data, 1, size, fp);
+	(void)!fread(data, 1, size, fp);
 
 	fclose(fp);
 	GLuint shader = ugl_compile_shader(file_path, shader_type, size, data);

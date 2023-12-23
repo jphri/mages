@@ -6,6 +6,18 @@
 #include <assert.h>
 
 #include "util.h"
+
+typedef struct {
+	ObjectID next, prev;
+	bool dead;
+	unsigned char obj[];
+} ObjectNode;
+
+static ObjectID    node_to_object_id(ObjectAllocator *alloc, void *ptr);
+static ObjectNode *object_id_to_node(ObjectAllocator *alloc, ObjectID id);
+static void        insert_obj_list(ObjectAllocator *alloc, ObjectID id);
+static void        remove_obj_list(ObjectAllocator *alloc, ObjectID id);
+
 static void *readline_proc(FILE *fp, ArrayBuffer *buffer);
 static inline void check_buffer_initialized(ArrayBuffer *buffer)
 {
@@ -13,7 +25,7 @@ static inline void check_buffer_initialized(ArrayBuffer *buffer)
 }
 
 void
-arrbuf_init(ArrayBuffer *buffer) 
+arrbuf_init(ArrayBuffer *buffer)
 {
 	buffer->size = 0;
 	buffer->initialized = true;
@@ -62,7 +74,7 @@ arrbuf_insert_at(ArrayBuffer *buffer, size_t size, const void *data, size_t pos)
 }
 
 void
-arrbuf_remove(ArrayBuffer *buffer, size_t size, size_t pos) 
+arrbuf_remove(ArrayBuffer *buffer, size_t size, size_t pos)
 {
 	check_buffer_initialized(buffer);
 	memmove((unsigned char *)buffer->data + pos, (unsigned char*)buffer->data + pos + size, buffer->size - pos - size);
@@ -77,10 +89,16 @@ arrbuf_length(ArrayBuffer *buffer, size_t element_size)
 }
 
 void
-arrbuf_clear(ArrayBuffer *buffer) 
+arrbuf_clear(ArrayBuffer *buffer)
 {
 	check_buffer_initialized(buffer);
 	buffer->size = 0;
+}
+
+Span
+arrbuf_span(ArrayBuffer *buffer)
+{
+	return (Span){ buffer->data, (unsigned char*)buffer->data + buffer->size };
 }
 
 void *
@@ -137,7 +155,7 @@ arrbuf_newptr_at(ArrayBuffer *buffer, size_t size, size_t pos)
 }
 
 void
-arrbuf_printf(ArrayBuffer *buffer, const char *fmt, ...) 
+arrbuf_printf(ArrayBuffer *buffer, const char *fmt, ...)
 {
 	va_list va;
 	size_t print_size;
@@ -146,7 +164,7 @@ arrbuf_printf(ArrayBuffer *buffer, const char *fmt, ...)
 	va_start(va, fmt);
 	print_size = vsnprintf(NULL, 0, fmt, va);
 	va_end(va);
-	
+
 	char *ptr = arrbuf_newptr(buffer, print_size + 1);
 
 	va_start(va, fmt);
@@ -157,7 +175,7 @@ arrbuf_printf(ArrayBuffer *buffer, const char *fmt, ...)
 }
 
 char *
-readline_mem(FILE *fp, void *data, size_t size) 
+readline_mem(FILE *fp, void *data, size_t size)
 {
 	void *ret_data;
 	ArrayBuffer buffer;
@@ -177,7 +195,7 @@ readline(FILE *fp)
 	data = readline_proc(fp, &buffer);
 	if(!data)
 		free(buffer.data);
-	
+
 	return data;
 }
 
@@ -235,13 +253,13 @@ strview_int(StrView str, int *result)
 	while(s != str.end) {
 		if(!isdigit(*s))
 			return 0;
-		*result = *result * 10 + *s - '0';	
+		*result = *result * 10 + *s - '0';
 		s++;
 	}
 
 	if(is_negative)
 		*result = *result * -1;
-	
+
 	return 1;
 }
 
@@ -253,7 +271,7 @@ strview_float(StrView str, float *result)
 
 	int integer_part = 0;
 	float fract_part = 0;
-	
+
 	StrView ss = str;
 	StrView number = strview_token(&ss, ".");
 
@@ -266,9 +284,9 @@ strview_float(StrView str, float *result)
 	if(!strview_int(number, &integer_part))
 		return 0;
 	*result += integer_part;
-	
+
 	number = strview_token(&ss, ".");
-	
+
 	s = number.begin;
 	float f = 0.1;
 	for(; s != number.end; s++, f *= 0.1) {
@@ -297,7 +315,7 @@ strview_str(StrView view)
 }
 
 void
-strview_str_mem(StrView view, char *data, size_t size) 
+strview_str_mem(StrView view, char *data, size_t size)
 {
 	size = (size > (size_t)(view.end - view.begin) + 1) ? (size_t)(view.end - view.begin) + 1 : size;
 	strncpy(data, view.begin, size);
@@ -305,23 +323,23 @@ strview_str_mem(StrView view, char *data, size_t size)
 }
 
 void *
-readline_proc(FILE *fp, ArrayBuffer *buffer) 
+readline_proc(FILE *fp, ArrayBuffer *buffer)
 {
 	int c;
-	
+
 	/* skip all new-lines/carriage return */
 	while((c = fgetc(fp)) != EOF)
 		if(c != '\n' && c != '\r')
 			break;
-	
+
 	if(c == EOF) {
 		//free(buffer->data);
 		return NULL;
 	}
-	
+
 	for(; c != EOF && c != '\n' && c != '\r'; c = fgetc(fp))
 		arrbuf_insert(buffer, sizeof(char), &(char){c});
-	
+
 	c = 0;
 	arrbuf_insert(buffer, sizeof c, &c);
 
@@ -329,10 +347,10 @@ readline_proc(FILE *fp, ArrayBuffer *buffer)
 }
 
 void
-die(const char *fmt, ...) 
+die(const char *fmt, ...)
 {
 	va_list va;
-	
+
 	va_start(va, fmt);
 	(void)vfprintf(stderr, fmt, va);
 	va_end(va);
@@ -352,14 +370,14 @@ read_file(const char *path, size_t *s)
 	fseek(fp, 0, SEEK_END);
 	size = ftell(fp);
 	fseek(fp, 0, SEEK_SET);
-	
+
 	result = malloc(size);
-	fread(result, 1, size, fp);
+	(void)!fread(result, 1, size, fp);
 	fclose(fp);
 
 	if(s)
 		*s = size;
-	
+
 	return result;
 }
 
@@ -389,7 +407,157 @@ _erealloc(void *ptr, size_t size, const char *file, int line)
 	if(!ptr) {
 		die("realloc failed at %s:%d\n", file, line);
 	}
-    return ptr;								   
+	return ptr;
 }
 
+void
+objalloc_init(ObjectAllocator *obj, size_t obj_size)
+{
+	arrbuf_init(&obj->data_buffer);
+	arrbuf_init(&obj->free_stack);
+	arrbuf_init(&obj->dirty_buffer);
 
+	obj->obj_size = obj_size;
+	obj->node_size = obj_size + sizeof(ObjectNode);
+	obj->object_list = 0;
+	obj->clean_cbk = NULL;
+}
+
+void
+objalloc_end(ObjectAllocator *obj)
+{
+	arrbuf_free(&obj->data_buffer);
+	arrbuf_free(&obj->free_stack);
+	arrbuf_free(&obj->dirty_buffer);
+	obj->object_list = 0;
+}
+
+void
+objalloc_clean(ObjectAllocator *obj)
+{
+	Span span = arrbuf_span(&obj->dirty_buffer);
+	SPAN_FOR(span, id, ObjectID) {
+		if(obj->clean_cbk)
+			obj->clean_cbk(obj, *id);
+
+		remove_obj_list(obj, *id);
+		arrbuf_insert(&obj->free_stack, sizeof(ObjectID), id);
+	}
+	arrbuf_clear(&obj->dirty_buffer);
+}
+
+void
+objalloc_reset(ObjectAllocator *obj)
+{
+	arrbuf_clear(&obj->dirty_buffer);
+	arrbuf_clear(&obj->free_stack);
+	arrbuf_clear(&obj->data_buffer);
+	obj->object_list = 0;
+}
+
+ObjectID
+objalloc_alloc(ObjectAllocator *obj)
+{
+	ObjectID *stack = arrbuf_peektop(&obj->free_stack, sizeof(ObjectID)),
+			  node_id;
+	ObjectNode *node;
+
+	if(stack) {
+		node = object_id_to_node(obj, *stack);
+		arrbuf_poptop(&obj->free_stack, sizeof(ObjectID));
+	} else {
+		node = arrbuf_newptr(&obj->data_buffer, obj->node_size);
+	}
+	node_id = node_to_object_id(obj, node);
+	memset(node, 0, obj->node_size);
+	insert_obj_list(obj, node_id);
+
+	return node_id;
+}
+
+void *
+objalloc_data(ObjectAllocator *alloc, ObjectID id)
+{
+	ObjectNode *node = object_id_to_node(alloc, id);
+	if(node)
+		return node->obj;
+	else
+	 	return NULL;
+}
+
+void
+objalloc_free(ObjectAllocator *alloc, ObjectID id)
+{
+	if(!object_id_to_node(alloc, id)->dead) {
+		object_id_to_node(alloc, id)->dead = true;
+		arrbuf_insert(&alloc->dirty_buffer, sizeof(ObjectID), &id);
+	}
+}
+
+ObjectID
+objalloc_begin(ObjectAllocator *alloc)
+{
+	ObjectID list = alloc->object_list;
+	while(list && object_id_to_node(alloc, list)->dead)
+		list = object_id_to_node(alloc, list)->next;
+	return list;
+}
+
+ObjectID
+objalloc_next(ObjectAllocator *alloc, ObjectID id)
+{
+	do {
+		id = object_id_to_node(alloc, id)->next;
+	} while(id && object_id_to_node(alloc, id)->dead);
+	return id;
+}
+
+ObjectID
+node_to_object_id(ObjectAllocator *alloc, void *ptr)
+{
+	return 1 + ((unsigned char*)ptr - (unsigned char*)alloc->data_buffer.data) / alloc->node_size;
+}
+
+ObjectNode *
+object_id_to_node(ObjectAllocator *alloc, ObjectID id)
+{
+	if(id == 0)
+		return NULL;
+	id --;
+	return (ObjectNode*)((unsigned char*)alloc->data_buffer.data + alloc->node_size * id);
+}
+
+void
+insert_obj_list(ObjectAllocator *alloc, ObjectID id)
+{
+	ObjectNode *node      = object_id_to_node(alloc, id);
+	ObjectNode *base_node = object_id_to_node(alloc, alloc->object_list);
+
+	if(base_node)
+		base_node->prev = id;
+
+	node->prev = 0;
+	node->next = alloc->object_list;
+	alloc->object_list = id;
+}
+
+void
+remove_obj_list(ObjectAllocator *alloc, ObjectID id)
+{
+	ObjectNode *next, *prev, *node;
+	node = object_id_to_node(alloc, id);
+	next = object_id_to_node(alloc, node->next);
+	prev = object_id_to_node(alloc, node->prev);
+
+	if(next) next->prev = node->prev;
+	if(prev) prev->next = node->next;
+
+	if(id == alloc->object_list)
+		alloc->object_list = node->next;
+}
+
+bool
+objalloc_is_dead(ObjectAllocator *alloc, ObjectID id)
+{
+	return object_id_to_node(alloc, id)->dead;
+}
