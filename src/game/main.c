@@ -15,6 +15,7 @@
 #include "../map.h"
 #include "../ui.h"
 #include "../util.h"
+#include "../audio.h"
 
 static Map *map;
 //static UIObject label;
@@ -70,6 +71,7 @@ GAME_STATE_LEVEL_init(void)
 	gfx_scene_text(text)->text_ptr = (RelPtr){ .base_pointer = (void**)&text_test, .offset = 0 };
 
 	phx_set_pre_solve(pre_solve);
+	audio_bgm_play(AUDIO_BUFFER_BGM_TEST, 1.0);
 }
 
 void
@@ -100,6 +102,8 @@ GAME_STATE_LEVEL_end(void)
 	ent_reset();
 	gfx_scene_reset();
 	ui_reset();
+
+	audio_bgm_pause();
 }
 
 void GAME_STATE_LEVEL_mouse_move(SDL_Event *event) { (void)event; }

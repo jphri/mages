@@ -117,4 +117,16 @@ static inline void *to_ptr(RelPtr ptr) {
 	return ((unsigned char*)*ptr.base_pointer) + ptr.offset;
 }
 
+static inline int mini(int a, int b) {
+	return a < b ? a : b;
+}
+
+static inline int maxi(int a, int b) {
+	return a > b ? a : b;
+}
+
+static inline int clampi(int x, int minv, int maxv) {
+	return mini(maxi(x, minv), maxv);
+}
+
 #endif

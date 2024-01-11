@@ -7,6 +7,7 @@
 #include "../physics.h"
 #include "../entity.h"
 #include "../id.h"
+#include "../audio.h"
 
 #define self ENT_DATA(ENTITY_PLAYER, self_id)
 #define self_sprite gfx_scene_animspr(self->sprite)
@@ -103,6 +104,8 @@ ENTITY_PLAYER_update(EntityID self_id, float delta)
 			vec2_mul(mouse_pos, mouse_pos, (vec2){ 40.0, 40.0 });
 			ent_fireball_new(self_id, self_body->position, mouse_pos);
 			self->fired += 1;
+
+			audio_sfx_play(AUDIO_MIXER_SFX, AUDIO_BUFFER_FIREBALL, 1.0);
 		}
 	} else {
 		self->fired = 0;

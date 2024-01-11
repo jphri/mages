@@ -68,5 +68,4 @@ GameObjectID  obj_begin(GameObjectType id_type);
 GameObjectID  obj_next(GameObjectID obj);
 RelPtr        obj_relptr(GameObjectType type, void *ptr);
 
-
 #endif

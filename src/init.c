@@ -15,6 +15,7 @@
 #include "graphics.h"
 #include "util.h"
 #include "map.h"
+#include "audio.h"
 
 typedef struct {
 	void (*init)(void);
@@ -72,6 +73,9 @@ main(int argc, char *argv[])
 	(void)argv;
 	Uint64 prev_time;
 
+	if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0)
+		return -1;
+
 	GLOBAL.window = SDL_CreateWindow("hello",
 							  SDL_WINDOWPOS_UNDEFINED,
 							  SDL_WINDOWPOS_UNDEFINED,
@@ -102,6 +106,7 @@ main(int argc, char *argv[])
 	phx_init();
 	ent_init();
 	ui_init();
+	audio_init();
 
 	state_vtable[current_state].init();
 
@@ -186,6 +191,8 @@ end_loop:
 	phx_end();
 	ent_end();
 	gfx_end();
+	audio_end();
+
 	obj_terminate();
 
 	SDL_DestroyRenderer(GLOBAL.renderer);

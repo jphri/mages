@@ -7,6 +7,7 @@
 #include "../physics.h"
 #include "../entity.h"
 #include "../id.h"
+#include "../audio.h"
 
 #define SELF      ENT_DATA(ENTITY_FIREBALL, self_id)
 #define SELF_SPRITE gfx_scene_spr(SELF->sprite)
@@ -43,6 +44,7 @@ collision_callback(EntityID self_id, BodyID other, Contact *contact)
 		case GAME_OBJECT_TYPE_NULL:
 			ent_del(self_id);
 			ent_shot_particles(SELF_BODY->position, SELF_BODY->velocity, (vec4){ 1.0, 1.0, 0.0, 1.0 }, 0.25, 4);
+			audio_sfx_play(AUDIO_MIXER_SFX, AUDIO_BUFFER_FIREBALL_HIT, 1.0);
 			break;
 		default:
 			do {} while(0);
