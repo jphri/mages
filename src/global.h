@@ -3,6 +3,7 @@
 
 #include <SDL2/SDL.h>
 #include "game_objects.h"
+#include "util.h"
 
 typedef struct {
 	SDL_Renderer *renderer;
@@ -13,5 +14,6 @@ typedef struct {
 } Global;
 
 extern Global GLOBAL;
+Allocator cache_aligned_allocator();
 
 #endif

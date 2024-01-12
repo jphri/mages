@@ -12,14 +12,22 @@ typedef struct StrView StrView;
 typedef struct Span Span;
 typedef struct ObjectAllocator ObjectAllocator;
 typedef struct RelPtr RelPtr;
+typedef struct Allocator Allocator;
 
-typedef unsigned int ObjectID;
+typedef uint_fast32_t ObjectID;
+
+struct Allocator {
+	void *userptr;
+	void *(*allocate)(size_t bytes, void *user_ptr);
+	void  (*deallocate)(void *ptr, void *user_ptr);
+};
 
 struct ArrayBuffer {
+	bool initialized;
 	size_t size;
 	size_t reserved;
-	bool initialized;
 	void *data;
+	Allocator allocator;
 };
 
 struct StrView {
@@ -31,10 +39,12 @@ struct ObjectAllocator {
 	ArrayBuffer data_buffer;
 	ArrayBuffer free_stack;
 	ArrayBuffer dirty_buffer;
+	ArrayBuffer meta_buffer;
 	ObjectID object_list;
 
 	size_t node_size;
 	size_t obj_size;
+	size_t alignment;
 
 	void (*clean_cbk)(ObjectAllocator *, ObjectID);
 };
@@ -49,6 +59,14 @@ struct RelPtr {
 	uintptr_t offset;
 };
 
+#if defined(__GNUC__)
+	#define ALIGNMENT_OF(X) __alignof__(X)
+#elif defined(_MSC_VER)
+	#define ALIGNMENT_OF(X) alignof(X)
+#else
+	#error "No alignment defined!"
+#endif
+
 #define LENGTH(ARR) (sizeof(ARR) / sizeof(ARR)[0])
 #define ASSERT(CHECK) if(!(CHECK)) { die("%s:%d: '%s' failed\n", __FILE__, __LINE__, #CHECK); }
 
@@ -59,7 +77,7 @@ struct RelPtr {
 #define erealloc(ptr, size) _erealloc(ptr, size, __FILE__, __LINE__)
 
 void   arrbuf_init(ArrayBuffer *buffer);
-void   arrbuf_init_mem(ArrayBuffer *buffer, size_t data_size, char data[data_size]);
+void   arrbuf_init_allocator(ArrayBuffer *buffer, Allocator allocator);
 
 void   arrbuf_reserve(ArrayBuffer *buffer,   size_t element_size);
 void   arrbuf_insert(ArrayBuffer *buffer,    size_t element_size, const void *data);
@@ -103,6 +121,7 @@ void  _efree(void *ptr, const char *file, int line);
 void *_erealloc(void *ptr, size_t size, const char *file, int line);
 
 void      objalloc_init(ObjectAllocator *alloc, size_t object_size);
+void      objalloc_init_allocator(ObjectAllocator *alloc, size_t object_size, Allocator a);
 void      objalloc_end(ObjectAllocator *alloc);
 void      objalloc_clean(ObjectAllocator *alloc);
 void      objalloc_reset(ObjectAllocator *alloc);
@@ -112,6 +131,11 @@ void      objalloc_free(ObjectAllocator *alloc, ObjectID id);
 ObjectID  objalloc_begin(ObjectAllocator *alloc);
 ObjectID  objalloc_next(ObjectAllocator *alloc, ObjectID next);
 bool      objalloc_is_dead(ObjectAllocator *alloc, ObjectID id);
+
+Allocator allocator_default();
+
+void *alloct_allocate(Allocator *, size_t size);
+void  alloct_deallocate(Allocator *, void *ptr);
 
 static inline void *to_ptr(RelPtr ptr) {
 	return ((unsigned char*)*ptr.base_pointer) + ptr.offset;

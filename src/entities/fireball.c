@@ -23,9 +23,9 @@ collision_callback(EntityID self_id, BodyID other, Contact *contact)
 	EntityID ent_id;
 	EntityMob *mob;
 
-	switch(id_type(phx_data(other)->user_data)) {
+	switch(gobj_type(phx_data(other)->user_data)) {
 		case GAME_OBJECT_TYPE_ENTITY:
-			ent_id = phx_data(other)->user_data;
+			ent_id = gobj_id(phx_data(other)->user_data);
 			if(ent_id == SELF->caster) {
 				contact->active = false;
 				return;
@@ -43,7 +43,7 @@ collision_callback(EntityID self_id, BodyID other, Contact *contact)
 		/* fallthrough */
 		case GAME_OBJECT_TYPE_NULL:
 			ent_del(self_id);
-			ent_shot_particles(SELF_BODY->position, SELF_BODY->velocity, (vec4){ 1.0, 1.0, 0.0, 1.0 }, 0.25, 4);
+			ent_shot_particles(VEC2_DUP(SELF_BODY->position), VEC2_DUP(SELF_BODY->velocity), (vec4){ 1.0, 1.0, 0.0, 1.0 }, 0.25, 4);
 			audio_sfx_play(AUDIO_MIXER_SFX, AUDIO_BUFFER_FIREBALL_HIT, 1.0);
 			break;
 		default:
@@ -72,7 +72,7 @@ ent_fireball_new(EntityID caster, vec2 position, vec2 vel)
 	SELF_BODY->solve_mask  = 0;
 	SELF_BODY->collision_layer = 0;
 	SELF_BODY->collision_mask  = PHX_LAYER_MAP_BIT | PHX_LAYER_ENTITIES_BIT;
-	SELF_BODY->user_data = self_id;
+	SELF_BODY->user_data = make_gobj_id(GAME_OBJECT_TYPE_ENTITY, self_id);
 	SELF_BODY->mass = 1.0;
 	SELF_BODY->restitution = 0.55;
 	SELF_BODY->damping = 1.0;
@@ -129,7 +129,7 @@ ENTITY_FIREBALL_update(EntityID self_id, float delta)
 
 	if(SELF->time > 1.0) {
 		ent_del(self_id);
-		ent_shot_particles(SELF_BODY->position, SELF_BODY->velocity, (vec4){ 1.0, 1.0, 0.0, 1.0 }, 0.5, 10);
+		ent_shot_particles(VEC2_DUP(SELF_BODY->position), VEC2_DUP(SELF_BODY->velocity), (vec4){ 1.0, 1.0, 0.0, 1.0 }, 0.5, 10);
 	}
 }
 

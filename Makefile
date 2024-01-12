@@ -14,14 +14,24 @@ SDL2_LIB_DIR=$(SDL2_PREFIX)/$(PLATFORM)/lib
 OUTPUT=game
 CC=$(PLATFORM)-gcc
 
-CFLAGS += -O3 -std=c99 -pipe -Wall -Wextra -Werror -pedantic
+CFLAGS += -O3 -std=c99 -pipe -Wall -Wextra -Werror -pedantic -std=c11
 CFLAGS += -MP -MD
 CFLAGS += -Ithird/glad/include
 CFLAGS += -Ithird
+#CFLAGS += -fsanitize=address
+#CFLAGS += -fsanitize=bounds
+#CFLAGS += -fsanitize=undefined
 CFLAGS += -I$(SDL2_INCLUDE_DIR)
 CFLAGS += -DSDL_MAIN_HANDLED
 CFLAGS += -g
-LFLAGS=-L$(SDL2_LIB_DIR) -lSDL2 -lSDL2main -lm
+CFLAGS += -fPIE
+
+LFLAGS += -L$(SDL2_LIB_DIR) -lSDL2 -lSDL2main -lm
+LFLAGS += -fPIE
+#LFLAGS += -fsanitize=address
+#LFLAGS += -fsanitize=bounds
+#LFLAGS += -fsanitize=undefined
+
 
 DELETE = rm -f
 

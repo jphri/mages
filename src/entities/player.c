@@ -34,7 +34,7 @@ ent_player_new(vec2 position)
 	self_body->is_static = false;
 	self_body->collision_layer = PHX_LAYER_ENTITIES_BIT;
 	self_body->collision_mask  = PHX_LAYER_ENTITIES_BIT | PHX_LAYER_MAP_BIT;
-	self_body->user_data = self_id;
+	self_body->user_data = make_gobj_id(GAME_OBJECT_TYPE_ENTITY, self_id);
 	self_body->mass = 10.0;
 	self_body->restitution = 0.01;
 	self_body->damping = 5.0;
@@ -102,7 +102,7 @@ ENTITY_PLAYER_update(EntityID self_id, float delta)
 			vec2_sub(mouse_pos, mouse_pos, self_body->position);
 			vec2_normalize(mouse_pos, mouse_pos);
 			vec2_mul(mouse_pos, mouse_pos, (vec2){ 40.0, 40.0 });
-			ent_fireball_new(self_id, self_body->position, mouse_pos);
+			ent_fireball_new(self_id, VEC2_DUP(self_body->position), mouse_pos);
 			self->fired += 1;
 
 			audio_sfx_play(AUDIO_MIXER_SFX, AUDIO_BUFFER_FIREBALL, 1.0);

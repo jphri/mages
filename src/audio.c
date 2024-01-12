@@ -6,6 +6,7 @@
 
 #include "audio.h"
 #include "util.h"
+#include "global.h"
 
 typedef struct {
 	short *buffer;
@@ -59,7 +60,7 @@ audio_init()
 		SDL_AUDIO_ALLOW_SAMPLES_CHANGE);
 	SDL_PauseAudioDevice(audio_device, 0);
 
-	objalloc_init(&sfx_sources, sizeof(AudioSource));
+	objalloc_init_allocator(&sfx_sources, sizeof(AudioSource), cache_aligned_allocator());
 
 	printf("Audio Initialized!\n");
 	printf("Audio frequency: %d\n"
@@ -80,6 +81,11 @@ audio_end()
 {
 	SDL_PauseAudioDevice(audio_device, 1);
 	SDL_CloseAudioDevice(audio_device);
+
+	for(int i = 0; i < LAST_AUDIO_BUFFER; i++) {
+		free(audio_buffers[i].buffer);
+	}
+
 }
 
 void

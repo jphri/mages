@@ -1,10 +1,12 @@
 #ifndef ENTITY_H
 #define ENTITY_H
 
+#include <stdbool.h>
+#include <stdint.h>
+
 #include "game_objects.h"
 #include "vecmath.h"
 #include "math.h"
-#include <stdbool.h>
 #include "physics.h"
 
 #define ENTITY_LIST             \
@@ -47,8 +49,8 @@ typedef struct {
 
 ENTITY_STRUCT(ENTITY_PARTICLE) {
 	SceneSpriteID sprite;
-	EntityBody body;
 	float time;
+	EntityBody body;
 };
 
 ENTITY_STRUCT(ENTITY_PLAYER) {
@@ -107,7 +109,7 @@ EntityID ent_damage_number(vec2 position, float damage);
 EntityID ent_particle_new(vec2 position, vec2 velocity, vec4 color, float time);
 void     ent_shot_particles(vec2 position, vec2 velocity, vec4 color, float time, int count);
 
-GameObjectRegistry ent_object_descr(void);
+RelPtr   ent_relptr(void *ptr);
 
 #define ENT_DATA(NAME, ID) ((NAME##_struct*)ent_data(ID))
 

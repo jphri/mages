@@ -10,20 +10,19 @@
 #include "util.h"
 #include "glutil.h"
 #include "graphics.h"
+#include "global.h"
 
-typedef struct {
-	union {
-		SceneSprite sprite;
-		SceneText   text;
-		SceneAnimatedSprite anim;
-	} data;
-} SceneObjectData;
 
 typedef struct {
 	SceneObjectID next, prev;
 	SceneObjectID next_layer, prev_layer;
 	SceneObjectType type;
 	int layer;
+	union {
+		SceneSprite sprite;
+		SceneText   text;
+		SceneAnimatedSprite anim;
+	} data;
 } SceneObjectPrivData;
 
 typedef struct {
@@ -53,9 +52,10 @@ static inline int calculate_frame_animation(SceneAnimatedSprite *sprite)
 static SceneObjectID   layer_objects[SCENE_LAYERS];
 static GraphicsTileMap layer_tmaps[SCENE_LAYERS];
 static uint64_t        layer_tmap_set;
+static ObjectAllocator objects;
 
-#define PRIVDATA(ID) ((SceneObjectPrivData*)obj_privdata(ID))
-#define OBJECT_DATA(ID) ((SceneObjectData*)obj_data(ID))
+#define PRIVDATA(ID) ((SceneObjectPrivData*)objalloc_data(&objects, ID))
+#define OBJECT_DATA(ID) ((SceneObjectPrivData*)objalloc_data(&objects, ID))
 
 static inline void insert_object_layer(SceneObjectID id) 
 {
@@ -82,7 +82,7 @@ static inline void remove_object_layer(SceneObjectID id)
 
 static SceneObjectID new_object(SceneObjectType type, int layer) 
 {
-	SceneObjectID id = obj_new(GAME_OBJECT_TYPE_GFX_SCENE);
+	SceneObjectID id = objalloc_alloc(&objects);
 	PRIVDATA(id)->type = type;
 	PRIVDATA(id)->layer = layer;
 	insert_object_layer(id);
@@ -92,17 +92,20 @@ static SceneObjectID new_object(SceneObjectType type, int layer)
 
 static void del_object(SceneObjectID id) 
 {
-	obj_del(id);
+	objalloc_free(&objects, id);
 }
 
-static void cleanup_callback(SceneObjectID id) 
+static void cleanup_callback(ObjectAllocator *alloc, ObjectID id) 
 {
+	(void)alloc;
 	remove_object_layer(id);
 }
 
 void
 gfx_scene_setup(void)
 {
+	objalloc_init_allocator(&objects, sizeof(SceneObjectPrivData), cache_aligned_allocator());
+	objects.clean_cbk = cleanup_callback;
 	memset(layer_objects, 0, sizeof(layer_objects));
 }
 
@@ -114,12 +117,13 @@ gfx_scene_reset(void)
 		layer_objects[i] = 0;
 		gfx_tmap_free(&layer_tmaps[i]);
 	}
-	obj_reset(GAME_OBJECT_TYPE_GFX_SCENE);
+	objalloc_reset(&objects);
 }
 
 void 
 gfx_scene_draw(void)
 {
+	objalloc_clean(&objects);
 	for(int i = 0; i < SCENE_LAYERS; i++) {
 		SceneSpriteID object_id = layer_objects[i];
 		gfx_draw_begin(layer_tmap_set & (1 << i) ? &layer_tmaps[i] : NULL);
@@ -224,15 +228,4 @@ gfx_scene_set_tilemap(int layer, TextureAtlas atlas, int w, int h, int *data)
 		gfx_tmap_free(&layer_tmaps[layer]);
 	layer_tmaps[layer] = gfx_tmap_new(atlas, w, h, data);
 	layer_tmap_set |= (1 << layer);
-}
-
-GameObjectRegistry
-gfx_scene_object_descr(void)
-{
-	return (GameObjectRegistry) {
-		.activated = true,
-		.clean_cbk = cleanup_callback,
-		.privdata_size = sizeof(SceneObjectPrivData),
-		.data_size = sizeof(SceneObjectData)
-	};
 }

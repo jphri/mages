@@ -8,7 +8,7 @@
 #include "../physics.h"
 #include "../entity.h"
 
-#define SELF      ENT_DATA(ENTITY_PARTICLE, self_id)
+#define SELF        ENT_DATA(ENTITY_PARTICLE, self_id)
 #define SELF_SPRITE gfx_scene_spr(SELF->sprite)
 
 #define BODY_COMPONENT (SELF->body)
@@ -52,7 +52,7 @@ ent_particle_new(vec2 position, vec2 velocity, vec4 color, float time)
 	SELF_BODY->solve_mask  = 0;
 	SELF_BODY->collision_layer = PHX_LAYER_ENTITIES_BIT;
 	SELF_BODY->collision_mask  = PHX_LAYER_MAP_BIT | PHX_LAYER_ENTITIES_BIT;
-	SELF_BODY->user_data = self_id;
+	SELF_BODY->user_data = make_gobj_id(GAME_OBJECT_TYPE_ENTITY, self_id);
 	SELF_BODY->mass = 0.0000001;
 	SELF_BODY->restitution = 1.0;
 	SELF_BODY->damping = 5.0;
@@ -72,7 +72,7 @@ void
 ENTITY_PARTICLE_update(EntityID self_id, float delta)
 {
 	SELF->time -= delta;
-	vec2_dup(SELF_SPRITE->sprite.position, SELF_BODY->position);
+	vec2_dup(SELF_SPRITE->sprite.position, VEC2_DUP(SELF_BODY->position));
 	if(SELF->time < 0.0) {
 		ent_del(self_id);
 	}

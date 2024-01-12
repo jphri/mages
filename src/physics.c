@@ -13,14 +13,9 @@
 #define PHYSICS_TIME (1.0 / PHYSICS_HZ)
 #define SCALE_FACTOR   (1)
 #define DAMPING_FACTOR (1)
+#define EPSILON 0.01
 
 typedef unsigned int BodyGridNodeID;
-
-typedef struct {
-	BodyID next, prev;
-	Body body;
-	bool dead;
-} BodyNode;
 
 typedef struct {
 	BodyGridNodeID next;
@@ -53,12 +48,14 @@ static ArrayBuffer grid_node_arena;
 static int grid_size, grid_size_w, grid_size_h;
 static BodyGridNodeID *grid_list;
 static BodyGridNodeID *static_grid_list;
+static ObjectAllocator objects;
 
 static void (*pre_solve_callback)(Contact *contact);
 
 void
 phx_init(void)
 {
+	objalloc_init_allocator(&objects, sizeof(Body), cache_aligned_allocator());
 	arrbuf_init(&grid_node_arena);
 	accumulator_time = 0;
 
@@ -83,30 +80,31 @@ void
 phx_end(void)
 {
 	arrbuf_free(&grid_node_arena);
+	objalloc_end(&objects);
 }
 
 void
 phx_reset(void)
 {
-	obj_reset(GAME_OBJECT_TYPE_BODY);
+	objalloc_reset(&objects);
 }
 
 BodyID phx_new(void)
 {
-	BodyID id = obj_new(GAME_OBJECT_TYPE_BODY);
+	BodyID id = objalloc_alloc(&objects);
 	return id;
 }
 
 void
 phx_del(BodyID id)
 {
-	obj_del(id);
+	objalloc_free(&objects, id);
 }
 
 Body *
 phx_data(BodyID id)
 {
-	return obj_data(id);
+	return objalloc_data(&objects, id);
 }
 
 void
@@ -114,8 +112,9 @@ phx_update(float delta)
 {
 	accumulator_time += delta;
 	while(accumulator_time > PHYSICS_TIME) {
-		obj_clean();
+		objalloc_clean(&objects);
 		calculate_grid();
+
 		for(int i = 0; i < grid_size; i++) {
 			BodyGridNodeID node_id = grid_list[i];
 			BodyGridNodeID static_node_id = static_grid_list[i];
@@ -125,12 +124,12 @@ phx_update(float delta)
 				node_id = id_to_grid(node_id)->next;
 			}
 		}
-		for(BodyID body = obj_begin(GAME_OBJECT_TYPE_BODY); body; body = obj_next(body))
+		for(BodyID body = objalloc_begin(&objects); body; body = objalloc_next(&objects, body))
 			update_body(body, PHYSICS_TIME * SCALE_FACTOR);
 
 		accumulator_time -= PHYSICS_TIME;
 	}
-	for(BodyID body = obj_begin(GAME_OBJECT_TYPE_BODY); body; body = obj_next(body))
+	for(BodyID body = objalloc_begin(&objects); body; body = objalloc_next(&objects, body))
 		vec2_dup(phx_data(body)->accel, (vec2){ 0.0, 0.0 });
 }
 
@@ -161,10 +160,15 @@ update_body(BodyID self, float delta)
 {
 	#define SELF phx_data(self)
 	vec2 accel;
-
-	vec2_add_scaled(accel, SELF->accel, SELF->velocity, -SELF->damping * DAMPING_FACTOR * SCALE_FACTOR);
-	vec2_add_scaled(SELF->velocity, SELF->velocity, accel, delta);
-	vec2_add_scaled(SELF->position, SELF->position, SELF->velocity, delta);
+	
+	if(!SELF->is_static) {
+		vec2_add_scaled(accel, SELF->accel, SELF->velocity, -SELF->damping * DAMPING_FACTOR * SCALE_FACTOR);
+		vec2_add_scaled(SELF->velocity, SELF->velocity, accel, delta);
+		vec2_add_scaled(SELF->position, SELF->position, SELF->velocity, delta);
+	} else {
+		vec2_dup(SELF->velocity, (vec2){ 0.0, 0.0 });
+		vec2_dup(SELF->accel, (vec2){ 0.0, 0.0 });
+	}
 	(void)body_grid_pos;
 
 	#undef SELF
@@ -176,15 +180,15 @@ update_body_grid(BodyGridNodeID self_grid, BodyGridNodeID target_id_grid)
 	#define SELF phx_data(self)
 	BodyID self = id_to_grid(self_grid)->body;
 
-	if(obj_is_dead(self))
+	if(objalloc_is_dead(&objects, self))
 		return;
 
 	for(; target_id_grid; target_id_grid = id_to_grid(target_id_grid)->next) {
 		Contact contact = {0};
 		BodyID target_id = id_to_grid(target_id_grid)->body;
 
-		if(obj_is_dead(target_id))
-			return;
+		if(objalloc_is_dead(&objects, target_id))
+			continue;
 
 		if(!(have_to_test(self, target_id) || have_to_test(target_id, self))) {
 			continue;
@@ -197,7 +201,7 @@ update_body_grid(BodyGridNodeID self_grid, BodyGridNodeID target_id_grid)
 			if(contact.active)
 				solve(&contact);
 			
-			if(obj_is_dead(self))
+			if(objalloc_is_dead(&objects, self))
 				return;
 		}
 	}
@@ -217,7 +221,7 @@ body_check_collision(BodyID self_id, BodyID target_id, Contact *contact)
 	vec2_sub(min, subbed_pos, added_size);
 	vec2_add(max, subbed_pos, added_size);
 
-	if(!(min[0] < 0 && max[0] > 0 && min[1] < 0 && max[1] > 0)) {
+	if(!(min[0] < -EPSILON && max[0] > EPSILON && min[1] < -EPSILON && max[1] > EPSILON)) {
 	 	return false;
 	}
 
@@ -250,21 +254,20 @@ solve(Contact *contact)
 	float self_inertia = SELF->is_static ? 0 : 1.0 / SELF->mass;
 	float target_inertia = TARGET->is_static ? 0 : 1.0 / TARGET->mass;
 
-	vec2_sub(vel_rel, SELF->velocity, TARGET->velocity);
+	vec2_sub(vel_rel, VEC2_DUP(SELF->velocity), VEC2_DUP(TARGET->velocity));
 	j = vec2_dot(contact->normal, vel_rel);
 	j *= -(1 + SELF->restitution + TARGET->restitution);
 	j /= (self_inertia + target_inertia);
-
+	
 	vec2_add_scaled(SELF->velocity, SELF->velocity, contact->normal, j * self_inertia);
 	vec2_add_scaled(TARGET->velocity, TARGET->velocity, contact->normal, -j * target_inertia);
 
 	if(TARGET->is_static) {
 		vec2_add_scaled(SELF->position, SELF->position, contact->pierce, -1.0f);
 	} else if (SELF->is_static) {
-		vec2_add_scaled(TARGET->position, TARGET->position, contact->pierce,  1.0f);
+		vec2_add_scaled(TARGET->position, TARGET->position, contact->pierce, 1.0f);
 	} else {
 		float total_mass = SELF->mass + TARGET->mass;
-
 		vec2_add_scaled(SELF->position, SELF->position, contact->pierce, -(TARGET->mass / total_mass));
 		vec2_add_scaled(TARGET->position, TARGET->position, contact->pierce, SELF->mass / total_mass);
 	}
@@ -299,7 +302,7 @@ calculate_grid(void)
 	memset(static_grid_list, 0, sizeof(static_grid_list[0]) * grid_size);
 	arrbuf_clear(&grid_node_arena);
 
-	for(BodyID body = obj_begin(GAME_OBJECT_TYPE_BODY); body; body = obj_next(body)) {
+	for(BodyID body = objalloc_begin(&objects); body; body = objalloc_next(&objects, body)) {
 		int grid_min_x = floorf((phx_data(body)->position[0] - phx_data(body)->half_size[0]) / GRID_TILE_SIZE);
 		int grid_min_y = floorf((phx_data(body)->position[1] - phx_data(body)->half_size[1]) / GRID_TILE_SIZE);
 		int grid_max_x = floorf((phx_data(body)->position[0] + phx_data(body)->half_size[0]) / GRID_TILE_SIZE);
@@ -337,15 +340,4 @@ void
 phx_set_pre_solve(void (*pre)(Contact *contact))
 {
 	pre_solve_callback = pre;
-}
-
-GameObjectRegistry
-phx_object_descr(void)
-{
-	return (GameObjectRegistry) {
-		.activated = true,
-		.clean_cbk = NULL,
-		.data_size = sizeof(Body),
-		.privdata_size = sizeof(BodyNode)
-	};
 }

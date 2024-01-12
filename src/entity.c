@@ -1,12 +1,10 @@
+#include <SDL2/SDL.h>
 #include <stdbool.h>
 #include "util.h"
 #include "vecmath.h"
 #include "entity.h"
 #include "game_objects.h"
-
-typedef struct {
-	EntityType type;
-} EntityPrivData;
+#include "global.h"
 
 typedef struct {
 	EntityType type;
@@ -16,7 +14,7 @@ typedef struct {
 			ENTITY_LIST
 		#undef MAC_ENTITY
 	} data;
-} EntityNode;
+} EntityObject;
 
 static struct {
 	void (*update)(EntityID id, float delta);
@@ -30,60 +28,52 @@ static struct {
 	#undef MAC_ENTITY
 };
 
-#define PRIVDATA(ID) ((EntityPrivData*)obj_privdata(ID))
+#define PRIVDATA(ID) ((EntityObject*)objalloc_data(&objects, ID))
+static ObjectAllocator objects;
 
 void
 _sys_int_cleanup(GameObjectID id)
 {
-	if(descr[ent_type(id)].delete)
-		descr[ent_type(id)].delete(id);
+	(void)id;
 }
 
 void
 ent_init(void)
 {
+	objalloc_init_allocator(&objects, sizeof(EntityObject), cache_aligned_allocator());
 }
 
 void
 ent_end(void)
 {
-}
-
-GameObjectRegistry
-ent_object_descr(void)
-{
-	return (GameObjectRegistry) {
-		.activated = true,
-		.clean_cbk = _sys_int_cleanup,
-		.privdata_size = sizeof(EntityPrivData),
-		.data_size = sizeof(EntityNode)
-	};
+	objalloc_end(&objects);
 }
 
 void
 ent_reset(void)
 {
-	obj_reset(GAME_OBJECT_TYPE_ENTITY);
+	objalloc_reset(&objects);
 }
 
 void
 ent_update(float delta)
 {
-	for(EntityID id = obj_begin(GAME_OBJECT_TYPE_ENTITY);
+	for(EntityID id = objalloc_begin(&objects);
 		id;
-		id = obj_next(id))
+		id = objalloc_next(&objects, id))
 	{
 		if(descr[ent_type(id)].update)
 			descr[ent_type(id)].update(id, delta);
 	}
+	objalloc_clean(&objects);
 }
 
 void
 ent_render(void)
 {
-	for(EntityID id = obj_begin(GAME_OBJECT_TYPE_ENTITY);
+	for(EntityID id = objalloc_begin(&objects);
 		id;
-		id = obj_next(id))
+		id = objalloc_next(&objects, id))
 	{
 		if(descr[ent_type(id)].render)
 			descr[ent_type(id)].render(id);
@@ -93,7 +83,7 @@ ent_render(void)
 EntityID
 ent_new(EntityType type)
 {
-	EntityID new = obj_new(GAME_OBJECT_TYPE_ENTITY);
+	EntityID new = objalloc_alloc(&objects);
 	PRIVDATA(new)->type = type;
 	return new;
 }
@@ -101,13 +91,15 @@ ent_new(EntityType type)
 void
 ent_del(EntityID id)
 {
-	obj_del(id);
+	if(descr[ent_type(id)].delete)
+		descr[ent_type(id)].delete(id);
+	objalloc_free(&objects, id);
 }
 
 void *
 ent_data(EntityID id)
 {
-	return obj_data(id);
+	return &PRIVDATA(id)->data;
 }
 
 EntityType
@@ -136,4 +128,10 @@ ent_component(EntityID id, EntityComponent comp)
 	default:
 		return NULL;
 	}
+}
+
+RelPtr
+ent_relptr(void *ptr)
+{
+	return (RelPtr){ &objects.data_buffer.data, (unsigned char *)ptr - (unsigned char *)objects.data_buffer.data };
 }

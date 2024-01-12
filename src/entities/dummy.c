@@ -31,7 +31,7 @@ ent_dummy_new(vec2 position)
 	self_body->is_static = false;
 	self_body->collision_layer = PHX_LAYER_ENTITIES_BIT;
 	self_body->collision_mask  = PHX_LAYER_ENTITIES_BIT | PHX_LAYER_MAP_BIT;
-	self_body->user_data = self_id;
+	self_body->user_data = make_gobj_id(GAME_OBJECT_TYPE_ENTITY, self_id);
 	self_body->mass = 10.0;
 	self_body->restitution = 0.0;
 	self_body->damping = 5.0;

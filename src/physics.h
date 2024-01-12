@@ -69,6 +69,4 @@ void   phx_update(float delta);
 void   phx_draw(void);
 Body  *phx_data(BodyID self);
 
-GameObjectRegistry phx_object_descr(void);
-
 #endif

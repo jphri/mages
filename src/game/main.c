@@ -129,12 +129,12 @@ pre_solve(Contact *contact)
 	Body* b1 = phx_data(contact->body1);
 	Body* b2 = phx_data(contact->body2);
 
-	unsigned int id1 = b1->user_data;
-	unsigned int id2 = b2->user_data;
+	GameObjectID id1 = b1->user_data;
+	GameObjectID id2 = b2->user_data;
 
-	if(id_type(id1) == GAME_OBJECT_TYPE_ENTITY)
-		process_entity_collision(id1, contact->body2, contact);
+	if(gobj_type(id1) == GAME_OBJECT_TYPE_ENTITY)
+		process_entity_collision(gobj_id(id1), contact->body2, contact);
 
-	if(id_type(id2) == GAME_OBJECT_TYPE_ENTITY)
-		process_entity_collision(id2, contact->body1, contact);
+	if(gobj_type(id2) == GAME_OBJECT_TYPE_ENTITY)
+		process_entity_collision(gobj_id(id2), contact->body1, contact);
 }

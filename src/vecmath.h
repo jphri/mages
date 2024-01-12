@@ -8,7 +8,7 @@
 #define MATH_FUNC static inline
 
 #define DEFINE_VECTOR(SIZE) \
-typedef float vec##SIZE[SIZE];\
+typedef float  vec##SIZE[SIZE];\
 MATH_FUNC void vec##SIZE##_dup(vec##SIZE r, vec##SIZE const a)\
 {\
 	for(int i = 0; i < SIZE; i++)\
@@ -82,6 +82,10 @@ MATH_FUNC void vec##SIZE##_print(vec##SIZE r)\
 	}\
 	printf("\n");\
 }
+
+#define VEC2_DUP(v) (vec2){ v[0], v[1] }
+#define VEC3_DUP(v) (vec2){ v[0], v[1], v[2] }
+#define VEC4_DUP(v) (vec2){ v[0], v[1], v[2], v[3] }
 
 DEFINE_VECTOR(2)
 DEFINE_VECTOR(3)

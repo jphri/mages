@@ -15,8 +15,12 @@ typedef struct {
 
 static ObjectID    node_to_object_id(ObjectAllocator *alloc, void *ptr);
 static ObjectNode *object_id_to_node(ObjectAllocator *alloc, ObjectID id);
+static void       *object_id_to_object(ObjectAllocator *alloc, ObjectID id);
 static void        insert_obj_list(ObjectAllocator *alloc, ObjectID id);
 static void        remove_obj_list(ObjectAllocator *alloc, ObjectID id);
+
+static void *defaultalloc_allocate(size_t bytes, void *user_ptr);
+static void  defaultalloc_deallocate(void *ptr, void *user_ptr);
 
 static void *readline_proc(FILE *fp, ArrayBuffer *buffer);
 static inline void check_buffer_initialized(ArrayBuffer *buffer)
@@ -27,19 +31,17 @@ static inline void check_buffer_initialized(ArrayBuffer *buffer)
 void
 arrbuf_init(ArrayBuffer *buffer)
 {
-	buffer->size = 0;
-	buffer->initialized = true;
-	buffer->reserved = 1;
-	buffer->data = malloc(1);
+	arrbuf_init_allocator(buffer, allocator_default());
 }
 
 void
-arrbuf_init_mem(ArrayBuffer *buffer, size_t size, char data[size])
+arrbuf_init_allocator(ArrayBuffer *buffer, Allocator allocator)
 {
 	buffer->size = 0;
 	buffer->initialized = true;
-	buffer->reserved = size;
-	buffer->data = data;
+	buffer->reserved = 1;
+	buffer->allocator = allocator;
+	buffer->data = alloct_allocate(&buffer->allocator, 1);
 }
 
 void
@@ -53,8 +55,12 @@ arrbuf_reserve(ArrayBuffer *buffer, size_t size)
 		need_change = 1;
 	}
 
-	if(need_change)
-		buffer->data = realloc(buffer->data, buffer->reserved);
+	if(need_change) {
+		void *newptr = alloct_allocate(&buffer->allocator, buffer->reserved);
+		memcpy(newptr, buffer->data, buffer->size);
+		alloct_deallocate(&buffer->allocator, buffer->data);
+		buffer->data = newptr;
+	}
 }
 
 void
@@ -177,10 +183,14 @@ arrbuf_printf(ArrayBuffer *buffer, const char *fmt, ...)
 char *
 readline_mem(FILE *fp, void *data, size_t size)
 {
+	/* broken, don't use it. */
 	void *ret_data;
 	ArrayBuffer buffer;
 
-	arrbuf_init_mem(&buffer, size, data);
+	(void)data;
+	(void)size;
+
+	arrbuf_init_allocator(&buffer, allocator_default());
 	ret_data = readline_proc(fp, &buffer);
 	return ret_data;
 }
@@ -413,12 +423,19 @@ _erealloc(void *ptr, size_t size, const char *file, int line)
 void
 objalloc_init(ObjectAllocator *obj, size_t obj_size)
 {
-	arrbuf_init(&obj->data_buffer);
-	arrbuf_init(&obj->free_stack);
-	arrbuf_init(&obj->dirty_buffer);
+	objalloc_init_allocator(obj, obj_size, allocator_default());
+}
+
+void
+objalloc_init_allocator(ObjectAllocator *obj, size_t obj_size, Allocator alloc)
+{
+	arrbuf_init_allocator(&obj->data_buffer,  alloc);
+	arrbuf_init_allocator(&obj->free_stack, alloc);
+	arrbuf_init_allocator(&obj->dirty_buffer, alloc);
+	arrbuf_init_allocator(&obj->meta_buffer, alloc);
 
 	obj->obj_size = obj_size;
-	obj->node_size = obj_size + sizeof(ObjectNode);
+	obj->node_size = sizeof(ObjectNode);
 	obj->object_list = 0;
 	obj->clean_cbk = NULL;
 }
@@ -429,6 +446,7 @@ objalloc_end(ObjectAllocator *obj)
 	arrbuf_free(&obj->data_buffer);
 	arrbuf_free(&obj->free_stack);
 	arrbuf_free(&obj->dirty_buffer);
+	arrbuf_free(&obj->meta_buffer);
 	obj->object_list = 0;
 }
 
@@ -452,6 +470,7 @@ objalloc_reset(ObjectAllocator *obj)
 	arrbuf_clear(&obj->dirty_buffer);
 	arrbuf_clear(&obj->free_stack);
 	arrbuf_clear(&obj->data_buffer);
+	arrbuf_clear(&obj->meta_buffer);
 	obj->object_list = 0;
 }
 
@@ -466,7 +485,8 @@ objalloc_alloc(ObjectAllocator *obj)
 		node = object_id_to_node(obj, *stack);
 		arrbuf_poptop(&obj->free_stack, sizeof(ObjectID));
 	} else {
-		node = arrbuf_newptr(&obj->data_buffer, obj->node_size);
+		node = arrbuf_newptr(&obj->meta_buffer, obj->node_size);
+		arrbuf_newptr(&obj->data_buffer, obj->obj_size);
 	}
 	node_id = node_to_object_id(obj, node);
 	memset(node, 0, obj->node_size);
@@ -478,11 +498,7 @@ objalloc_alloc(ObjectAllocator *obj)
 void *
 objalloc_data(ObjectAllocator *alloc, ObjectID id)
 {
-	ObjectNode *node = object_id_to_node(alloc, id);
-	if(node)
-		return node->obj;
-	else
-	 	return NULL;
+	return object_id_to_object(alloc, id);
 }
 
 void
@@ -515,7 +531,7 @@ objalloc_next(ObjectAllocator *alloc, ObjectID id)
 ObjectID
 node_to_object_id(ObjectAllocator *alloc, void *ptr)
 {
-	return 1 + ((unsigned char*)ptr - (unsigned char*)alloc->data_buffer.data) / alloc->node_size;
+	return 1 + ((unsigned char*)ptr - (unsigned char*)alloc->meta_buffer.data) / alloc->node_size;
 }
 
 ObjectNode *
@@ -524,7 +540,16 @@ object_id_to_node(ObjectAllocator *alloc, ObjectID id)
 	if(id == 0)
 		return NULL;
 	id --;
-	return (ObjectNode*)((unsigned char*)alloc->data_buffer.data + alloc->node_size * id);
+	return (ObjectNode*)((unsigned char*)alloc->meta_buffer.data + alloc->node_size * id);
+}
+
+void *
+object_id_to_object(ObjectAllocator *alloc, ObjectID id)
+{
+	if(id == 0)
+		return NULL;
+	id --;
+	return (unsigned char*)alloc->data_buffer.data + alloc->obj_size * id;
 }
 
 void
@@ -560,4 +585,39 @@ bool
 objalloc_is_dead(ObjectAllocator *alloc, ObjectID id)
 {
 	return object_id_to_node(alloc, id)->dead;
+}
+
+void *
+alloct_allocate(Allocator *a, size_t s)
+{
+	return a->allocate(s, a->userptr);
+}
+
+void
+alloct_deallocate(Allocator *a, void *ptr)
+{
+	a->deallocate(ptr, a->userptr);
+}
+
+Allocator 
+allocator_default()
+{
+	return (Allocator) {
+		.allocate = defaultalloc_allocate,
+		.deallocate = defaultalloc_deallocate
+	};
+}
+
+void *
+defaultalloc_allocate(size_t bytes, void *user_ptr)
+{
+	(void)user_ptr;
+	return malloc(bytes);
+}
+
+void 
+defaultalloc_deallocate(void *ptr, void *user_ptr)
+{
+	(void)user_ptr;
+	free(ptr);
 }

@@ -16,6 +16,7 @@
 #include "util.h"
 #include "map.h"
 #include "audio.h"
+#include "util.h"
 
 typedef struct {
 	void (*init)(void);
@@ -27,6 +28,32 @@ typedef struct {
 	void (*mouse_button)(SDL_Event *event);
 	void (*mouse_wheel)(SDL_Event *event);
 } GameStateVTable;
+
+static void *cache_line_allocate(size_t size, void *ptr)
+{
+	(void)ptr;
+	size = ((size + SDL_GetCPUCacheLineSize() - 1) / SDL_GetCPUCacheLineSize()) * SDL_GetCPUCacheLineSize();
+
+	#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
+	return aligned_alloc(SDL_GetCPUCacheLineSize(), size);
+	#elif #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+	return _alligned_alloc(SDL_GetCPUCacheLineSize(), bytes);
+	#else
+	#error "Must be POSIX or Windows, unfortunately"
+	#endif
+}
+
+static void cache_line_deallocate(void *ptr, void *user)
+{
+	(void)user;
+	#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
+	free(ptr);
+	#elif #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+	_aligned_free(ptr);
+	#else
+	#error "Must be POSIX or Windows, unfortunately"
+	#endif
+}
 
 static GLADapiproc load_proc(const char *name) 
 {
@@ -56,6 +83,8 @@ static GameStateVTable state_vtable[] = {
 
 static GameState current_state, next_state;
 static bool need_change;
+static float fps_time;
+static int fps;
 
 Global GLOBAL;
 
@@ -90,16 +119,10 @@ main(int argc, char *argv[])
 		printf("SDL_GL_CreateContext() failed\n");
 		return 0;
 	}
-	SDL_GL_SetSwapInterval(1);
+	SDL_GL_SetSwapInterval(0);
 	SDL_GL_MakeCurrent(GLOBAL.window, GLOBAL.glctx);
 	gladLoadGLES2(load_proc);
 	printf("OpenGL Version: %s\n", glGetString(GL_VERSION));
-
-	obj_init((GameObjectRegistrar){
-		[GAME_OBJECT_TYPE_BODY]      = phx_object_descr(),
-		[GAME_OBJECT_TYPE_ENTITY]    = ent_object_descr(),
-		[GAME_OBJECT_TYPE_GFX_SCENE] = gfx_scene_object_descr(),
-	});
 
 	gfx_init();
 	gfx_scene_setup();
@@ -114,8 +137,6 @@ main(int argc, char *argv[])
 	while(true) {
 		SDL_Event event;
 		int w, h;
-
-		obj_clean();
 
 		while(SDL_PollEvent(&event)) {
 			switch(event.type) {
@@ -184,6 +205,14 @@ main(int argc, char *argv[])
 
 			need_change = false;
 		}
+
+		fps++;
+		fps_time += delta;
+		if(fps_time > 1.0) {
+			printf("FPS: %d\n", fps);
+			fps_time = 0;
+			fps = 0;
+		}
 	}
 
 end_loop:
@@ -193,11 +222,19 @@ end_loop:
 	gfx_end();
 	audio_end();
 
-	obj_terminate();
-
 	SDL_DestroyRenderer(GLOBAL.renderer);
 	SDL_DestroyWindow(GLOBAL.window);
 	SDL_Quit();
 
 	return 0;
+}
+
+Allocator
+cache_aligned_allocator()
+{
+	return (Allocator) {
+		.userptr = NULL,
+		.allocate = cache_line_allocate,
+		.deallocate = cache_line_deallocate
+	};
 }

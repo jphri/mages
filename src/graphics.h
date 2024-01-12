@@ -120,6 +120,4 @@ SceneAnimatedSprite *gfx_scene_animspr(SceneAnimatedSpriteID anim_id);
 
 void gfx_scene_set_tilemap(int layer, TextureAtlas atlas, int w, int h, int *data);
 
-GameObjectRegistry gfx_scene_object_descr(void);
-
 #endif
