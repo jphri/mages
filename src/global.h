@@ -1,7 +1,7 @@
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include "game_objects.h"
 #include "util.h"
 

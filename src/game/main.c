@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <glad/gles2.h>
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 
 #include "../graphics.h"
 #include "../map.h"

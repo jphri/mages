@@ -129,7 +129,7 @@ arrbuf_poptop(ArrayBuffer *buffer, size_t element_size)
 void
 arrbuf_free(ArrayBuffer *buffer)
 {
-	free(buffer->data);
+	alloct_deallocate(&buffer->allocator, buffer->data);
 	buffer->initialized = false;
 }
 

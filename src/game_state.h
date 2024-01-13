@@ -1,7 +1,7 @@
 #ifndef GAME_STATE_H
 #define GAME_STATE_H
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 
 /* the first is also the starting state */
 #define GAME_STATE_LIST \

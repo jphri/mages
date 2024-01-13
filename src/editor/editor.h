@@ -3,7 +3,7 @@
 
 #include "../map.h"
 #include "../graphics.h"
-#include <SDL2/SDL.h>
+#include <SDL.h>
 
 typedef enum {
 	MOUSE_NOTHING,

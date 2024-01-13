@@ -1,4 +1,4 @@
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <glad/gles2.h>
 #include <assert.h>
 #include <stb_image.h>

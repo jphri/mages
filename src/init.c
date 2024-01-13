@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <glad/gles2.h>
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 
 #include "game_objects.h"
 #include "global.h"
@@ -29,31 +29,9 @@ typedef struct {
 	void (*mouse_wheel)(SDL_Event *event);
 } GameStateVTable;
 
-static void *cache_line_allocate(size_t size, void *ptr)
-{
-	(void)ptr;
-	size = ((size + SDL_GetCPUCacheLineSize() - 1) / SDL_GetCPUCacheLineSize()) * SDL_GetCPUCacheLineSize();
+static void *cache_line_allocate(size_t size, void *user);
+static void  cache_line_deallocate(void *ptr, void *user);
 
-	#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
-	return aligned_alloc(SDL_GetCPUCacheLineSize(), size);
-	#elif #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
-	return _alligned_alloc(SDL_GetCPUCacheLineSize(), bytes);
-	#else
-	#error "Must be POSIX or Windows, unfortunately"
-	#endif
-}
-
-static void cache_line_deallocate(void *ptr, void *user)
-{
-	(void)user;
-	#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
-	free(ptr);
-	#elif #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
-	_aligned_free(ptr);
-	#else
-	#error "Must be POSIX or Windows, unfortunately"
-	#endif
-}
 
 static GLADapiproc load_proc(const char *name) 
 {
@@ -238,3 +216,41 @@ cache_aligned_allocator()
 		.deallocate = cache_line_deallocate
 	};
 }
+
+#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
+
+static void *cache_line_allocate(size_t size, void *user)
+{
+	(void)user;
+	void *ptr;
+	size = ((size + SDL_GetCPUCacheLineSize() - 1) / SDL_GetCPUCacheLineSize()) * SDL_GetCPUCacheLineSize();
+
+	if(posix_memalign(&ptr, SDL_GetCPUCacheLineSize(), size) > 0)
+		return NULL;
+	else
+		return ptr;
+}
+
+static void cache_line_deallocate(void *ptr, void *user)
+{
+	(void)user;
+	free(ptr);
+}
+
+#elif defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+static void *cache_line_allocate(size_t size, void *user)
+{
+	(void)user;
+	size = ((size + SDL_GetCPUCacheLineSize() - 1) / SDL_GetCPUCacheLineSize()) * SDL_GetCPUCacheLineSize();
+	return _aligned_malloc(size, SDL_GetCPUCacheLineSize());
+}
+
+static void cache_line_deallocate(void *ptr, void *user)
+{
+	(void)user;
+	_aligned_free(ptr);
+}
+
+#else
+#error "Only WINDOWS or UNIX."
+#endif
