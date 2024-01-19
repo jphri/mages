@@ -44,7 +44,7 @@ static int bgm_playing;
 #define SOURCE(ALLOC, ID) ((AudioSource*)objalloc_data(&ALLOC, ID))
 
 void
-audio_init()
+audio_init(void)
 {
 	wanted_audio_spec.freq     = 48000;
 	wanted_audio_spec.format   = AUDIO_S16SYS;
@@ -77,7 +77,7 @@ audio_init()
 }
 
 void
-audio_end()
+audio_end(void)
 {
 	SDL_PauseAudioDevice(audio_device, 1);
 	SDL_CloseAudioDevice(audio_device);
@@ -194,13 +194,13 @@ audio_bgm_play(Sound sound, float freq_scale)
 }
 
 void
-audio_bgm_pause()
+audio_bgm_pause(void)
 {
 	bgm_playing = 0;
 }
 
 void
-audio_bgm_resume()
+audio_bgm_resume(void)
 {
 	bgm_playing = 1;
 }

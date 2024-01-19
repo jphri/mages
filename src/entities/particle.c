@@ -57,13 +57,13 @@ ent_particle_new(vec2 position, vec2 velocity, vec4 color, float time)
 	SELF_BODY->restitution = 1.0;
 	SELF_BODY->damping = 5.0;
 
-	SELF_SPRITE->type = SPRITE_ENTITIES;
-	vec2_dup(SELF_SPRITE->sprite.position, position);
-	vec2_dup(SELF_SPRITE->sprite.half_size, (vec2){ 0.1, 0.1 });
-	vec4_dup(SELF_SPRITE->sprite.color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
-	SELF_SPRITE->sprite.rotation = 0.0;
-	SELF_SPRITE->sprite.sprite_id[0] = 0.0; SELF_SPRITE->sprite.sprite_id[1] = 1.0;
-	vec4_dup(SELF_SPRITE->sprite.color, color);
+	SELF_SPRITE->type = SPRITE_UI;
+	vec2_dup(SELF_SPRITE->position, position);
+	vec2_dup(SELF_SPRITE->half_size, (vec2){ 0.05, 0.05 });
+	vec4_dup(SELF_SPRITE->color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+	SELF_SPRITE->rotation = 0.0;
+	SELF_SPRITE->sprite_x = 0.0; SELF_SPRITE->sprite_y = 0.0;
+	vec4_dup(SELF_SPRITE->color, color);
 	
 	return self_id;
 }
@@ -72,7 +72,8 @@ void
 ENTITY_PARTICLE_update(EntityID self_id, float delta)
 {
 	SELF->time -= delta;
-	vec2_dup(SELF_SPRITE->sprite.position, VEC2_DUP(SELF_BODY->position));
+	SELF_SPRITE->rotation += delta * 10.0;
+	vec2_dup(SELF_SPRITE->position, VEC2_DUP(SELF_BODY->position));
 	if(SELF->time < 0.0) {
 		ent_del(self_id);
 	}

@@ -22,7 +22,6 @@ static void        remove_obj_list(ObjectAllocator *alloc, ObjectID id);
 static void *defaultalloc_allocate(size_t bytes, void *user_ptr);
 static void  defaultalloc_deallocate(void *ptr, void *user_ptr);
 
-static void *readline_proc(FILE *fp, ArrayBuffer *buffer);
 static inline void check_buffer_initialized(ArrayBuffer *buffer)
 {
 	assert(buffer->initialized && "You didn't initialize the buffer, you idiot!");
@@ -180,33 +179,84 @@ arrbuf_printf(ArrayBuffer *buffer, const char *fmt, ...)
 	buffer->size --;
 }
 
-char *
-readline_mem(FILE *fp, void *data, size_t size)
+int
+fbuf_open(FileBuffer *buffer, const char *path, const char *mode, Allocator alloc)
 {
-	/* broken, don't use it. */
-	void *ret_data;
-	ArrayBuffer buffer;
+	buffer->file_handle = fopen(path, mode);
+	if(!buffer->file_handle)
+		return 1;
+	arrbuf_init_allocator(&buffer->data_buffer, alloc);
+	return 0;
+}
 
-	(void)data;
-	(void)size;
+int
+fbuf_read(FileBuffer *buffer, size_t size)
+{
+	void *ptr;
+	int count;
 
-	arrbuf_init_allocator(&buffer, allocator_default());
-	ret_data = readline_proc(fp, &buffer);
-	return ret_data;
+	arrbuf_clear(&buffer->data_buffer);
+	ptr = arrbuf_newptr(&buffer->data_buffer, size);
+	
+	count = fread(ptr, 1, size, buffer->file_handle);
+	return count;
+}
+
+int
+fbuf_write(FileBuffer *buffer, size_t size, void *ptr)
+{
+	arrbuf_insert(buffer->data_buffer.data, size, ptr);
+	return 0;
+}
+
+int
+fbuf_flush(FileBuffer *buffer)
+{
+	int count = fwrite(buffer->data_buffer.data, buffer->data_buffer.size, 1, buffer->file_handle);
+	fflush(buffer->file_handle);
+	return count;
 }
 
 char *
-readline(FILE *fp)
+fbuf_data(FileBuffer *buffer)
 {
-	void *data;
-	ArrayBuffer buffer;
+	return buffer->data_buffer.data;
+}
 
-	arrbuf_init(&buffer);
-	data = readline_proc(fp, &buffer);
-	if(!data)
-		free(buffer.data);
+int
+fbuf_data_size(FileBuffer *buffer)
+{
+	return buffer->data_buffer.size;
+}
 
-	return data;
+int
+fbuf_read_line(FileBuffer *buffer, int delim)
+{
+	char c;
+	arrbuf_clear(&buffer->data_buffer);
+	while((c = fgetc(buffer->file_handle)) != EOF) {
+		if(c == delim) {
+			break;
+		}
+		arrbuf_insert(&buffer->data_buffer, sizeof(c), &c);
+	}
+	if(buffer->data_buffer.size > 0)
+		return buffer->data_buffer.size;
+	return EOF;
+}
+
+StrView
+fbuf_data_view(FileBuffer *buffer)
+{
+	return (StrView){ .begin = (char*)buffer->data_buffer.data, .end = (char*)buffer->data_buffer.data + buffer->data_buffer.size };
+}
+
+void
+fbuf_close(FileBuffer *buffer)
+{
+	fbuf_flush(buffer);
+	arrbuf_free(&buffer->data_buffer);
+	fclose(buffer->file_handle);
 }
 
 StrView
@@ -221,14 +271,21 @@ to_strview(const char *str)
 StrView
 strview_token(StrView *str, const char *delim)
 {
-	StrView result = {
-		.begin = str->begin,
-		.end   = str->begin
-	};
+	StrView result;
 
 	if(str->begin >= str->end)
-		return result;
+		return (StrView){ str->begin, str->begin };
 
+	/* find the begin of next token */
+	while(str->begin < str->end)
+		if(strchr(delim, *str->begin) == NULL)
+			break;
+		else
+			str->begin++;
+	
+	result.begin = str->begin;
+	result.end = str->end;
+	
 	while(str->begin < str->end) {
 		if(strchr(delim, *str->begin) != NULL)
 			break;
@@ -243,9 +300,13 @@ strview_token(StrView *str, const char *delim)
 int
 strview_cmp(StrView str, const char *str2)
 {
-	if(str.end - str.begin == 0)
-		return strlen(str2) == 0 ? 0 : 1;
-	return strncmp(str.begin, str2, str.end - str.begin - 1);
+	size_t len1 = str.end - str.begin;
+	size_t len2 = strlen(str2);
+
+	if(len1 != len2)
+		return len1 - len2;
+	else
+		return memcmp(str.begin, str2, len1);
 }
 
 int
@@ -330,30 +391,6 @@ strview_str_mem(StrView view, char *data, size_t size)
 	size = (size > (size_t)(view.end - view.begin) + 1) ? (size_t)(view.end - view.begin) + 1 : size;
 	strncpy(data, view.begin, size);
 	data[size-1] = 0;
-}
-
-void *
-readline_proc(FILE *fp, ArrayBuffer *buffer)
-{
-	int c;
-
-	/* skip all new-lines/carriage return */
-	while((c = fgetc(fp)) != EOF)
-		if(c != '\n' && c != '\r')
-			break;
-
-	if(c == EOF) {
-		//free(buffer->data);
-		return NULL;
-	}
-
-	for(; c != EOF && c != '\n' && c != '\r'; c = fgetc(fp))
-		arrbuf_insert(buffer, sizeof(char), &(char){c});
-
-	c = 0;
-	arrbuf_insert(buffer, sizeof c, &c);
-
-	return buffer->data;
 }
 
 void
@@ -600,7 +637,7 @@ alloct_deallocate(Allocator *a, void *ptr)
 }
 
 Allocator 
-allocator_default()
+allocator_default(void)
 {
 	return (Allocator) {
 		.allocate = defaultalloc_allocate,
@@ -621,3 +658,4 @@ defaultalloc_deallocate(void *ptr, void *user_ptr)
 	(void)user_ptr;
 	free(ptr);
 }
+

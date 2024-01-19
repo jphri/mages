@@ -37,12 +37,12 @@ ent_dummy_new(vec2 position)
 	self_body->damping = 5.0;
 
 	self_sprite->type = SPRITE_ENTITIES;
-	vec2_dup(self_sprite->sprite.position, position);
-	vec2_dup(self_sprite->sprite.half_size, (vec2){ 1, 1 });
-	vec4_dup(self_sprite->sprite.color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
-	self_sprite->sprite.rotation = 0.0;
-	self_sprite->sprite.sprite_id[0] = 0.0; 
-	self_sprite->sprite.sprite_id[1] = 2.0;
+	vec2_dup(self_sprite->position, position);
+	vec2_dup(self_sprite->half_size, (vec2){ 1, 1 });
+	vec4_dup(self_sprite->color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+	self_sprite->rotation = 0.0;
+	self_sprite->sprite_x = 0; 
+	self_sprite->sprite_y = 2;
 	
 	MOB_COMPONENT.health     = 10.0f;
 	MOB_COMPONENT.health_max = 10.0f;
@@ -86,7 +86,7 @@ ENTITY_DUMMY_update(EntityID self_id, float delta)
 	//	}
 	//}
 
-	vec2_dup(self_sprite->sprite.position, self_body->position);
+	vec2_dup(self_sprite->position, self_body->position);
 	process_components(self_id);
 }
 

@@ -14,6 +14,6 @@ typedef struct {
 } Global;
 
 extern Global GLOBAL;
-Allocator cache_aligned_allocator();
+Allocator cache_aligned_allocator(void);
 
 #endif

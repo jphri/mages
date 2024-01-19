@@ -84,8 +84,8 @@ MATH_FUNC void vec##SIZE##_print(vec##SIZE r)\
 }
 
 #define VEC2_DUP(v) (vec2){ v[0], v[1] }
-#define VEC3_DUP(v) (vec2){ v[0], v[1], v[2] }
-#define VEC4_DUP(v) (vec2){ v[0], v[1], v[2], v[3] }
+#define VEC3_DUP(v) (vec3){ v[0], v[1], v[2] }
+#define VEC4_DUP(v) (vec4){ v[0], v[1], v[2], v[3] }
 
 DEFINE_VECTOR(2)
 DEFINE_VECTOR(3)
@@ -207,6 +207,31 @@ MATH_FUNC void affine2d_setup_ortho_window(mat4 r, const float w, const float h)
 	r[3][3] =  1.0;
 }
 
-#undef MATH_FUNC
+typedef struct Rectangle {
+	vec2 position;
+	vec2 half_size;
+} Rectangle;
 
+static inline void rect_intersect(Rectangle *rect_out, Rectangle *rect1, Rectangle *rect2)
+{
+	vec2 min1, max1;
+	vec2 min2, max2;
+	
+	vec2_sub(min1, rect1->position, rect1->half_size);
+	vec2_add(max1, rect1->position, rect1->half_size);
+	vec2_sub(min2, rect2->position, rect2->half_size);
+	vec2_add(max2, rect2->position, rect2->half_size);
+
+	if(min2[0] > min1[0]) min1[0] = min2[0];
+	if(min2[1] > min1[1]) min1[1] = min2[1];
+	if(max2[0] < max1[0]) max1[0] = max2[0];
+	if(max2[1] < max1[1]) max1[1] = max2[1];
+
+	rect_out->half_size[0] = (max1[0] - min1[0]) / 2.0;
+	rect_out->half_size[1] = (max1[1] - min1[1]) / 2.0;
+	rect_out->position[0] = rect_out->half_size[0] + min1[0];
+	rect_out->position[0] = rect_out->half_size[1] + min1[0];
+}
+
+#undef MATH_FUNC
 #endif

@@ -18,7 +18,8 @@ in vec2 v_Texcoord;
 
 in vec2 v_InstPosition;
 in vec2 v_InstSize; 
-in vec2 v_InstSpriteID;
+in vec2 v_InstTexPosition;
+in vec2 v_InstTexSize;
 in float v_InstRotation;
 in vec4 v_InstColor;
 in int v_InstSpriteType;
@@ -42,11 +43,10 @@ void main() {
 	
 	vec4 position = (rotation * (vec4(v_Position, 0.0, 1.0) * vec4(v_InstSize, 1.0, 1.0)) + vec4(v_InstPosition, 0.0, 0.0));
 	gl_Position     = u_Projection * u_View * position;
-	vs_out.texcoord = (v_Texcoord + v_InstSpriteID) * u_SpriteInvColRow[v_InstSpriteType];
+	vs_out.texcoord = (v_Texcoord * v_InstTexSize + v_InstTexPosition);
 	vs_out.color    = v_InstColor;
 	vs_out.sprite_type = v_InstSpriteType;
 	vs_out.position = (u_View * position).xy;
-	vs_out.clip_region.xy = (u_View * vec4(v_ClipRegion.xy, 0.0, 1.0)).xy;
-	vs_out.clip_region.zw = v_ClipRegion.zw;
+	vs_out.clip_region = v_ClipRegion;
 }
 

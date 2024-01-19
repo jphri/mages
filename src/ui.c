@@ -10,13 +10,11 @@
 
 typedef struct {
 	UIObjectType type;
-	UIObject next, prev;
 
 	vec2 position;
 	vec2 size;
 	vec2 global_position;
 	vec2 global_size;
-	bool dead;
 
 	UIObject parent;
 	UIObject sibling_next, sibling_prev;
@@ -73,37 +71,38 @@ static void button_mouse_button(UIObject object, UIMouseButton button, bool stat
 static void layout_order(UIObject object);
 static void window_order(UIObject object);
 
-#define SYS_ID_TYPE UIObject
-#define SYS_NODE_TYPE UIObjectNode
-#include "system.h"
+#define UI_NODE(ID) ((UIObjectNode*)objalloc_data(&objects, ID))
+
+static ObjectAllocator objects;
 
 static inline void add_child(UIObject parent, UIObject child)
 {
-	_sys_node(child)->sibling_next = _sys_node(parent)->child_list;
-	_sys_node(child)->sibling_prev = 0;
-	_sys_node(parent)->child_list = child;
+	UI_NODE(child)->sibling_next = UI_NODE(parent)->child_list;
+	UI_NODE(child)->sibling_prev = 0;
+	UI_NODE(parent)->child_list = child;
 
-	_sys_node(parent)->child_count ++;
+	UI_NODE(parent)->child_count ++;
 }
 
 static inline void remove_child(UIObject parent, UIObject child) 
 {
 	UIObject next, prev;
 
-	next = _sys_node(child)->sibling_next;
-	prev = _sys_node(child)->sibling_prev;
-	if(prev) _sys_node(prev)->sibling_next = next;
-	if(next) _sys_node(next)->sibling_prev = prev;
+	next = UI_NODE(child)->sibling_next;
+	prev = UI_NODE(child)->sibling_prev;
+	if(prev) UI_NODE(prev)->sibling_next = next;
+	if(next) UI_NODE(next)->sibling_prev = prev;
 
-	if(_sys_node(parent)->child_list == child)
-		_sys_node(parent)->child_list = next;
+	if(UI_NODE(parent)->child_list == child)
+		UI_NODE(parent)->child_list = next;
 
-	_sys_node(parent)->child_count --;
+	UI_NODE(parent)->child_count --;
 }
 
-static void _sys_int_cleanup(UIObject id)
+static void _sys_int_cleanup(ObjectAllocator *alloc, ObjectID id)
 {
-	remove_child(_sys_node(id)->parent, id);
+	(void)alloc;
+	remove_child(UI_NODE(id)->parent, id);
 }
 
 static UIElementVTable ui_vtables[] = {
@@ -131,13 +130,14 @@ static UIObject hot, active;
 void 
 ui_init(void)
 {
-	_sys_init();
+	objalloc_init_allocator(&objects, sizeof(UIObjectNode), cache_aligned_allocator());
+	objects.clean_cbk = _sys_int_cleanup;
 }
 
 void
 ui_reset(void)
 {
-	_sys_reset();
+	objalloc_reset(&objects);
 	hot = 0;
 	active = 0;
 }
@@ -145,7 +145,7 @@ ui_reset(void)
 void
 ui_terminate(void)
 {
-	_sys_deinit();
+	objalloc_end(&objects);
 }
 
 bool
@@ -157,17 +157,17 @@ ui_is_active(void)
 UIObject
 ui_new_object(UIObject parent, UIObjectType object_type) 
 {
-	UIObject object = _sys_new();
-	_sys_node(object)->type = object_type;
-	_sys_node(object)->parent = parent;
-	_sys_node(object)->child_list = 0;
-	_sys_node(object)->child_count = 0;
+	UIObject object = objalloc_alloc(&objects);
+	UI_NODE(object)->type = object_type;
+	UI_NODE(object)->parent = parent;
+	UI_NODE(object)->child_list = 0;
+	UI_NODE(object)->child_count = 0;
 
 	if(parent)
 		add_child(parent, object); 
 	else {
-		_sys_node(object)->sibling_next = 0;
-		_sys_node(object)->sibling_prev = 0;
+		UI_NODE(object)->sibling_next = 0;
+		UI_NODE(object)->sibling_prev = 0;
 	}
 
 	return object;
@@ -176,20 +176,20 @@ ui_new_object(UIObject parent, UIObjectType object_type)
 void
 ui_del_object(UIObject object) 
 {
-	UIObject child = _sys_node(object)->child_list;
+	UIObject child = UI_NODE(object)->child_list;
 	while(child) {
-		UIObject next = _sys_node(child)->sibling_next;
+		UIObject next = UI_NODE(child)->sibling_next;
 		ui_del_object(child);
 		child = next;
 	}
-	_sys_del(object);
+	objalloc_free(&objects, child);
 }
 
 void
 ui_draw(void) 
 {
 	gfx_draw_begin(NULL);
-	for(UIObject child = _sys_list; child; child = _sys_node(child)->next)
+	for(UIObject child = objalloc_begin(&objects); child; child = objalloc_next(&objects, child))
 		process_draw(child);
 	gfx_draw_end();
 }
@@ -197,37 +197,37 @@ ui_draw(void)
 void
 ui_button_set_userptr(UIObject object, void *user_ptr)
 {
-	_sys_node(object)->data.button.user_ptr = user_ptr;
+	UI_NODE(object)->data.button.user_ptr = user_ptr;
 }
 
 void
 ui_button_set_label(UIObject object, const char *label)
 {
-	_sys_node(object)->data.button.label      = label;
-	_sys_node(object)->data.button.label_size = strlen(label);
+	UI_NODE(object)->data.button.label      = label;
+	UI_NODE(object)->data.button.label_size = strlen(label);
 }
 
 void
 ui_button_set_label_border(UIObject object, vec2 border)
 {
-	vec2_dup(_sys_node(object)->data.button.label_border, border);
+	vec2_dup(UI_NODE(object)->data.button.label_border, border);
 }
 
 void 
 ui_button_set_callback(UIObject object, void(*callback)(void *user_ptr))
 {
-	_sys_node(object)->data.button.callback = callback;
+	UI_NODE(object)->data.button.callback = callback;
 }
 
 void 
 process_draw(UIObject object)
 {
-	#define OBJECT _sys_node(object)
+	#define OBJECT UI_NODE(object)
 
 	if(ui_vtables[OBJECT->type].draw)
 		ui_vtables[OBJECT->type].draw(object);
 
-	for(UIObject child = OBJECT->child_list; child; child = _sys_node(child)->sibling_next)
+	for(UIObject child = OBJECT->child_list; child; child = UI_NODE(child)->sibling_next)
 		process_draw(child);
 
 	#undef OBJECT
@@ -236,12 +236,12 @@ process_draw(UIObject object)
 void 
 process_order(UIObject object)
 {
-	#define OBJECT _sys_node(object)
+	#define OBJECT UI_NODE(object)
 
 	if(ui_vtables[OBJECT->type].order)
 		ui_vtables[OBJECT->type].order(object);
 
-	for(UIObject child = OBJECT->child_list; child; child = _sys_node(child)->sibling_next)
+	for(UIObject child = OBJECT->child_list; child; child = UI_NODE(child)->sibling_next)
 		process_order(child);
 
 	#undef OBJECT
@@ -250,9 +250,9 @@ process_order(UIObject object)
 void
 process_mouse_motion(UIObject object, float x, float y) 
 {
-	#define OBJECT _sys_node(object)
+	#define OBJECT UI_NODE(object)
 
-	for(UIObject child = OBJECT->child_list; child; child = _sys_node(child)->sibling_next)
+	for(UIObject child = OBJECT->child_list; child; child = UI_NODE(child)->sibling_next)
 		process_mouse_motion(child, x, y);
 
 	if(ui_vtables[OBJECT->type].mouse_motion)
@@ -264,9 +264,9 @@ process_mouse_motion(UIObject object, float x, float y)
 void
 process_mouse_button(UIObject object, UIMouseButton button, bool state) 
 {
-	#define OBJECT _sys_node(object)
+	#define OBJECT UI_NODE(object)
 
-	for(UIObject child = OBJECT->child_list; child; child = _sys_node(child)->sibling_next)
+	for(UIObject child = OBJECT->child_list; child; child = UI_NODE(child)->sibling_next)
 		process_mouse_button(child, button, state);
 
 	if(ui_vtables[OBJECT->type].mouse_button)
@@ -278,7 +278,7 @@ process_mouse_button(UIObject object, UIMouseButton button, bool state)
 void
 dummy_draw(UIObject object)
 {
-	#define OBJECT _sys_node(object)
+	#define OBJECT UI_NODE(object)
 	(void)object;
 	#undef OBJECT
 }
@@ -286,22 +286,24 @@ dummy_draw(UIObject object)
 void 
 ui_obj_set_position(UIObject object, vec2 position)
 {
-	vec2_dup(_sys_node(object)->position, position);
-	vec2_dup(_sys_node(object)->global_position, position);
+	vec2_dup(UI_NODE(object)->position, position);
+	vec2_dup(UI_NODE(object)->global_position, position);
 }
 
 void 
 ui_obj_set_size(UIObject object, vec2 size)
 {
-	vec2_dup(_sys_node(object)->size, size);
-	vec2_dup(_sys_node(object)->global_size, size);
+	vec2_dup(UI_NODE(object)->size, size);
+	vec2_dup(UI_NODE(object)->global_size, size);
 }
 
 void
 button_draw(UIObject object) 
 {
-	#define BUTTON _sys_node(object)->data.button
-	#define OBJECT _sys_node(object)
+	#define BUTTON UI_NODE(object)->data.button
+	#define OBJECT UI_NODE(object)
+
+	TextureStamp white_rect = get_sprite(SPRITE_UI, 0, 0);
 
 	float color_offset = 0.0;
 	vec2 label_position, label_character_size;
@@ -316,16 +318,14 @@ button_draw(UIObject object)
 	label_position[0] = OBJECT->global_position[0] - OBJECT->global_size[0] + label_character_size[0] + BUTTON.label_border[0];
 	label_position[1] = OBJECT->global_position[1];
 
-	gfx_draw_sprite(&(Sprite) {
-		.type = SPRITE_UI,
-		.position = { OBJECT->global_position[0], OBJECT->global_position[1] },
-		.color = { 0.7 + color_offset, 0.7 + color_offset, 0.7 + color_offset, 1.0 },
-		.rotation = 0.0,
-		.half_size = { OBJECT->global_size[0], OBJECT->global_size[1] },
-		.sprite_id = { 0.0, 0.0 },
-		.clip_region = { OBJECT->global_position[0], OBJECT->global_position[1], OBJECT->global_size[0], OBJECT->global_size[1] }
-	});
-	gfx_draw_font(TEXTURE_FONT_CELLPHONE, label_position, label_character_size, (vec4){ 0.0, 0.0, 0.0, 1.0 }, (vec4){ OBJECT->global_position[0], OBJECT->global_position[1], OBJECT->global_size[0], OBJECT->global_size[1] }, "%s", BUTTON.label);
+	gfx_draw_texture_rect(
+			&white_rect,
+			OBJECT->global_position,
+			OBJECT->global_size,
+			0.0,
+			(vec4){ 0.7 + color_offset, 0.7 + color_offset, 0.7 + color_offset, 1.0 }
+	);
+	gfx_draw_font2(FONT_ROBOTO, label_position, 0.25, (vec4){ 0.0, 0.0, 0.0, 1.0 }, "%s", BUTTON.label);
 	
 	#undef BUTTON
 	#undef OBJECT
@@ -334,8 +334,8 @@ button_draw(UIObject object)
 void
 label_draw(UIObject object) 
 {
-	#define LABEL _sys_node(object)->data.label
-	#define OBJECT _sys_node(object)
+	#define LABEL UI_NODE(object)->data.label
+	#define OBJECT UI_NODE(object)
 
 	vec2 label_position, label_character_size;
 
@@ -344,7 +344,7 @@ label_draw(UIObject object)
 	label_position[0] = OBJECT->global_position[0] - OBJECT->global_size[0] + label_character_size[0] + LABEL.border[0];
 	label_position[1] = OBJECT->global_position[1];
 
-	gfx_draw_font(TEXTURE_FONT_CELLPHONE, label_position, label_character_size, LABEL.color, (vec4){ OBJECT->global_position[0], OBJECT->global_position[1], OBJECT->global_size[0], OBJECT->global_size[1] }, "%s", LABEL.label_ptr);
+	gfx_draw_font2(FONT_ROBOTO, label_position, 0.25, LABEL.color, "%s", LABEL.label_ptr);
 	
 	#undef LABEL
 	#undef OBJECT
@@ -353,28 +353,28 @@ label_draw(UIObject object)
 void 
 window_draw(UIObject object)
 {
-	#define OBJECT _sys_node(object)
-	#define WINDOW _sys_node(object)->data.window
+	#define OBJECT UI_NODE(object)
+	#define WINDOW UI_NODE(object)->data.window
 
-	{
-		vec2 size;
-		vec2_sub(size, OBJECT->global_size, WINDOW.border);
-		gfx_draw_sprite(&(Sprite) {
-			.type = SPRITE_UI,
-			.color = { WINDOW.border_color[0], WINDOW.border_color[1], WINDOW.border_color[2], WINDOW.border_color[3] },
-			.position = { OBJECT->global_position[0], OBJECT->global_position[1] },
-			.half_size = { OBJECT->global_size[0], OBJECT->global_size[1] },
-			.clip_region = { OBJECT->global_position[0], OBJECT->global_position[1], OBJECT->global_size[0], OBJECT->global_size[1] }
-		});
+	vec2 size;
+	vec2_sub(size, OBJECT->global_size, WINDOW.border);
+	TextureStamp white_rect = get_sprite(SPRITE_UI, 0, 0);
 
-		gfx_draw_sprite(&(Sprite) {
-			.type = SPRITE_UI,
-			.color = { WINDOW.background[0], WINDOW.background[1], WINDOW.background[2], WINDOW.background[3] },
-			.position = { OBJECT->global_position[0], OBJECT->global_position[1] },
-			.half_size = { size[0], size[1] },
-			.clip_region = { OBJECT->global_position[0], OBJECT->global_position[1], OBJECT->global_size[0], OBJECT->global_size[1] }
-		});
-	}
+	gfx_draw_texture_rect(
+			&white_rect,
+			OBJECT->global_position,
+			OBJECT->global_size,
+			0.0,
+			WINDOW.border_color
+	);
+
+	gfx_draw_texture_rect(
+			&white_rect,
+			OBJECT->global_position,
+			size,
+			0.0,
+			WINDOW.background
+	);
 
 	#undef OBJECT
 	#undef WINDOW
@@ -383,28 +383,28 @@ window_draw(UIObject object)
 void
 ui_mouse_motion(float x, float y)
 {
-	for(UIObject child = _sys_list; child; child = _sys_node(child)->next)
+	for(UIObject child = objalloc_begin(&objects); child; child = objalloc_next(&objects, child))
 		process_mouse_motion(child, x, y);
 }
 
 void
 ui_mouse_button(UIMouseButton button, bool state)
 {
-	for(UIObject child = _sys_list; child; child = _sys_node(child)->next)
+	for(UIObject child = objalloc_begin(&objects); child; child = objalloc_next(&objects, child))
 		process_mouse_button(child, button, state);
 }
 
 void
 ui_cleanup(void)
 {
-	_sys_cleanup();
+	objalloc_clean(&objects);
 }
 
 void
 button_mouse_motion(UIObject object, float x, float y) 
 {
-	#define BUTTON _sys_node(object)->data.button
-	#define OBJECT _sys_node(object)
+	#define BUTTON UI_NODE(object)->data.button
+	#define OBJECT UI_NODE(object)
 
 	if(active)
 		return;
@@ -425,8 +425,8 @@ button_mouse_motion(UIObject object, float x, float y)
 void
 button_mouse_button(UIObject object, UIMouseButton button, bool state) 
 {
-	#define BUTTON _sys_node(object)->data.button
-	#define OBJECT _sys_node(object)
+	#define BUTTON UI_NODE(object)->data.button
+	#define OBJECT UI_NODE(object)
 
 	if(button != UI_MOUSE_LEFT)
 		return;
@@ -451,7 +451,7 @@ button_mouse_button(UIObject object, UIMouseButton button, bool state)
 void
 ui_order(void)
 {
-	for(UIObject child = _sys_list; child; child = _sys_node(child)->next)
+	for(UIObject child = objalloc_begin(&objects); child; child = objalloc_next(&objects, child))
 		process_order(child);
 }
 
@@ -462,8 +462,8 @@ layout_order(UIObject object)
 	float w = 0, h = 0;
 	vec2 position;
 
-	#define LAYOUT _sys_node(object)->data.layout
-	#define OBJECT _sys_node(object)
+	#define LAYOUT UI_NODE(object)->data.layout
+	#define OBJECT UI_NODE(object)
 
 	switch(LAYOUT.order) {
 	case UI_LAYOUT_HORIZONTAL:
@@ -485,7 +485,7 @@ layout_order(UIObject object)
 	
 	vec2_add_scaled(position, OBJECT->global_position, (vec2){ dx, dy }, ((float)OBJECT->child_count - 1)/ 2);
 
-	for(UIObject obj = OBJECT->child_list; obj; obj = _sys_node(obj)->sibling_next) {
+	for(UIObject obj = OBJECT->child_list; obj; obj = UI_NODE(obj)->sibling_next) {
 		ui_obj_set_size(obj, (vec2){ w, h });
 		ui_obj_set_position(obj, position);
 		vec2_sub(position, position, (vec2){ dx, dy });
@@ -498,15 +498,15 @@ layout_order(UIObject object)
 void
 window_order(UIObject object) 
 {
-	#define WINDOW _sys_node(object)->data.window
-	#define OBJECT _sys_node(object)
+	#define WINDOW UI_NODE(object)->data.window
+	#define OBJECT UI_NODE(object)
 
-	for(UIObject obj = OBJECT->child_list; obj; obj = _sys_node(obj)->sibling_next) {
+	for(UIObject obj = OBJECT->child_list; obj; obj = UI_NODE(obj)->sibling_next) {
 		vec2 pos;
 		vec2_sub(pos, OBJECT->global_position, OBJECT->global_size);
 
-		vec2_add(_sys_node(obj)->global_position, 
-				_sys_node(obj)->position,
+		vec2_add(UI_NODE(obj)->global_position, 
+				UI_NODE(obj)->position,
 				pos);
 	}
 
@@ -517,42 +517,42 @@ window_order(UIObject object)
 void
 ui_layout_set_order(UIObject object, UILayoutOrder order) 
 {
-	_sys_node(object)->data.layout.order = order;
+	UI_NODE(object)->data.layout.order = order;
 }
 
 void 
 ui_label_set_text(UIObject object, const char *text_ptr)
 {
-	_sys_node(object)->data.label.label_ptr = text_ptr;
-	_sys_node(object)->data.label.label_size = strlen(text_ptr);
+	UI_NODE(object)->data.label.label_ptr = text_ptr;
+	UI_NODE(object)->data.label.label_size = strlen(text_ptr);
 }
 
 void ui_label_set_color(UIObject object, vec4 color)
 {
-	vec4_dup(_sys_node(object)->data.label.color, color);
+	vec4_dup(UI_NODE(object)->data.label.color, color);
 }
 
 void 
 ui_label_set_border(UIObject object, vec2 border)
 {
-	vec2_dup(_sys_node(object)->data.label.border, border);
+	vec2_dup(UI_NODE(object)->data.label.border, border);
 }
 
 void 
 ui_window_set_bg(UIObject object, vec4 color)
 {
-	vec4_dup(_sys_node(object)->data.window.background, color);
+	vec4_dup(UI_NODE(object)->data.window.background, color);
 }
 
 void 
 ui_window_set_border(UIObject object, vec4 color)
 {
-	vec4_dup(_sys_node(object)->data.window.border_color, color);
+	vec4_dup(UI_NODE(object)->data.window.border_color, color);
 }
 
 void 
 ui_window_set_border_size(UIObject object, vec2 size)
 {
-	vec2_dup(_sys_node(object)->data.window.border, size);
+	vec2_dup(UI_NODE(object)->data.window.border, size);
 }
 

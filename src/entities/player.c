@@ -39,16 +39,13 @@ ent_player_new(vec2 position)
 	self_body->restitution = 0.01;
 	self_body->damping = 5.0;
 
-	self_sprite->sprite.type = SPRITE_ENTITIES;
-	vec2_dup(self_sprite->sprite.position, position);
-	vec2_dup(self_sprite->sprite.half_size, (vec2){ 1, 1 });
-	vec4_dup(self_sprite->sprite.color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
-	self_sprite->sprite.rotation = 0.0;
-	self_sprite->sprite.sprite_id[0] = 0.0; self_sprite->sprite.sprite_id[1] = 0.0;
+	vec2_dup(self_sprite->position, position);
+	vec2_dup(self_sprite->half_size, (vec2){ 1, 1 });
+	vec4_dup(self_sprite->color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+	self_sprite->rotation = 0.0;
 	self_sprite->fps = 0.0;
 	self_sprite->time = 0.0;
-	self_sprite->sprite_id[0] = 0.0, self_sprite->sprite_id[1] = 0.0;
-	self_sprite->animation = ANIMATION_NULL;
+	self_sprite->animation = ANIMATION_PLAYER_IDLE;
 	self->fired = 0;
 
 	MOB_COMPONENT.health = 10;
@@ -71,11 +68,11 @@ ENTITY_PLAYER_update(EntityID self_id, float delta)
 	if(keys[SDL_SCANCODE_S])
 		self_body->accel[1] += SPEED;
 	if(keys[SDL_SCANCODE_A]) {
-		self_sprite->sprite.half_size[0] = -1.0;
+		self_sprite->half_size[0] = -1.0;
 		self_body->accel[0] -= SPEED;
 	}
 	if(keys[SDL_SCANCODE_D]) {
-		self_sprite->sprite.half_size[0] = 1.0;
+		self_sprite->half_size[0] = 1.0;
 		self_body->accel[0] += SPEED;
 	}
 
@@ -87,7 +84,7 @@ ENTITY_PLAYER_update(EntityID self_id, float delta)
 			self->moving = true;
 		}
 	} else {
-		self_sprite->animation = ANIMATION_NULL;
+		self_sprite->animation = ANIMATION_PLAYER_IDLE;
 		self_sprite->fps = 0.0;
 		self_sprite->time = 0.0;
 		self->moving = false;
@@ -117,8 +114,7 @@ ENTITY_PLAYER_update(EntityID self_id, float delta)
 void
 ENTITY_PLAYER_render(EntityID self_id)
 {
-	(void)self_id;
-	vec2_dup(self_sprite->sprite.position, self_body->position);
+	vec2_dup(self_sprite->position, self_body->position);
 }
 
 void

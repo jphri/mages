@@ -2,7 +2,9 @@
 #include <glad/gles2.h>
 #include <assert.h>
 #include <stb_image.h>
+#include <string.h>
 
+#include "SDL_stdinc.h"
 #include "game_objects.h"
 #include "vecmath.h"
 #include "glutil.h"
@@ -30,6 +32,8 @@ enum VertexAttrib {
 	VATTRIB_INST_COLOR,
 	VATTRIB_INST_ROTATION,
 	VATTRIB_INST_SPRITE_ID,
+	VATTRIB_INST_TEXTURE_POSITION,
+	VATTRIB_INST_TEXTURE_SIZE,
 	VATTRIB_INST_SPRITE_TYPE,
 	VATTRIB_INST_CLIP,
 	LAST_VATTRIB
@@ -44,9 +48,31 @@ typedef struct {
 } SpriteVertex;
 
 typedef struct {
+	float rotation;
+	GLuint type;
+
+	vec2 position;
+	vec2 half_size;
+	vec2 texpos;
+	vec2 texsize;
+	vec4 color;
+	vec4 clip_region;
+} SpriteInternal;
+
+typedef struct {
+	vec2 position;
+	vec2 half_size;
+} ClipStack;
+
+typedef struct {
 	GLuint texture;
-	int cols, rows;
-} TextureAtlasData;
+	int width, height;
+} TextureData;
+
+typedef struct {
+	Texture texture;
+	int rows, cols;
+} SpriteAtlasData;
 
 typedef struct {
 	vec2 position;
@@ -58,10 +84,27 @@ typedef struct {
 	vec4 color;
 } DebugVertex;
 
+typedef struct {
+	int count_chars;
+	Texture texture;
+	struct CharData {
+		int char_id;
+		int width, height;
+		int char_x, char_y;
+		int x_advance;
+		int x_offset, y_offset;
+	} *data;
+} FontData;
+
 typedef enum {
 	TEXTURE_FORMAT_RGBA32,
-	TEXTURE_FORMAT_RED
+	TEXTURE_FORMAT_RED,
 } TextureFormat;
+
+typedef enum {
+	TEXTURE_FILTER_NEAREST,
+	TEXTURE_FILTER_LINEAR
+} TextureFilter;
 
 #include "base-renderer.h"
 
@@ -94,25 +137,29 @@ intrend_bind_attribs(ShaderProgram *shader)
 	intrend_attrib_bind(shader, VATTRIB_TEXCOORD, "v_Texcoord");
 	intrend_attrib_bind(shader, VATTRIB_COLOR, "v_Color");
 
-	intrend_attrib_bind(shader, VATTRIB_INST_POSITION,  "v_InstPosition");
-	intrend_attrib_bind(shader, VATTRIB_INST_SIZE,      "v_InstSize");
-	intrend_attrib_bind(shader, VATTRIB_INST_SPRITE_ID, "v_InstSpriteID");
-	intrend_attrib_bind(shader, VATTRIB_INST_ROTATION,  "v_InstRotation");
-	intrend_attrib_bind(shader, VATTRIB_INST_COLOR,     "v_InstColor");
-	intrend_attrib_bind(shader, VATTRIB_INST_SPRITE_TYPE, "v_InstSpriteType");
-	intrend_attrib_bind(shader, VATTRIB_INST_CLIP, "v_ClipRegion");
+	intrend_attrib_bind(shader, VATTRIB_INST_POSITION,         "v_InstPosition");
+	intrend_attrib_bind(shader, VATTRIB_INST_SIZE,             "v_InstSize");
+	intrend_attrib_bind(shader, VATTRIB_INST_TEXTURE_POSITION, "v_InstTexPosition");
+	intrend_attrib_bind(shader, VATTRIB_INST_TEXTURE_SIZE,     "v_InstTexSize");
+	intrend_attrib_bind(shader, VATTRIB_INST_SPRITE_ID,        "v_InstSpriteID");
+	intrend_attrib_bind(shader, VATTRIB_INST_ROTATION,         "v_InstRotation");
+	intrend_attrib_bind(shader, VATTRIB_INST_COLOR,            "v_InstColor");
+	intrend_attrib_bind(shader, VATTRIB_INST_SPRITE_TYPE,      "v_InstSpriteType");
+	intrend_attrib_bind(shader, VATTRIB_INST_CLIP,             "v_ClipRegion");
 }
 
 static void   create_texture_buffer(int w, int h);
 static void   init_shaders(void);
-static GLuint load_texture(const char *file, TextureFormat format);
+static int    load_texture(TextureData *tex, const char *file, TextureFormat format, TextureFilter filter);
 
-static TextureAtlasData load_texture_atlas(const char *file, int cols, int rows, TextureFormat format);
-static void             end_texture_atlas(TextureAtlasData *texture);
+static void             end_texture_atlas(TextureData *texture);
 static void             draw_tmap(GraphicsTileMap *tmap);
 static void             draw_post(ShaderProgram *program);
 
-static void             insert_character(TextureAtlas atlas, vec2 position, vec2 size, vec4 color, vec4 clip_region, int c);
+static void             load_font_info(Font font, Texture texture, const char *path);
+static void             insert_character(Texture atlas, vec2 position, float height, vec4 color, struct CharData *data);
+
+static struct CharData  *find_char_idx(Font font, int charid);
 
 static bool enabled_camera;
 
@@ -121,7 +168,27 @@ static int screen_width, screen_height;
 static ShaderProgram sprite_program, tile_map_program, font_program;
 static ShaderProgram debug_program;
 
-static TextureAtlasData texture_atlas[LAST_TEXTURE_ATLAS];
+static TextureData texture_atlas[LAST_TEXTURE_ATLAS];
+static FontData font_data[LAST_FONT];
+static SpriteAtlasData sprite_atlas[LAST_SPRITE] =
+{
+	[SPRITE_TERRAIN] = {
+		.texture = TERRAIN_NORMAL,
+		.rows = 16, .cols = 16
+	},
+	[SPRITE_ENTITIES] = {
+		.texture = TEXTURE_ENTITIES,
+		.rows = 16, .cols = 16
+	},
+	[SPRITE_UI] = {
+		.texture = TEXTURE_UI,
+		.rows = 32, .cols = 32
+	},
+	[SPRITE_FONT_CELLPHONE] = {
+		.texture = TEXTURE_FONT_CELLPHONE,
+		.rows = 16, .cols = 16
+	}
+};
 
 static GLuint albedo_fbo, albedo_texture;
 static GLuint post_process_vbo, post_process_vao;
@@ -137,6 +204,21 @@ static GraphicsTileMap *current_tmap;
 
 static GLuint sprite_buffer, sprite_vao, sprite_count;
 static mat4 ident_mat;
+
+static int clip_id;
+static Rectangle clip_stack[1024];
+
+static inline void get_global_clip(vec4 out_clip)
+{
+	Rectangle rect = clip_stack[0];
+	for(int i = 1; i < clip_id; i++) {
+		rect_intersect(&rect, &rect, &clip_stack[i]);
+	}
+	out_clip[0] = rect.position[0];
+	out_clip[1] = rect.position[1];
+	out_clip[2] = rect.half_size[0];
+	out_clip[3] = rect.half_size[1];
+}
 
 void
 gfx_init(void)
@@ -161,12 +243,15 @@ gfx_init(void)
 
 	gfx_set_camera((vec2){ 0.0, 0.0 }, (vec2){ 16, 16 });
 
+	load_font_info(FONT_ROBOTO, TEXTURE_FONT_ROBOTO, "fonts/bmfiles/roboto-slab.fnt");
+
 	sprite_buffer_gpu               = ugl_create_buffer(GL_STATIC_DRAW, sizeof(vertex_data), vertex_data);
 
-	texture_atlas[TEXTURE_ENTITIES]       = load_texture_atlas("textures/entities.png", 16, 16, TEXTURE_FORMAT_RGBA32);
-	texture_atlas[TERRAIN_NORMAL]         = load_texture_atlas("textures/terrain.png", 16, 16, TEXTURE_FORMAT_RGBA32);
-	texture_atlas[TEXTURE_FONT_CELLPHONE] = load_texture_atlas("textures/charmap-cellphone.png", 18, 7, TEXTURE_FORMAT_RGBA32);
-	texture_atlas[TEXTURE_UI] = load_texture_atlas("textures/ui.png", 32, 32, TEXTURE_FORMAT_RGBA32);
+	load_texture(&texture_atlas[TEXTURE_ENTITIES],       "textures/entities.png",            TEXTURE_FORMAT_RGBA32, TEXTURE_FILTER_NEAREST);
+	load_texture(&texture_atlas[TERRAIN_NORMAL],         "textures/terrain.png",             TEXTURE_FORMAT_RGBA32, TEXTURE_FILTER_NEAREST);
+	load_texture(&texture_atlas[TEXTURE_FONT_CELLPHONE], "textures/charmap-cellphone.png",   TEXTURE_FORMAT_RGBA32, TEXTURE_FILTER_NEAREST);
+	load_texture(&texture_atlas[TEXTURE_UI],             "textures/ui.png",                  TEXTURE_FORMAT_RGBA32, TEXTURE_FILTER_NEAREST);
+	load_texture(&texture_atlas[TEXTURE_FONT_ROBOTO],    "fonts/textures/roboto-slab_0.png", TEXTURE_FORMAT_RGBA32, TEXTURE_FILTER_LINEAR);
 
 	post_process_vbo = ugl_create_buffer(GL_STATIC_DRAW, sizeof(post_process), post_process);
 	post_process_vao = ugl_create_vao(2, (VaoSpec[]){
@@ -192,14 +277,14 @@ gfx_init(void)
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 	vec2 data[] = {
-		#define TEX(TEXTURE_ATLAS) { 1.0 / texture_atlas[TEXTURE_ATLAS].cols, 1.0 / texture_atlas[TEXTURE_ATLAS].rows }
-		TEX(TEXTURE_ENTITIES),
+		#define TEX(TEXTURE_ATLAS) { 1.0 / sprite_atlas[TEXTURE_ATLAS].cols, 1.0 / sprite_atlas[TEXTURE_ATLAS].rows }
+		TEX(SPRITE_ENTITIES),
 		{0},
-		TEX(TERRAIN_NORMAL),
+		TEX(SPRITE_TERRAIN),
 		{0},
-		TEX(TEXTURE_FONT_CELLPHONE),
+		TEX(SPRITE_FONT_CELLPHONE),
 		{0},
-		TEX(TEXTURE_UI),
+		TEX(SPRITE_UI),
 		{0},
 		#undef TEX
 	};
@@ -211,17 +296,19 @@ gfx_init(void)
 	mat4_ident(projection);
 	mat4_ident(view_matrix);
 
-	sprite_buffer = ugl_create_buffer(GL_STREAM_DRAW, sizeof(Sprite) * MAX_SPRITES, NULL);
-	sprite_vao = ugl_create_vao(9, (VaoSpec[]){
-		{ .name = VATTRIB_POSITION, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, position), .buffer = sprite_buffer_gpu },
-		{ .name = VATTRIB_TEXCOORD, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, texcoord), .buffer = sprite_buffer_gpu },
-		{ .name = VATTRIB_INST_SPRITE_TYPE, .size = 1, .type = GL_INT,   .stride = sizeof(Sprite), .offset = offsetof(Sprite, type),        .divisor = 1, .buffer = sprite_buffer },
-		{ .name = VATTRIB_INST_POSITION,    .size = 2, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, position),    .divisor = 1, .buffer = sprite_buffer },
-		{ .name = VATTRIB_INST_SIZE,        .size = 2, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, half_size),   .divisor = 1, .buffer = sprite_buffer },
-		{ .name = VATTRIB_INST_SPRITE_ID,   .size = 2, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, sprite_id),   .divisor = 1, .buffer = sprite_buffer },
-		{ .name = VATTRIB_INST_COLOR,       .size = 4, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, color),       .divisor = 1, .buffer = sprite_buffer },
-		{ .name = VATTRIB_INST_ROTATION,    .size = 1, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, rotation),    .divisor = 1, .buffer = sprite_buffer },
-		{ .name = VATTRIB_INST_CLIP,        .size = 4, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, clip_region), .divisor = 1, .buffer = sprite_buffer },
+	sprite_buffer = ugl_create_buffer(GL_STREAM_DRAW, sizeof(SpriteInternal) * MAX_SPRITES, NULL);
+	sprite_vao = ugl_create_vao(10, (VaoSpec[]){
+		{ .name = VATTRIB_POSITION, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex),   .offset = offsetof(SpriteVertex,   position), .buffer = sprite_buffer_gpu },
+		{ .name = VATTRIB_TEXCOORD, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex),   .offset = offsetof(SpriteVertex,   texcoord), .buffer = sprite_buffer_gpu },
+
+		{ .name = VATTRIB_INST_SPRITE_TYPE,      .size = 1, .type = GL_UNSIGNED_INT, .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, type),        .divisor = 1, .buffer = sprite_buffer },
+		{ .name = VATTRIB_INST_ROTATION,         .size = 1, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, rotation),    .divisor = 1, .buffer = sprite_buffer },
+		{ .name = VATTRIB_INST_POSITION,         .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, position),    .divisor = 1, .buffer = sprite_buffer },
+		{ .name = VATTRIB_INST_SIZE,             .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, half_size),   .divisor = 1, .buffer = sprite_buffer },
+		{ .name = VATTRIB_INST_TEXTURE_POSITION, .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, texpos),      .divisor = 1, .buffer = sprite_buffer },
+		{ .name = VATTRIB_INST_TEXTURE_SIZE,     .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, texsize),     .divisor = 1, .buffer = sprite_buffer },
+		{ .name = VATTRIB_INST_COLOR,            .size = 4, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, color),       .divisor = 1, .buffer = sprite_buffer },
+		{ .name = VATTRIB_INST_CLIP,             .size = 4, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, clip_region), .divisor = 1, .buffer = sprite_buffer },
 	});
 	sprite_count = 0;
 
@@ -242,23 +329,39 @@ gfx_end(void)
 		end_texture_atlas(&texture_atlas[i]);
 }
 
-void
-gfx_draw_sprite(Sprite *sprite) 
+void 
+gfx_draw_texture_rect(TextureStamp *stamp, vec2 position, vec2 size, float rotation, vec4 color)
 {
-	if(sprite_count >= MAX_SPRITES)
+	SpriteInternal internal;
+
+	if(sprite_count >= MAX_SPRITES) {
 		return;
+	}
+
+	
+	internal.type                  = stamp->texture;
+	internal.rotation              = rotation;
+	vec2_dup(internal.position,    position);
+	vec2_dup(internal.half_size,   size);
+	vec2_dup(internal.texpos,      stamp->position);
+	vec2_dup(internal.texsize,     stamp->size);
+	vec4_dup(internal.color,       color);
+	get_global_clip(internal.clip_region);
+
 	glBindBuffer(GL_ARRAY_BUFFER, sprite_buffer);
-	glBufferSubData(GL_ARRAY_BUFFER, sprite_count * sizeof(*sprite), sizeof(*sprite), sprite);
+	glBufferSubData(GL_ARRAY_BUFFER, sprite_count * sizeof(internal), sizeof(internal), &internal); 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	sprite_count++;
 }
 
 void
-gfx_draw_font(TextureAtlas atlas, vec2 position, vec2 char_size, vec4 color, vec4 clip_region, const char *fmt, ...) 
+gfx_draw_font2(Font font, vec2 position, float height, vec4 color, const char *fmt, ...)
 {
 	char buffer[1024];
 	va_list va;
 	int characters;
+	struct CharData *char_data;
+	(void)font;
 
 	va_start(va, fmt);
 	characters = vsnprintf(buffer, sizeof(buffer), fmt, va);
@@ -271,17 +374,20 @@ gfx_draw_font(TextureAtlas atlas, vec2 position, vec2 char_size, vec4 color, vec
 		switch(buffer[i]) {
 		case '\n':
 			p[0] = position[0];
-			p[1] += char_size[1] * 2.0;
+			p[1] += height;
 			break;
 		default:
-			insert_character(atlas, p, char_size, color, clip_region, buffer[i]);
-			p[0] += char_size[0] * 2.0;
+			char_data = find_char_idx(FONT_ROBOTO, buffer[i]);
+			if(!char_data)
+				continue;
+			insert_character(font_data[font].texture, p, height, color, char_data);
+			p[0] += char_data->x_advance * height;
 		}
 	}
 }
 
 void
-gfx_draw_line(TextureAtlas atlas, vec2 p1, vec2 p2, float thickness, vec4 color, vec4 clip_region)
+gfx_draw_line(vec2 p1, vec2 p2, float thickness, vec4 color)
 {
 	vec2 dir;
 	vec2 sprite_pos, sprite_size;
@@ -297,25 +403,23 @@ gfx_draw_line(TextureAtlas atlas, vec2 p1, vec2 p2, float thickness, vec4 color,
 	sprite_size[1] = thickness;
 	float rotation = atan2f(-dir[1], dir[0]);
 
-	gfx_draw_sprite(&(Sprite) {
-		.type = atlas,
-		.position = { sprite_pos[0], sprite_pos[1] },
-		.rotation = rotation,
-		.clip_region = { clip_region[0], clip_region[1], clip_region[2], clip_region[3] },
-		.half_size = { sprite_size[0], sprite_size[1] },
-		.color = { color[0], color[1], color[2], color[3] },
-		.sprite_id = { 0, 0 }
-	});
+	gfx_draw_texture_rect(
+		&(TextureStamp){ .texture = TEXTURE_UI, .position = { 0.0, 0.0 }, .size = { 0.001, 0.001 } },
+		sprite_pos,
+		sprite_size,
+		rotation,
+		color
+	);
 }
 
 void
-gfx_draw_rect(TextureAtlas atlas, vec2 position, vec2 half_size, float thickness, vec4 color, vec4 clip_region)
+gfx_draw_rect(vec2 position, vec2 half_size, float thickness, vec4 color)
 {
 	vec2 min, max;
 	vec2_sub(min, position, half_size);
 	vec2_add(max, position, half_size);
 	
-	#define ADD_LINE(x1, y1, x2, y2) gfx_draw_line(atlas, (vec2){ x1, y1 }, (vec2){ x2, y2 }, thickness, color, clip_region)
+	#define ADD_LINE(x1, y1, x2, y2) gfx_draw_line((vec2){ x1, y1 }, (vec2){ x2, y2 }, thickness, color)
 	ADD_LINE(min[0], min[1], max[0], min[1]);
 	ADD_LINE(max[0], min[1], max[0], max[1]);
 	ADD_LINE(max[0], max[1], min[0], max[1]);
@@ -328,6 +432,11 @@ gfx_make_framebuffers(int w, int h)
 {
 	affine2d_setup_ortho_window(projection, w, h);
 	create_texture_buffer(w, h);
+
+	clip_stack[0].position[0] =  w / 2.0;
+	clip_stack[0].position[1] =  h / 2.0;
+	clip_stack[0].half_size[0] = w / 2.0;
+	clip_stack[0].half_size[1] = h / 2.0;
 
 	glBindBuffer(GL_ARRAY_BUFFER, matrix_buffer);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(projection), projection);
@@ -363,15 +472,18 @@ gfx_draw_begin(GraphicsTileMap *tmap)
 	current_tmap = tmap;
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	clip_id = 1;
 }
 
 void
 gfx_draw_end(void)
 {
-	glBindBuffer(GL_UNIFORM_BUFFER, matrix_buffer);
-	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(projection), sizeof(view_matrix), 
-			enabled_camera ? view_matrix : ident_mat);
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	vec4 clip;
+	if(!current_tmap && sprite_count == 0)
+		return;
+
+	get_global_clip(clip);
 
 	for(int i = 0; i < LAST_TEXTURE_ATLAS; i++) {
 		glActiveTexture(GL_TEXTURE0 + i);
@@ -398,29 +510,6 @@ gfx_draw_end(void)
 }
 
 void
-gfx_begin_scissor(vec2 position, vec2 size)
-{
-	vec2 scissor_pos, scissor_size;
-
-	glEnable(GL_SCISSOR_TEST);
-	vec2_sub(scissor_pos, position, size);
-	vec2_add(scissor_size, size, size);
-
-	#define F(X, Y, W, H) \
-		glScissor((X), (Y), (W), (H)); 
-
-	F(scissor_pos[0], screen_height - scissor_pos[1] - scissor_size[1], scissor_size[0], scissor_size[1]);
-
-	#undef F
-}
-
-void
-gfx_end_scissor(void)
-{
-	glDisable(GL_SCISSOR_TEST);
-}
-
-void
 gfx_render_present(void) 
 {
 	draw_post(&post_clean);
@@ -432,12 +521,22 @@ gfx_set_camera(vec2 position, vec2 scale)
 	mat4_ident(view_matrix);
 	affine2d_scale(view_matrix,     scale);
 	affine2d_translate(view_matrix, position);
+
+	glBindBuffer(GL_UNIFORM_BUFFER, matrix_buffer);
+	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(projection), sizeof(view_matrix), 
+			enabled_camera ? view_matrix : ident_mat);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void
 gfx_camera_set_enabled(bool enabled)
 {
 	enabled_camera = enabled;
+
+	glBindBuffer(GL_UNIFORM_BUFFER, matrix_buffer);
+	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(projection), sizeof(view_matrix), 
+			enabled_camera ? view_matrix : ident_mat);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void
@@ -533,55 +632,8 @@ create_texture_buffer(int w, int h)
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-GLuint
-load_texture(const char *file, TextureFormat format)
-{
-	GLuint texture;
-	int image_width, image_height;
-	unsigned char *image_data;
-	
-	GLenum internal_format, data_format, channels;
-
-	switch(format) {
-	case TEXTURE_FORMAT_RED:
-		internal_format = GL_R8;
-		data_format = GL_RED;
-		channels = 1;
-		break;
-	case TEXTURE_FORMAT_RGBA32:
-		internal_format = GL_RGBA8;
-		data_format = GL_RGBA;
-		channels = 4;
-		break;
-	}
-
-	image_data = stbi_load(file, &image_width, &image_height, NULL, channels);
-	if(!image_data) {
-		printf("Could not load the texture %s\n", file);
-		return -1;
-	}
-
-
-	glGenTextures(1, &texture);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	glTexImage2D(GL_TEXTURE_2D,
-			0,
-			internal_format,
-			image_width, image_height,
-			0, 
-			data_format,
-			GL_UNSIGNED_BYTE,
-			image_data);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	stbi_image_free(image_data);
-	return texture;
-}
-
 GraphicsTileMap
-gfx_tmap_new(TextureAtlas terrain, int w, int h, int *data) 
+gfx_tmap_new(SpriteType terrain, int w, int h, int *data) 
 {
 	unsigned int count_tiles = 0;
 	ArrayBuffer buffer;
@@ -597,8 +649,8 @@ gfx_tmap_new(TextureAtlas terrain, int w, int h, int *data)
 			TileData info = {
 				.position = { x, y },
 				.tile_data = {
-					(int)(spr % texture_atlas[terrain].cols),
-					(int)(spr / texture_atlas[terrain].cols)
+					(int)(spr % sprite_atlas[terrain].cols),
+					(int)(spr / sprite_atlas[terrain].cols)
 				}
 			};
 			arrbuf_insert(&buffer, sizeof(info), &info);
@@ -637,18 +689,60 @@ draw_tmap(GraphicsTileMap *tmap)
 	intrend_draw_instanced(&tile_map_program, tmap->vao, GL_TRIANGLES, 6, tmap->count_tiles);
 }
 
-TextureAtlasData
-load_texture_atlas(const char *path, int cols, int rows, TextureFormat format) 
+int
+load_texture(TextureData *texture, const char *path, TextureFormat format, TextureFilter filter) 
 {
-	return (TextureAtlasData) {
-		.texture = load_texture(path, format),
-		.cols = cols,
-		.rows = rows,
-	};
+	unsigned char *image_data;
+	
+	GLenum internal_format, data_format, channels;
+	GLenum internal_filter;
+
+	switch(format) {
+	case TEXTURE_FORMAT_RED:
+		internal_format = GL_R8;
+		data_format = GL_RED;
+		channels = 1;
+		break;
+	case TEXTURE_FORMAT_RGBA32:
+		internal_format = GL_RGBA8;
+		data_format = GL_RGBA;
+		channels = 4;
+		break;
+	}
+
+	switch(filter) {
+	case TEXTURE_FILTER_LINEAR: internal_filter = GL_LINEAR; break;
+	case TEXTURE_FILTER_NEAREST: internal_filter = GL_NEAREST; break;
+	default:
+		die("filter not found: %d\n", filter);
+	}
+
+	image_data = stbi_load(path, &texture->width, &texture->height, NULL, channels);
+	if(!image_data) {
+		printf("Could not load the texture %s\n", path);
+		return -1;
+	}
+
+	glGenTextures(1, &texture->texture);
+	glBindTexture(GL_TEXTURE_2D, texture->texture);
+	glTexImage2D(GL_TEXTURE_2D,
+			0,
+			internal_format,
+			texture->width, texture->height,
+			0, 
+			data_format,
+			GL_UNSIGNED_BYTE,
+			image_data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, internal_filter);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, internal_filter);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	stbi_image_free(image_data);
+	return 0;
 }
 
 void
-end_texture_atlas(TextureAtlasData *terrain)
+end_texture_atlas(TextureData *terrain)
 {
 	glDeleteTextures(1, &terrain->texture);
 }
@@ -669,25 +763,185 @@ draw_post(ShaderProgram *program)
 }
 
 void
-insert_character(TextureAtlas atlas, vec2 position, vec2 character_size, vec4 color, vec4 clip_region, int c)
+insert_character(Texture atlas, vec2 position, float height, vec4 color, struct CharData *char_data)
 {
 	if(sprite_count >= MAX_SPRITES) 
 		return;
+	vec2 pp, ss;
+	(void)atlas;
+	(void)pp;
 
-	c -= 32;
-	glBindBuffer(GL_ARRAY_BUFFER, sprite_buffer);
-	glBufferSubData(GL_ARRAY_BUFFER, sprite_count * sizeof(Sprite), sizeof(Sprite), &(Sprite){
-		.position  = { position[0], position[1] },
-		.half_size = { character_size[0], character_size[1] },
-		.color     = { color[0], color[1], color[2], color[3] },
-		.sprite_id = {
-			(float)(c % texture_atlas[atlas].cols),
-			(float)(c / texture_atlas[atlas].cols)
-		},
-		.clip_region = { clip_region[0], clip_region[1], clip_region[2], clip_region[3] },
-		.type = SPRITE_FONT_CELLPHONE,
-		.rotation = 0
+	ss[0] = char_data->width  * height * 0.5;
+	ss[1] = char_data->height * height * 0.5;
+	pp[0] = position[0] + char_data->x_offset * height + ss[0];
+	pp[1] = position[1] + char_data->y_offset * height + ss[1];
+
+	gfx_draw_texture_rect(
+		&(TextureStamp){ 
+			.texture = atlas, 
+			.position = {
+				char_data->char_x / (float)texture_atlas[atlas].width,
+				char_data->char_y / (float)texture_atlas[atlas].height,
+			},
+			.size =  {
+				char_data->width  / (float)texture_atlas[atlas].width,
+				char_data->height / (float)texture_atlas[atlas].height,
+			}
+		}, 
+		pp, 
+		ss, 
+		0.0, 
+		color
+	);
+}
+
+typedef struct {
+	StrView name, value;
+} Parameter;
+
+static int read_parameter(StrView *view, Parameter *param)
+{
+	param->name = strview_token(view, "=");
+	param->value = strview_token(view, "=");
+	return param->name.begin != param->name.end && param->value.begin != param->value.end;
+}
+
+static int compare_chardata(const void *a, const void *b)
+{
+	struct CharData *c1 = (struct CharData*)a;
+	struct CharData *c2 = (struct CharData*)b;
+	return c1->char_id - c2->char_id;
+}
+
+static void
+load_font_info(Font font, Texture font_texture, const char *path)
+{
+	FileBuffer file;
+	int idx = 0;
+	fbuf_open(&file, path, "r", allocator_default());
+
+	while(fbuf_read_line(&file, '\n') != EOF) {
+		StrView line = { fbuf_data(&file), fbuf_data(&file) + fbuf_data_size(&file) },
+		        ldup = line;
+		Parameter param;
+
+		StrView first = strview_token(&ldup, " ");
+		if(strview_cmp(first, "chars") == 0) {
+			while(read_parameter(&ldup, &param)) {
+				if(strview_cmp(param.name, "count") == 0) {
+					strview_int(param.value, &font_data[font].count_chars);
+					font_data[font].data = emalloc(sizeof(font_data[font].data[0]) * font_data[font].count_chars);
+				}
+			}
+		} else if(strview_cmp(first, "char") == 0) {
+			StrView param_raw = strview_token(&ldup, " "),
+				    param_dup = param_raw;
+			
+			while(read_parameter(&param_dup, &param)) {
+				if(strview_cmp(param.name, "id") == 0)
+					strview_int(param.value, &font_data[font].data[idx].char_id);
+				else if(strview_cmp(param.name, "x") == 0)
+					strview_int(param.value, &font_data[font].data[idx].char_x);
+				else if(strview_cmp(param.name, "y") == 0)
+					strview_int(param.value, &font_data[font].data[idx].char_y);
+				else if(strview_cmp(param.name, "width") == 0)
+					strview_int(param.value, &font_data[font].data[idx].width);
+				else if(strview_cmp(param.name, "height") == 0)
+					strview_int(param.value, &font_data[font].data[idx].height);
+				else if(strview_cmp(param.name, "xoffset") == 0)
+					strview_int(param.value, &font_data[font].data[idx].x_offset);
+				else if(strview_cmp(param.name, "yoffset") == 0)
+					strview_int(param.value, &font_data[font].data[idx].y_offset);
+				else if(strview_cmp(param.name, "xadvance") == 0)
+					strview_int(param.value, &font_data[font].data[idx].x_advance);
+				
+				param_raw = strview_token(&ldup, " ");
+				param_dup = param_raw;
+			}
+			idx ++;
+		}
+	}
+	fbuf_close(&file);
+	/* keep it ordered for binary search, please */
+	SDL_qsort(&font_data[font].data[0], font_data[font].count_chars, sizeof(font_data[font].data[0]), compare_chardata);
+	font_data[font].texture = font_texture;
+}
+
+static struct CharData *find_char_idx_int(Font font, int charid, Span r)
+{
+	int size = (struct CharData *)r.end - (struct CharData *)r.begin;
+	struct CharData *middle = (struct CharData*)r.begin + (size / 2);
+
+	if(size <= 0) {
+		return NULL;
+	}
+
+	if(middle->char_id == charid) {
+		return middle;
+	} else if(charid < middle->char_id) {
+		return find_char_idx_int(font, charid, (Span){
+			.begin = r.begin,
+			.end = middle
+		});
+	} else if(charid > middle->char_id) {
+		return find_char_idx_int(font, charid, (Span){
+			.begin = middle + 1,
+			.end = r.end,
+		});
+	}
+
+	return NULL;
+}
+
+static struct CharData *
+find_char_idx(Font font, int charid)
+{
+	return find_char_idx_int(font, charid, (Span){
+		font_data[font].data,
+		font_data[font].data + font_data[font].count_chars
 	});
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	sprite_count++;
+}
+
+TextureStamp 
+get_sprite(SpriteType sprite, int sprite_x, int sprite_y)
+{
+	const float dx = 1.0 / sprite_atlas[sprite].cols;
+	const float dy = 1.0 / sprite_atlas[sprite].rows;
+	const float xx = sprite_x * dx;
+	const float yy = sprite_y * dy;
+
+	return (TextureStamp) {
+		.texture = sprite_atlas[sprite].texture,
+		.position = {
+			xx, yy
+		},
+		.size = {
+			dx, dy
+		}
+	};
+}
+
+const TextureStamp *
+gfx_white_texture(void)
+{
+	static TextureStamp tmp = { 
+		.texture = TEXTURE_UI, 
+		.position = { 0.0, 0.0 },
+		{ 1.0/32.0, 1.0/32.0 } 
+	};
+	return &tmp;
+}
+
+void
+gfx_push_clip(vec2 p, vec2 v)
+{
+	vec2_dup(clip_stack[clip_id].position, p);
+	vec2_dup(clip_stack[clip_id].half_size, v);
+	clip_id++;
+}
+
+void
+gfx_pop_clip(void)
+{
+	clip_id--;
 }

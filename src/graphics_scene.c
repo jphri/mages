@@ -12,7 +12,6 @@
 #include "graphics.h"
 #include "global.h"
 
-
 typedef struct {
 	SceneObjectID next, prev;
 	SceneObjectID next_layer, prev_layer;
@@ -26,27 +25,37 @@ typedef struct {
 } SceneObjectPrivData;
 
 typedef struct {
+	SpriteType type;
+	int     sprite_x, sprite_y;
+} Frame;
+
+typedef struct {
 	int frame_count;
-	vec2 *frames;
+	Frame *frames;
 } AnimationData;
 
 #define DEFINE_ANIMATION(ANIMATION_NAME, ...) [ANIMATION_NAME] = { \
-		.frame_count = sizeof((vec2[]){ __VA_ARGS__ })/sizeof(vec2), \
-		.frames = (vec2[]){ __VA_ARGS__ } \
+		.frame_count = sizeof((Frame[]){ __VA_ARGS__ })/sizeof(Frame), \
+		.frames = (Frame[]){ __VA_ARGS__ } \
 	}
 
 static AnimationData animations[LAST_ANIMATION] = {
-	DEFINE_ANIMATION(ANIMATION_NULL, { 0.0, 0.0 }),
+	DEFINE_ANIMATION(ANIMATION_NULL, { SPRITE_UI, 0, 0 }),
 	DEFINE_ANIMATION(ANIMATION_PLAYER_MOVEMENT,
-		{ 0.0, 0.0 }, 
-		{ 1.0, 0.0 }
+		{ SPRITE_ENTITIES, 0, 0 }, 
+		{ SPRITE_ENTITIES, 1, 0 }
+	),
+
+	DEFINE_ANIMATION(ANIMATION_PLAYER_IDLE,
+		{ SPRITE_ENTITIES, 0, 0 },
 	)
 };
 
-static inline int calculate_frame_animation(SceneAnimatedSprite *sprite)
+static inline Frame *calculate_frame_animation(SceneAnimatedSprite *sprite)
 {
-	int frame = (int)(sprite->time * sprite->fps);
-	return frame % animations[sprite->animation].frame_count;
+	int    frame = (int)(sprite->time * sprite->fps);
+	       frame %= animations[sprite->animation].frame_count;
+	return &animations[sprite->animation].frames[frame];
 }
 
 static SceneObjectID   layer_objects[SCENE_LAYERS];
@@ -131,35 +140,26 @@ gfx_scene_draw(void)
 			SceneSprite *ss = gfx_scene_spr(object_id);
 			SceneText *tt = gfx_scene_text(object_id);
 			SceneAnimatedSprite *as = gfx_scene_animspr(object_id);
-			int frame;
+			TextureStamp stamp;
+			Frame *frame;
 
 			switch(PRIVDATA(object_id)->type) {
 			case SCENE_OBJECT_SPRITE:
-				ss->sprite.type = ss->type;
-				ss->sprite.clip_region[0] = ss->sprite.position[0];
-				ss->sprite.clip_region[1] = ss->sprite.position[1];
-				ss->sprite.clip_region[2] = 100000.0;
-				ss->sprite.clip_region[3] = 100000.0;
-				gfx_draw_sprite(&ss->sprite);
+				stamp = get_sprite(ss->type, ss->sprite_x, ss->sprite_y);
+				gfx_draw_texture_rect(&stamp, ss->position, ss->half_size, ss->rotation, ss->color);
 				break;
 			case SCENE_OBJECT_TEXT:
-				gfx_draw_font(TEXTURE_FONT_CELLPHONE,
+				gfx_draw_font2(FONT_ROBOTO,
 						tt->position,
-						tt->char_size,
+						tt->char_size[0],
 						tt->color,
-						(vec4){ 0, 0, 100000, 100000 },
 						"%s",
 						to_ptr(tt->text_ptr));
 				break;
 			case SCENE_OBJECT_ANIMATED_SPRITE:
 				frame = calculate_frame_animation(as);
-				vec2_add(as->sprite.sprite_id, as->sprite_id, animations[as->animation].frames[frame]);
-				as->sprite.type = ss->type;
-				as->sprite.clip_region[0] = as->sprite.position[0];
-				as->sprite.clip_region[1] = as->sprite.position[1];
-				as->sprite.clip_region[2] = 100000.0;
-				as->sprite.clip_region[3] = 100000.0;
-				gfx_draw_sprite(&as->sprite);
+				stamp = get_sprite(frame->type, frame->sprite_x, frame->sprite_y);
+				gfx_draw_texture_rect(&stamp, as->position, as->half_size, as->rotation, as->color);
 				break;
 			default: 
 				assert(0 && "invalid object type");
@@ -222,7 +222,7 @@ gfx_scene_animspr(SceneAnimatedSpriteID text_id)
 }
 
 void
-gfx_scene_set_tilemap(int layer, TextureAtlas atlas, int w, int h, int *data) 
+gfx_scene_set_tilemap(int layer, SpriteType atlas, int w, int h, int *data) 
 {
 	if(layer_tmap_set & (1 << layer))
 		gfx_tmap_free(&layer_tmaps[layer]);

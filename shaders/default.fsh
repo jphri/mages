@@ -38,6 +38,6 @@ void main() {
 	vec2 clip_position = fs_in.clip_region.xy;
 	vec2 clip_size     = fs_in.clip_region.zw;
 	float d = rectdist(fs_in.position, clip_position, clip_size);
-	d = min(1.0, max(0.0, 1.0 - d));
+	d = 1.0 - step(0.0, d);
 	out_FragColor = fs_in.color * getTextureCoords(fs_in.sprite_type, fs_in.texcoord) * vec4(1.0, 1.0, 1.0, d);
 }

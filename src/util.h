@@ -13,6 +13,7 @@ typedef struct Span Span;
 typedef struct ObjectAllocator ObjectAllocator;
 typedef struct RelPtr RelPtr;
 typedef struct Allocator Allocator;
+typedef struct FileBuffer FileBuffer;
 
 typedef uint_fast32_t ObjectID;
 
@@ -47,6 +48,11 @@ struct ObjectAllocator {
 	size_t alignment;
 
 	void (*clean_cbk)(ObjectAllocator *, ObjectID);
+};
+
+struct FileBuffer {
+	void *file_handle;
+	ArrayBuffer data_buffer;
 };
 
 struct Span {
@@ -101,8 +107,15 @@ void arrbuf_printf(ArrayBuffer *buffer, const char *fmt, ...);
 void *arrbuf_newptr(ArrayBuffer *buffer, size_t element_size);
 void *arrbuf_newptr_at(ArrayBuffer *buffer, size_t element_size, size_t pos);
 
-char *readline(FILE *fp);
-char *readline_mem(FILE *fp, void *data, size_t size);
+int   fbuf_open(FileBuffer *buffer, const char *path, const char *mode, Allocator alloc);
+int   fbuf_read(FileBuffer *buffer, size_t size);
+int   fbuf_write(FileBuffer *buffer, size_t size, void *ptr);
+int   fbuf_flush(FileBuffer *buffer);
+void  fbuf_close(FileBuffer *buffer);
+char *fbuf_data(FileBuffer *buffer);
+int   fbuf_data_size(FileBuffer *buffer);
+int  fbuf_read_line(FileBuffer *buffer, int delim);
+StrView fbuf_data_view(FileBuffer *buffer);
 
 StrView to_strview(const char *str);
 StrView strview_token(StrView *str, const char *delim);
@@ -132,7 +145,7 @@ ObjectID  objalloc_begin(ObjectAllocator *alloc);
 ObjectID  objalloc_next(ObjectAllocator *alloc, ObjectID next);
 bool      objalloc_is_dead(ObjectAllocator *alloc, ObjectID id);
 
-Allocator allocator_default();
+Allocator allocator_default(void);
 
 void *alloct_allocate(Allocator *, size_t size);
 void  alloct_deallocate(Allocator *, void *ptr);

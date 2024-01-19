@@ -67,7 +67,7 @@ GAME_STATE_LEVEL_init(void)
 	SceneTextID text = gfx_scene_new_obj(0, SCENE_OBJECT_TEXT);
 	vec4_dup(gfx_scene_text(text)->color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 	vec2_dup(gfx_scene_text(text)->position, (vec2){ 0.0, 0.0 });
-	vec2_dup(gfx_scene_text(text)->char_size, (vec2){ 0.35, 0.35 });
+	vec2_dup(gfx_scene_text(text)->char_size, (vec2){ 0.05, 0.05 });
 	gfx_scene_text(text)->text_ptr = (RelPtr){ .base_pointer = (void**)&text_test, .offset = 0 };
 
 	phx_set_pre_solve(pre_solve);

@@ -23,17 +23,14 @@ map_alloc(int w, int h)
 Map *
 map_load(const char *file) 
 {
-	char *line;
-	FILE *fp = fopen(file, "r");
+	FileBuffer fp;
 	Map *map = NULL;
 
-	if(!fp) {
-		fprintf(stderr, "failed load file %s\n", file);
-		return NULL;
-	}
+	if(fbuf_open(&fp, file, "r", allocator_default()))
+		return 0;
 	
-	while((line = readline(fp))) {
-		StrView tokenview = to_strview(line);
+	while(fbuf_read_line(&fp, '\n') != EOF) {
+		StrView tokenview = fbuf_data_view(&fp);
 		StrView word = strview_token(&tokenview, " ");
 
 		if(strview_cmp(word, "size") == 0) {
@@ -41,6 +38,7 @@ map_load(const char *file)
 
 			if(!strview_int(strview_token(&tokenview, " "), &w))
 				goto error_load;
+
 			if(!strview_int(strview_token(&tokenview, " "), &h))
 				goto error_load;
 
@@ -49,6 +47,7 @@ map_load(const char *file)
 			int tile_id, tile;
 			if(!strview_int(strview_token(&tokenview, " "), &tile_id))
 				goto error_load;
+
 			if(!strview_int(strview_token(&tokenview, " "), &tile))
 				goto error_load;
 			
@@ -57,10 +56,13 @@ map_load(const char *file)
 			CollisionData *data = malloc(sizeof(*data));
 			if(!strview_float(strview_token(&tokenview, " "), &data->position[0]))
 				goto error_load;
+
 			if(!strview_float(strview_token(&tokenview, " "), &data->position[1]))
 				goto error_load;
+
 			if(!strview_float(strview_token(&tokenview, " "), &data->half_size[0]))
 				goto error_load;
+
 			if(!strview_float(strview_token(&tokenview, " "), &data->half_size[1]))
 				goto error_load;
 
@@ -71,9 +73,8 @@ map_load(const char *file)
 			printf("unknown command %s\n", s);
 			free(s);
 		}
-
-		free(line);
 	}
+	fbuf_close(&fp);
 
 	return map;
 
@@ -121,7 +122,7 @@ map_set_gfx_scene(Map *map)
 	/* i really need to improve the map layout lol */
 	for(size_t i = 0; i < 64; i++) {
 		int layer_index = i * map->w * map->h;
-		gfx_scene_set_tilemap(i, TERRAIN_NORMAL, map->w, map->h, &map->tiles[layer_index]);
+		gfx_scene_set_tilemap(i, SPRITE_TERRAIN, map->w, map->h, &map->tiles[layer_index]);
 	}
 }
 

@@ -208,7 +208,7 @@ end_loop:
 }
 
 Allocator
-cache_aligned_allocator()
+cache_aligned_allocator(void)
 {
 	return (Allocator) {
 		.userptr = NULL,

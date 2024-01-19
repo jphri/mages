@@ -20,7 +20,7 @@ ent_damage_number(vec2 position, float damage)
 	vec2_dup(SELF->position, position);
 
 	vec4_dup(gfx_scene_text(SELF->text_id)->color, (vec4){ 1.0, 1.0, 0.0, 1.0 });
-	vec2_dup(gfx_scene_text(SELF->text_id)->char_size, (vec2){ 0.35, 0.35 });
+	vec2_dup(gfx_scene_text(SELF->text_id)->char_size, (vec2){ 0.025, 0.025 });
 	vec2_dup(gfx_scene_text(SELF->text_id)->position, position);
 	gfx_scene_text(SELF->text_id)->text_ptr = ent_relptr(SELF->damage_str);
 	memset(SELF->damage_str, 0, sizeof(SELF->damage_str));

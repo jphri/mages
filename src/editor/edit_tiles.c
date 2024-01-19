@@ -100,6 +100,7 @@ edit_wheel(SDL_Event *event)
 void
 edit_render(void)
 {
+	TextureStamp stamp;
 	gfx_set_camera(offset, (vec2){ zoom, zoom });
 
 
@@ -116,34 +117,31 @@ edit_render(void)
 		int spr_x = spr % 16;
 		int spr_y = spr / 16;
 
-		gfx_draw_sprite(&(Sprite){
-				.position = { x, y },
-				.sprite_id = { spr_x, spr_y },
-				.color = { 1.0, 1.0, 1.0, 1.0 },
-				.half_size = { 0.5, 0.5 },
-				.type = editor.map_atlas,
-				.clip_region = { 0, 0, 1000, 1000 }
-				});
+		stamp = get_sprite(SPRITE_TERRAIN, spr_x, spr_y);
+
+		gfx_draw_texture_rect(
+				&stamp,
+				(vec2){ x, y },
+				(vec2){ 0.5, 0.5 },
+				0.0,
+				(vec4){ 1.0, 1.0, 1.0, 1.0 }
+		);
 	}
 
 	for(int x = 0; x < editor.map->w + 1; x++) {
 		gfx_draw_line(
-			TEXTURE_UI,
 			(vec2){ (x - 0.1), (0.0) }, 
 			(vec2){ (x - 0.1), (editor.map->h) },
 			0.1,
-			(vec4){ 1.0, 1.0, 1.0, 1.0 },
-			(vec4){ 0.0, 0.0, 1000, 1000 }
+			(vec4){ 1.0, 1.0, 1.0, 1.0 }
 		);
 	}
 	for(int y = 0; y < editor.map->h + 1; y++) {
 		gfx_draw_line(
-			TEXTURE_UI,
 			(vec2){ (0.0),           (y - 0.1) }, 
 			(vec2){ (editor.map->w), (y - 0.1) },
 			0.1,
-			(vec4){ 1.0, 1.0, 1.0, 1.0 },
-			(vec4){ 0.0, 0.0, 1000, 1000 }
+			(vec4){ 1.0, 1.0, 1.0, 1.0 }
 		);
 	}
 	gfx_draw_end();

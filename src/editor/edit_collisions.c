@@ -154,6 +154,7 @@ collision_wheel(SDL_Event *event)
 void
 collision_render(void)
 {
+	TextureStamp stamp;
 	gfx_set_camera(offset, (vec2){ zoom, zoom });
 
 	//gfx_debug_begin();
@@ -171,6 +172,7 @@ collision_render(void)
 	gfx_draw_begin(NULL);
 	for(int k = 0; k < SCENE_LAYERS; k++)
 	for(int i = 0; i < editor.map->w * editor.map->h; i++) {
+
 		float x = (     (i % editor.map->w) + 0.5);
 		float y = ((int)(i / editor.map->w) + 0.5);
 
@@ -180,22 +182,16 @@ collision_render(void)
 		int spr_x = spr % 16;
 		int spr_y = spr / 16;
 
-		gfx_draw_sprite(&(Sprite){
-				.position = { x, y },
-				.sprite_id = { spr_x, spr_y },
-				.color = { 1.0, 1.0, 1.0, 1.0 },
-				.half_size = { 0.5, 0.5 },
-				.type = editor.map_atlas,
-				.clip_region = { 0, 0, 1000, 1000 }
-				});
+		stamp = get_sprite(SPRITE_TERRAIN, spr_x, spr_y);
+		gfx_draw_texture_rect(&stamp, (vec2){ x, y }, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 	}
 
 	for(CollisionData *c = editor.map->collision; c; c = c->next) {
-		gfx_draw_rect(TEXTURE_UI, c->position, c->half_size, 0.15, (vec4){ 1.0, 1.0, 1.0, 1.0 }, (vec4){ 0.0, 0.0, 1000, 1000 });
+		gfx_draw_rect(c->position, c->half_size, 0.15, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 	}
 
 	if(mouse_state == MOUSE_DRAWING) {
-		gfx_draw_rect(TEXTURE_UI, current_collision.position, current_collision.half_size, 0.15, (vec4){ 1.0, 1.0, 1.0, 1.0 }, (vec4){ 0.0, 0.0, 1000, 1000 });
+		gfx_draw_rect(current_collision.position, current_collision.half_size, 0.15, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 	}
 	gfx_draw_end();
 }

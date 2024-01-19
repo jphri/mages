@@ -78,12 +78,12 @@ ent_fireball_new(EntityID caster, vec2 position, vec2 vel)
 	SELF_BODY->damping = 1.0;
 
 	SELF_SPRITE->type = SPRITE_ENTITIES;
-	vec2_dup(SELF_SPRITE->sprite.position, position);
-	vec2_dup(SELF_SPRITE->sprite.half_size, (vec2){ 0.5, 0.5 });
-	vec4_dup(SELF_SPRITE->sprite.color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
-	SELF_SPRITE->sprite.rotation = 0.0;
-	SELF_SPRITE->sprite.sprite_id[0] = 0.0; SELF_SPRITE->sprite.sprite_id[1] = 1.0;
-	SELF_SPRITE->sprite.rotation = atan2f(-vel[1], vel[0]);
+	vec2_dup(SELF_SPRITE->position, position);
+	vec2_dup(SELF_SPRITE->half_size, (vec2){ 0.5, 0.5 });
+	vec4_dup(SELF_SPRITE->color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+	SELF_SPRITE->rotation = 0.0;
+	SELF_SPRITE->sprite_x = 0; SELF_SPRITE->sprite_y = 1;
+	SELF_SPRITE->rotation = atan2f(-vel[1], vel[0]);
 
 	SELF->damage.damage = -1.0;
 	return self_id;
@@ -94,7 +94,7 @@ ENTITY_FIREBALL_update(EntityID self_id, float delta)
 {
 
 	SELF->time += delta;
-	vec2_dup(SELF_SPRITE->sprite.position, SELF_BODY->position);
+	vec2_dup(SELF_SPRITE->position, SELF_BODY->position);
 
 	//HitInfo *hits = phx_hits(SELF->body);
 	//for(; hits; hits = phx_hits_next(hits)) {

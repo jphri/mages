@@ -31,33 +31,23 @@ select_tile_render(void)
 		int spr_x = spr % 16;
 		int spr_y = spr / 16;
 
-		gfx_draw_sprite(&(Sprite){
-				.position = { x, y },
-				.sprite_id = { spr_x, spr_y },
-				.color = { 1.0, 1.0, 1.0, 1.0 },
-				.half_size = { 0.5, 0.5 },
-				.type = editor.map_atlas,
-				.clip_region = { 0, 0, 1000, 1000 }
-				});
+		TextureStamp sprite = get_sprite(SPRITE_TERRAIN, spr_x, spr_y);
+		gfx_draw_texture_rect(&sprite, (vec2){ x, y }, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 	}
 	for(int x = 0; x < 17; x++) {
 		gfx_draw_line(
-			TEXTURE_UI,
 			(vec2){ (x - 0.1), (0.0) }, 
 			(vec2){ (x - 0.1), (editor.map->h) },
 			0.1,
-			(vec4){ 1.0, 1.0, 1.0, 1.0 },
-			(vec4){ 0.0, 0.0, 1000, 1000 }
+			(vec4){ 1.0, 1.0, 1.0, 1.0 }
 		);
 	}
 	for(int y = 0; y < editor.map->h + 1; y++) {
 		gfx_draw_line(
-			TEXTURE_UI,
 			(vec2){ (0.0),           (y - 0.1) }, 
 			(vec2){ (editor.map->w), (y - 0.1) },
 			0.1,
-			(vec4){ 1.0, 1.0, 1.0, 1.0 },
-			(vec4){ 0.0, 0.0, 1000, 1000 }
+			(vec4){ 1.0, 1.0, 1.0, 1.0 }
 		);
 	}
 	gfx_draw_end();

@@ -16,12 +16,12 @@ typedef enum {
 	LAST_AUDIO_MIXER
 } Mixer;
 
-void audio_init();
+void audio_init(void);
 void audio_bgm_play(Sound sound, float freq_scale);
-void audio_bgm_pause();
-void audio_bgm_resume();
+void audio_bgm_pause(void);
+void audio_bgm_resume(void);
 void audio_sfx_play(Mixer mixer, Sound sound, float freq_scale);
-void audio_end();
+void audio_end(void);
 
 void audio_set_volumer(Mixer mixer, float v);
 

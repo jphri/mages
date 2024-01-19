@@ -23,11 +23,13 @@ typedef enum {
 	TERRAIN_NORMAL,
 	TEXTURE_FONT_CELLPHONE,
 	TEXTURE_UI,
+	TEXTURE_FONT_ROBOTO,
 	LAST_TEXTURE_ATLAS
-} TextureAtlas;
+} Texture;
 
 typedef enum {
 	ANIMATION_NULL,
+	ANIMATION_PLAYER_IDLE,
 	ANIMATION_PLAYER_MOVEMENT,
 	LAST_ANIMATION
 } Animation;
@@ -39,24 +41,33 @@ typedef enum {
 	LAST_SCENE_OBJECT_TYPE,
 } SceneObjectType;
 
+typedef enum {
+	FONT_NULL,
+	FONT_ROBOTO,
+	LAST_FONT
+} Font;
+
 typedef struct {
-	long unsigned int type;
-	float rotation;
+	Texture texture;
 	vec2 position;
-	vec2 sprite_id;
-	vec2 half_size;
-	vec4 color;
-	vec4 clip_region;
-} Sprite;
+	vec2 size;
+} TextureStamp;
 
 typedef struct {
 	SpriteType type;
-	Sprite sprite;
+	int sprite_x, sprite_y;
+
+	float rotation;
+	vec2 position;
+	vec2 half_size;
+	vec4 color;
 } SceneSprite;
 
 typedef struct {
-	Sprite sprite;
-	vec2 sprite_id;
+	vec2 position;
+	vec2 half_size;
+	vec4 color;
+	float rotation;
 
 	Animation animation;
 	float time;
@@ -74,7 +85,7 @@ typedef struct {
 	unsigned int vao;
 	unsigned int buffer;
 	unsigned int count_tiles;
-	TextureAtlas terrain;
+	SpriteType terrain;
 } GraphicsTileMap;
 
 void gfx_init(void);
@@ -91,18 +102,17 @@ void gfx_set_camera(vec2 position, vec2 scale);
 void gfx_pixel_to_world(vec2 pixel, vec2 world_out);
 
 void gfx_draw_begin(GraphicsTileMap *tmap);
-void gfx_draw_sprite(Sprite *sprite);
-void gfx_draw_font(TextureAtlas atlas, vec2 position, vec2 char_size, vec4 color, vec4 clip_region, const char *fmt, ...);
-void gfx_draw_line(TextureAtlas atlas, vec2 p1, vec2 p2, float thickness, vec4 color, vec4 clip_region);
-void gfx_draw_rect(TextureAtlas atlas, vec2 position, vec2 half_size, float thickness, vec4 color, vec4 clip_region);
+void gfx_push_clip(vec2 position, vec2 half_size);
+void gfx_pop_clip(void);
+void gfx_draw_texture_rect(TextureStamp *texture, vec2 position, vec2 size, float rotation, vec4 color);
+void gfx_draw_font2(Font font, vec2 position, float height, vec4 color, const char *fmt, ...);
+void gfx_draw_line(vec2 p1, vec2 p2, float thickness, vec4 color);
+void gfx_draw_rect(vec2 position, vec2 half_size, float thickness, vec4 color);
 void gfx_draw_end(void);
 
 void gfx_camera_set_enabled(bool enabled);
 
-void gfx_begin_scissor(vec2 position, vec2 size);
-void gfx_end_scissor(void);
-
-GraphicsTileMap  gfx_tmap_new(TextureAtlas terrain, int w, int h, int *data);
+GraphicsTileMap  gfx_tmap_new(SpriteType terrain, int w, int h, int *data);
 void             gfx_tmap_free(GraphicsTileMap *tmap);
 void             gfx_tmap_draw(GraphicsTileMap *tmap);
 
@@ -118,6 +128,9 @@ SceneSprite         *gfx_scene_spr(SceneSpriteID spr_id);
 SceneText           *gfx_scene_text(SceneTextID text_id);
 SceneAnimatedSprite *gfx_scene_animspr(SceneAnimatedSpriteID anim_id);
 
-void gfx_scene_set_tilemap(int layer, TextureAtlas atlas, int w, int h, int *data);
+void gfx_scene_set_tilemap(int layer, SpriteType atlas, int w, int h, int *data);
+
+TextureStamp get_sprite(SpriteType sprite, int sprite_x, int sprite_y);
+const TextureStamp *gfx_white_texture(void);
 
 #endif
