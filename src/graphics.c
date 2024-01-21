@@ -87,6 +87,8 @@ typedef struct {
 typedef struct {
 	int count_chars;
 	Texture texture;
+	int baseline;
+	int line_offset;
 	struct CharData {
 		int char_id;
 		int width, height;
@@ -95,6 +97,16 @@ typedef struct {
 		int x_offset, y_offset;
 	} *data;
 } FontData;
+
+typedef struct {
+	vec2 size; 
+} FontSizeParser;
+
+typedef struct {
+	float height;
+	vec2 position;
+	vec4 color;
+} FontRenderParser;
 
 typedef enum {
 	TEXTURE_FORMAT_RGBA32,
@@ -157,9 +169,12 @@ static void             draw_tmap(GraphicsTileMap *tmap);
 static void             draw_post(ShaderProgram *program);
 
 static void             load_font_info(Font font, Texture texture, const char *path);
-static void             insert_character(Texture atlas, vec2 position, float height, vec4 color, struct CharData *data);
 
 static struct CharData  *find_char_idx(Font font, int charid);
+
+static void parse_buffer(char *buffer, int buffer_size, Font font, void *user_data, void (*cbk)(struct CharData *, Font font, vec2 char_offset, void *user_data));
+static void parser_font_size(struct CharData *, Font font, vec2 char_offset, void *parser);
+static void parser_font_render(struct CharData *, Font font, vec2 char_offset, void *parser);
 
 static bool enabled_camera;
 
@@ -337,7 +352,6 @@ gfx_draw_texture_rect(TextureStamp *stamp, vec2 position, vec2 size, float rotat
 	if(sprite_count >= MAX_SPRITES) {
 		return;
 	}
-
 	
 	internal.type                  = stamp->texture;
 	internal.rotation              = rotation;
@@ -360,30 +374,19 @@ gfx_draw_font2(Font font, vec2 position, float height, vec4 color, const char *f
 	char buffer[1024];
 	va_list va;
 	int characters;
-	struct CharData *char_data;
 	(void)font;
 
 	va_start(va, fmt);
 	characters = vsnprintf(buffer, sizeof(buffer), fmt, va);
 	va_end(va);
 
-	vec2 p;
-	vec2_dup(p, position);
+	FontRenderParser render;
 
-	for(int i = 0; i < characters; i++) {
-		switch(buffer[i]) {
-		case '\n':
-			p[0] = position[0];
-			p[1] += height;
-			break;
-		default:
-			char_data = find_char_idx(FONT_ROBOTO, buffer[i]);
-			if(!char_data)
-				continue;
-			insert_character(font_data[font].texture, p, height, color, char_data);
-			p[0] += char_data->x_advance * height;
-		}
-	}
+	vec4_dup(render.color, color);
+	vec2_dup(render.position, position);
+	render.height = height;
+
+	parse_buffer(buffer, characters, font, &render, parser_font_render);
 }
 
 void
@@ -479,11 +482,8 @@ gfx_draw_begin(GraphicsTileMap *tmap)
 void
 gfx_draw_end(void)
 {
-	vec4 clip;
 	if(!current_tmap && sprite_count == 0)
 		return;
-
-	get_global_clip(clip);
 
 	for(int i = 0; i < LAST_TEXTURE_ATLAS; i++) {
 		glActiveTexture(GL_TEXTURE0 + i);
@@ -762,39 +762,6 @@ draw_post(ShaderProgram *program)
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void
-insert_character(Texture atlas, vec2 position, float height, vec4 color, struct CharData *char_data)
-{
-	if(sprite_count >= MAX_SPRITES) 
-		return;
-	vec2 pp, ss;
-	(void)atlas;
-	(void)pp;
-
-	ss[0] = char_data->width  * height * 0.5;
-	ss[1] = char_data->height * height * 0.5;
-	pp[0] = position[0] + char_data->x_offset * height + ss[0];
-	pp[1] = position[1] + char_data->y_offset * height + ss[1];
-
-	gfx_draw_texture_rect(
-		&(TextureStamp){ 
-			.texture = atlas, 
-			.position = {
-				char_data->char_x / (float)texture_atlas[atlas].width,
-				char_data->char_y / (float)texture_atlas[atlas].height,
-			},
-			.size =  {
-				char_data->width  / (float)texture_atlas[atlas].width,
-				char_data->height / (float)texture_atlas[atlas].height,
-			}
-		}, 
-		pp, 
-		ss, 
-		0.0, 
-		color
-	);
-}
-
 typedef struct {
 	StrView name, value;
 } Parameter;
@@ -859,6 +826,20 @@ load_font_info(Font font, Texture font_texture, const char *path)
 				param_dup = param_raw;
 			}
 			idx ++;
+		} else if(strview_cmp(first, "common") == 0) {
+			StrView param_raw = strview_token(&ldup, " "),
+					param_dup = param_raw;
+
+			while(read_parameter(&param_dup, &param)) {
+				if(strview_cmp(param.name, "lineHeight") == 0)
+					strview_int(param.value, &font_data[font].line_offset);
+				else if(strview_cmp(param.name, "base") == 0)
+					strview_int(param.value, &font_data[font].baseline);
+				
+				param_raw = strview_token(&ldup, " ");
+				param_dup = param_raw;
+			}
+
 		}
 	}
 	fbuf_close(&file);
@@ -921,7 +902,7 @@ get_sprite(SpriteType sprite, int sprite_x, int sprite_y)
 	};
 }
 
-const TextureStamp *
+TextureStamp *
 gfx_white_texture(void)
 {
 	static TextureStamp tmp = { 
@@ -944,4 +925,108 @@ void
 gfx_pop_clip(void)
 {
 	clip_id--;
+}
+
+Rectangle
+gfx_window_rectangle(void)
+{
+	return clip_stack[0];
+}
+
+void 
+gfx_font_size(vec2 out_size, Font font, float height, const char *fmt, ...)
+{
+	char buffer[1024];
+	
+	int buffer_size;
+	out_size[0] = 0;
+	out_size[1] = 0;
+	
+	FontSizeParser parser = {0};
+	
+	va_list va;
+	va_start(va, fmt);
+	buffer_size = vsnprintf(buffer, sizeof(buffer), fmt, va);
+	va_end(va);
+
+	parse_buffer(buffer, buffer_size, font, &parser, parser_font_size);
+	vec2_add_scaled(out_size, out_size, parser.size, height * 0.5);
+}
+
+void
+parse_buffer(char *buffer, int buffer_size, Font font, void *user_data, void (*cbk)(struct CharData *, Font font, vec2 char_offset, void *user_data))
+{
+	struct CharData *char_data;
+	vec2 textoff = { 0, -(font_data[font].line_offset - font[font_data].baseline) };
+	vec2 char_off;
+
+	for(int i = 0; i < buffer_size; i++) {
+		switch(buffer[i]) {
+		case '\n':
+			textoff[0] = 0.0;
+			textoff[1] += font_data[font].line_offset;
+			break;
+		default:
+			char_data = find_char_idx(FONT_ROBOTO, buffer[i]);
+			if(!char_data)
+				continue;
+
+			vec2_add_scaled(char_off, (vec2){ 0.0, 0.0 }, textoff, 1.0);
+			vec2_add_scaled(char_off, char_off, (vec2){ char_data->x_offset, char_data->y_offset }, 1.0);
+
+			cbk(char_data, font, char_off, user_data);
+			textoff[0] += char_data->x_advance;
+		}
+	}
+}
+
+static void 
+parser_font_size(struct CharData *c, Font font, vec2 char_offset, void *parser)
+{
+	(void)font;
+	FontSizeParser *p = parser;
+
+	if(char_offset[0] > p->size[0]) {
+		p->size[0] = char_offset[0] + c->width;
+	}
+	
+	if(char_offset[1] > p->size[1]) {
+		p->size[1] = char_offset[1] + c->height;
+	}
+}
+
+
+void 
+parser_font_render(struct CharData *char_data, Font font, vec2 char_offset, void *parser)
+{
+	FontRenderParser *p = parser;
+	Texture atlas = font_data[font].texture;
+
+	if(sprite_count >= MAX_SPRITES) 
+		return;
+	vec2 pp, ss;
+
+	ss[0] = char_data->width  * p->height * 0.5;
+	ss[1] = char_data->height * p->height * 0.5;
+
+	vec2_add(pp, p->position, ss);
+	vec2_add_scaled(pp, pp, char_offset, p->height);
+
+	gfx_draw_texture_rect(
+		&(TextureStamp){ 
+			.texture = atlas, 
+			.position = {
+				char_data->char_x / (float)texture_atlas[atlas].width,
+				char_data->char_y / (float)texture_atlas[atlas].height,
+			},
+			.size =  {
+				char_data->width  / (float)texture_atlas[atlas].width,
+				char_data->height / (float)texture_atlas[atlas].height,
+			}
+		}, 
+		pp, 
+		ss, 
+		0.0, 
+		p->color
+	);
 }

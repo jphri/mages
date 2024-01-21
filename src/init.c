@@ -97,7 +97,7 @@ main(int argc, char *argv[])
 		printf("SDL_GL_CreateContext() failed\n");
 		return 0;
 	}
-	SDL_GL_SetSwapInterval(0);
+	SDL_GL_SetSwapInterval(1);
 	SDL_GL_MakeCurrent(GLOBAL.window, GLOBAL.glctx);
 	gladLoadGLES2(load_proc);
 	printf("OpenGL Version: %s\n", glGetString(GL_VERSION));
@@ -122,8 +122,7 @@ main(int argc, char *argv[])
 				goto end_loop;
 			case SDL_MOUSEMOTION:
 				ui_mouse_motion(event.motion.x, event.motion.y);
-				if(!ui_is_active())
-					state_vtable[current_state].mouse_move(&event);
+				state_vtable[current_state].mouse_move(&event);
 				break;
 			case SDL_MOUSEBUTTONUP:
 			case SDL_MOUSEBUTTONDOWN:
@@ -132,17 +131,14 @@ main(int argc, char *argv[])
 				case SDL_BUTTON_RIGHT: ui_mouse_button(UI_MOUSE_RIGHT, event.type == SDL_MOUSEBUTTONDOWN); break;
 				case SDL_BUTTON_MIDDLE: ui_mouse_button(UI_MOUSE_MIDDLE, event.type == SDL_MOUSEBUTTONDOWN); break;
 				}
-				if(!ui_is_active())
-					state_vtable[current_state].mouse_button(&event);
+				state_vtable[current_state].mouse_button(&event);
 				break;
 			case SDL_KEYDOWN:
 			case SDL_KEYUP:
-				if(!ui_is_active())
-					state_vtable[current_state].keyboard(&event);
+				state_vtable[current_state].keyboard(&event);
 				break;
 			case SDL_MOUSEWHEEL:
-				if(!ui_is_active())
-					state_vtable[current_state].mouse_wheel(&event);
+				state_vtable[current_state].mouse_wheel(&event);
 			}
 		}
 
@@ -161,7 +157,6 @@ main(int argc, char *argv[])
 		//gfx_setup_draw_framebuffers();
 		gfx_clear();
 		
-
 		gfx_camera_set_enabled(true);
 		gfx_scene_draw();
 		//gfx_end_draw_framebuffers();
@@ -171,8 +166,6 @@ main(int argc, char *argv[])
 		state_vtable[current_state].render();
 
 		gfx_camera_set_enabled(false);
-		ui_cleanup();
-		ui_order();
 		ui_draw();
 
 		SDL_GL_SwapWindow(GLOBAL.window);

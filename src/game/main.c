@@ -21,41 +21,52 @@ static Map *map;
 //static UIObject label;
 
 static char *text_test = "Hello";
-
-static void
-edit_button_cbk(void *ptr) 
-{
-	(void)ptr;
-	gstate_set(GAME_STATE_LEVEL_EDIT);
-}
+static SceneTextID text;
+static UIObject window;
+static float time = 0;
 
 static void pre_solve(Contact *contact);
+static void btn_callback(UIObject obj, void *userdata)
+{
+	(void)userdata;
+	(void)obj;
+
+	printf("Hello, world!\n");
+}
 
 void
 GAME_STATE_LEVEL_init(void)
 {
-	UIObject window = ui_new_object(0, UI_WINDOW);
-	ui_obj_set_size(window, (vec2){ 90, 35 });
-	ui_obj_set_position(window, (vec2){ 800 - 90, 35 });
-	ui_window_set_bg(window, (vec4){ 0.2, 0.2, 0.2, 1.0 });
-	ui_window_set_border(window, (vec4){ 0.6, 0.6, 0.6, 1.0 });
-	ui_window_set_border_size(window, (vec2){ 3, 3 });
+	for(int i = 0; i < 2; i++) {
+		window = ui_new_object(ui_root(), UI_FLOAT);
+		UI_FLOAT_struct *wdata = ui_data(window);
 
-	UIObject layout3 = ui_new_object(window, UI_LAYOUT);
-	ui_obj_set_size(layout3, (vec2){ 70, 35 });
-	ui_obj_set_position(layout3, (vec2) { 90, 35 });
-	ui_layout_set_order(layout3, UI_LAYOUT_VERTICAL);
+		//wdata->title = "Hello";
+		//wdata->border[0] = 5.0;
+		//wdata->border[1] = 5.0;
+		//vec4_dup(wdata->background,   (vec4){ 0.4, 0.4, 0.4, 1.0 });
+		//vec4_dup(wdata->border_color, (vec4){ 0.2, 0.2, 0.2, 1.0 });
+		vec2_dup(wdata->rect.position, (vec2){ 100 + 570 - 90 * i, 75 + 60 });
+		vec2_dup(wdata->rect.half_size, (vec2){ 100, 75 });
 
-	//label = ui_new_object(layout3, UI_LABEL);
-	//ui_label_set_color(label, (vec4){ 1.0, 1.0, 0.0, 1.0 });
-	//ui_label_set_border(label, (vec2){ 10.0, 10.0 });
-	//ui_label_set_text(label, "Testing");
+		UIObject layout = ui_new_object(window, UI_LAYOUT);
+		UI_LAYOUT_struct *laydata = ui_data(layout);
+		laydata->order = UI_LAYOUT_VERTICAL;
 
-	UIObject edit_button = ui_new_object(layout3, UI_BUTTON);
-	ui_button_set_userptr(edit_button, NULL);
-	ui_button_set_label(edit_button, "Edit");
-	ui_button_set_label_border(edit_button, (vec2){ 2.0, 2.0 });
-	ui_button_set_callback(edit_button, edit_button_cbk);
+		UIObject label = ui_new_object(layout, UI_LABEL);
+		UI_LABEL_struct *ldata = ui_data(label);
+		ldata->label_ptr = "World";
+
+		UIObject button = ui_new_object(layout, UI_BUTTON);
+		UI_BUTTON_struct *bdata = ui_data(button);
+		bdata->label = "Click Me.";
+		bdata->callback = btn_callback;
+
+		UIObject slider = ui_new_object(layout, UI_SLIDER);
+		UI_SLIDER_struct *sdata = ui_data(slider);
+		sdata->max_value = 10;
+		sdata->value = 5;
+	}
 
 	map = editor.map;
 	map_set_gfx_scene(map);
@@ -64,20 +75,27 @@ GAME_STATE_LEVEL_init(void)
 	GLOBAL.player_id = ent_player_new((vec2){ 15.0, 15.0 });
 	ent_dummy_new((vec2){ 25, 15 });
 	
-	SceneTextID text = gfx_scene_new_obj(0, SCENE_OBJECT_TEXT);
+	text = gfx_scene_new_obj(0, SCENE_OBJECT_TEXT);
 	vec4_dup(gfx_scene_text(text)->color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 	vec2_dup(gfx_scene_text(text)->position, (vec2){ 0.0, 0.0 });
 	vec2_dup(gfx_scene_text(text)->char_size, (vec2){ 0.05, 0.05 });
 	gfx_scene_text(text)->text_ptr = (RelPtr){ .base_pointer = (void**)&text_test, .offset = 0 };
 
 	phx_set_pre_solve(pre_solve);
-	audio_bgm_play(AUDIO_BUFFER_BGM_TEST, 1.0);
 }
 
 void
 GAME_STATE_LEVEL_update(float delta)
 {
-	(void)delta;
+	time += delta;
+	const float f = fabs(sinf(time)) * 0.25;
+
+	vec2_dup(gfx_scene_text(text)->char_size, (vec2){ f, f });
+	
+	if(time > 2.0 && window != 0) {
+		ui_del_object(window);
+		window = 0;
+	}
 }
 
 void
@@ -100,20 +118,21 @@ GAME_STATE_LEVEL_end(void)
 {
 	phx_reset();
 	ent_reset();
-	gfx_scene_reset();
 	ui_reset();
-
+	gfx_scene_reset();
 	audio_bgm_pause();
 }
 
 void GAME_STATE_LEVEL_mouse_move(SDL_Event *event) { (void)event; }
 void GAME_STATE_LEVEL_mouse_button(SDL_Event *event) { (void)event; }
+
 void 
 GAME_STATE_LEVEL_keyboard(SDL_Event *event) 
 { 
 	if(event->type == SDL_KEYDOWN && event->key.keysym.scancode == SDL_SCANCODE_K)
 		gstate_set(GAME_STATE_LEVEL_EDIT);
 }
+
 void GAME_STATE_LEVEL_mouse_wheel(SDL_Event *event) { (void)event; } 
 
 static void process_entity_collision(EntityID id, BodyID other, Contact *contact)

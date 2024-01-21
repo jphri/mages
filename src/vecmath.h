@@ -3,6 +3,7 @@
 
 #include <string.h>
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 
 #define MATH_FUNC static inline
@@ -216,21 +217,35 @@ static inline void rect_intersect(Rectangle *rect_out, Rectangle *rect1, Rectang
 {
 	vec2 min1, max1;
 	vec2 min2, max2;
+
+	vec2 itsc_min, itsc_max;
 	
 	vec2_sub(min1, rect1->position, rect1->half_size);
 	vec2_add(max1, rect1->position, rect1->half_size);
 	vec2_sub(min2, rect2->position, rect2->half_size);
 	vec2_add(max2, rect2->position, rect2->half_size);
 
-	if(min2[0] > min1[0]) min1[0] = min2[0];
-	if(min2[1] > min1[1]) min1[1] = min2[1];
-	if(max2[0] < max1[0]) max1[0] = max2[0];
-	if(max2[1] < max1[1]) max1[1] = max2[1];
+	itsc_min[0] = min1[0] > min2[0] ? min1[0] : min2[0];
+	itsc_min[1] = min1[1] > min2[1] ? min1[1] : min2[1];
+	itsc_max[0] = max1[0] < max2[0] ? max1[0] : max2[0];
+	itsc_max[1] = max1[1] < max2[1] ? max1[1] : max2[1];
 
-	rect_out->half_size[0] = (max1[0] - min1[0]) / 2.0;
-	rect_out->half_size[1] = (max1[1] - min1[1]) / 2.0;
-	rect_out->position[0] = rect_out->half_size[0] + min1[0];
-	rect_out->position[0] = rect_out->half_size[1] + min1[0];
+	rect_out->half_size[0] = (itsc_max[0] - itsc_min[0]) / 2.0;
+	rect_out->half_size[1] = (itsc_max[1] - itsc_min[1]) / 2.0;
+	rect_out->position[0] = rect_out->half_size[0] + itsc_min[0];
+	rect_out->position[1] = rect_out->half_size[1] + itsc_min[1];
+}
+
+static inline bool rect_contains_point(Rectangle *rect, vec2 point)
+{
+	vec2 min, max;
+	vec2_add(max, rect->position, rect->half_size);
+	vec2_sub(min, rect->position, rect->half_size);
+	
+	bool x_contains = point[0] > min[0] && point[0] < max[0];
+	bool y_contains = point[1] > min[1] && point[1] < max[1];
+
+	return x_contains && y_contains;
 }
 
 #undef MATH_FUNC

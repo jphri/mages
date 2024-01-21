@@ -131,6 +131,10 @@ SceneAnimatedSprite *gfx_scene_animspr(SceneAnimatedSpriteID anim_id);
 void gfx_scene_set_tilemap(int layer, SpriteType atlas, int w, int h, int *data);
 
 TextureStamp get_sprite(SpriteType sprite, int sprite_x, int sprite_y);
-const TextureStamp *gfx_white_texture(void);
+TextureStamp *gfx_white_texture(void);
+
+Rectangle gfx_window_rectangle(void);
+
+void gfx_font_size(vec2 out_size, Font font, float height, const char *fmt, ...);
 
 #endif
