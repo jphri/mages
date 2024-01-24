@@ -19,9 +19,9 @@ static void intrend_attrib_bind(ShaderProgram *shader, VertexAttrib attrib, cons
 	glBindAttribLocation(shader->program, attrib, name);
 }
 
-static inline void intrend_link(ShaderProgram *shader, const char *name, GLsizei size, GLuint shaders[size]) {
+static inline void intrend_link(ShaderProgram *shader, const char *name, GLsizei size, GLuint shaders[static size]) {
 	shader->program = glCreateProgram();
-	
+
 	intrend_bind_attribs(shader);
 	ugl_link_program(shader->program, name, size, shaders);
 	intrend_bind_uniforms(shader);

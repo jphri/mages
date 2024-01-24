@@ -6,7 +6,7 @@
 #include "glutil.h"
 
 GLuint
-ugl_compile_shader(const char *shader_name, GLenum shader_type, GLint size, const char source[size])
+ugl_compile_shader(const char *shader_name, GLenum shader_type, GLint size, const char source[static size])
 {
 	GLuint shader = glCreateShader(shader_type);
 	int compiled;
@@ -32,10 +32,10 @@ ugl_compile_shader(const char *shader_name, GLenum shader_type, GLint size, cons
 }
 
 void
-ugl_link_program(GLuint program, const char *program_name, GLsizei size, GLuint shaders[size])
+ugl_link_program(GLuint program, const char *program_name, GLsizei size, GLuint shaders[static size])
 {
 	int linked;
-	
+
 	for(GLsizei i = 0; i < size; i++)
 		glAttachShader(program, shaders[i]);
 
@@ -99,7 +99,7 @@ ugl_compile_shader_file(const char *file_path, GLenum shader_type)
 }
 
 GLuint
-ugl_create_vao(GLuint n_specs, VaoSpec specs[n_specs])
+ugl_create_vao(GLuint n_specs, VaoSpec specs[static n_specs])
 {
 	GLuint vao;
 
