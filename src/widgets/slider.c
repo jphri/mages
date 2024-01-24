@@ -10,23 +10,54 @@ typedef struct {
 	Rectangle handle_rect;
 } SliderInfo;
 
-static SliderInfo slider_info(UIObject obj, Rectangle *rect)
-{
-	SliderInfo slider;
-	UI_SLIDER_struct *ls = ui_data(obj);
-	
-	slider.width = 5.0;
-	slider.border = 10.0;
-	slider.slider_border = slider.width + slider.border;
-	slider.slider_half_size = rect->half_size[0] - slider.slider_border;
-	slider.perc = ls->value / (float)ls->max_value;
+static SliderInfo slider_info(UIObject obj, Rectangle *rect);
 
-	slider.handle_rect.half_size[0] = slider.width;
-	slider.handle_rect.half_size[1] = 10;
-	slider.handle_rect.position[0] = rect->position[0] + (slider.perc * 2.0 - 1.0) * slider.slider_half_size;
-	slider.handle_rect.position[1] = rect->position[1];
+UIObject 
+ui_slider_new(void)
+{
+	UIObject slider =  ui_new_object(0, UI_SLIDER);
+	UI_SLIDER_struct *sdata = ui_data(slider);
+	sdata->max_value = 1;
+	sdata->value = 0;
+	sdata->old_value = 0;
+	sdata->cbk = NULL;
+	sdata->user_ptr = NULL;
 
 	return slider;
+}
+
+void
+ui_slider_set_max_value(UIObject slider, int max_value)
+{
+	UI_SLIDER_struct *sdata = ui_data(slider);
+	sdata->max_value = max_value;
+}
+
+void
+ui_slider_set_value(UIObject slider, int value)
+{
+	UI_SLIDER_struct *sdata = ui_data(slider);
+	sdata->value = value;
+	if(sdata->old_value != value) {
+		sdata->old_value = value;
+		if(sdata->cbk)
+			sdata->cbk(slider, sdata->user_ptr);
+	}
+}
+
+int
+ui_slider_get_value(UIObject slider)
+{
+	UI_SLIDER_struct *sdata = ui_data(slider);
+	return sdata->value;
+}
+
+void
+ui_slider_set_callback(UIObject slider, void *userptr, void (*cbk)(UIObject, void *))
+{
+	UI_SLIDER_struct *sdata = ui_data(slider);
+	sdata->user_ptr = userptr;
+	sdata->cbk = cbk;
 }
 
 static void
@@ -97,7 +128,7 @@ slider_motion(UIObject obj, UIEvent *ev, Rectangle *rect)
 		if(p > 1)
 		 	p = 1;
 
-		sl->value = p * sl->max_value;
+		ui_slider_set_value(obj, p * sl->max_value);
 	}
 }
 
@@ -123,6 +154,7 @@ slider_button(UIObject obj, UIEvent *ev, Rectangle *rect)
 void
 UI_SLIDER_event(UIObject obj, UIEvent *ev, Rectangle *rect)
 {
+	ui_default_mouse_handle(obj, ev, rect);
 	switch(ev->event_type) {
 	case UI_DRAW:
 		slider_draw(obj, rect);
@@ -133,4 +165,23 @@ UI_SLIDER_event(UIObject obj, UIEvent *ev, Rectangle *rect)
 	case UI_MOUSE_BUTTON:
 		slider_button(obj, ev, rect);
 	}
+}
+
+static SliderInfo slider_info(UIObject obj, Rectangle *rect)
+{
+	SliderInfo slider;
+	UI_SLIDER_struct *ls = ui_data(obj);
+	
+	slider.width = 5.0;
+	slider.border = 10.0;
+	slider.slider_border = slider.width + slider.border;
+	slider.slider_half_size = rect->half_size[0] - slider.slider_border;
+	slider.perc = ls->value / (float)ls->max_value;
+
+	slider.handle_rect.half_size[0] = slider.width;
+	slider.handle_rect.half_size[1] = 10;
+	slider.handle_rect.position[0] = rect->position[0] + (slider.perc * 2.0 - 1.0) * slider.slider_half_size;
+	slider.handle_rect.position[1] = rect->position[1];
+
+	return slider;
 }

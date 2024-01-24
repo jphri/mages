@@ -34,39 +34,46 @@ static void btn_callback(UIObject obj, void *userdata)
 	printf("Hello, world!\n");
 }
 
+static void slider_cbk(UIObject obj, void *userdata)
+{
+	(void)userdata;
+	(void)obj;
+
+	printf("Value: %d\n", ui_slider_get_value(obj));
+}
+
 void
 GAME_STATE_LEVEL_init(void)
 {
-	for(int i = 0; i < 2; i++) {
-		window = ui_new_object(ui_root(), UI_FLOAT);
-		UI_FLOAT_struct *wdata = ui_data(window);
+	UIObject button = ui_button_new();
+	ui_button_set_label(button, "Click Me");
+	ui_button_set_callback(button, NULL, btn_callback);
 
-		//wdata->title = "Hello";
-		//wdata->border[0] = 5.0;
-		//wdata->border[1] = 5.0;
-		//vec4_dup(wdata->background,   (vec4){ 0.4, 0.4, 0.4, 1.0 });
-		//vec4_dup(wdata->border_color, (vec4){ 0.2, 0.2, 0.2, 1.0 });
-		vec2_dup(wdata->rect.position, (vec2){ 100 + 570 - 90 * i, 75 + 60 });
-		vec2_dup(wdata->rect.half_size, (vec2){ 100, 75 });
+	UIObject slider = ui_slider_new();
+	ui_slider_set_max_value(slider, 10);
+	ui_slider_set_value(slider, 5);
+	ui_slider_set_callback(slider, NULL, slider_cbk);
 
-		UIObject layout = ui_new_object(window, UI_LAYOUT);
-		UI_LAYOUT_struct *laydata = ui_data(layout);
-		laydata->order = UI_LAYOUT_VERTICAL;
+	UIObject label = ui_label_new();
+	ui_label_set_text(label, "World");
+	ui_label_set_alignment(label, UI_LABEL_ALIGN_RIGHT);
 
-		UIObject label = ui_new_object(layout, UI_LABEL);
-		UI_LABEL_struct *ldata = ui_data(label);
-		ldata->label_ptr = "World";
+	UIObject layout = ui_layout_new();
+	ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
+	ui_layout_set_border(layout, 0., 0., 0., 0.);
+	ui_layout_append(layout, label);
+	ui_layout_append(layout, button);
+	ui_layout_append(layout, slider);
 
-		UIObject button = ui_new_object(layout, UI_BUTTON);
-		UI_BUTTON_struct *bdata = ui_data(button);
-		bdata->label = "Click Me.";
-		bdata->callback = btn_callback;
+	window = ui_window_new();
+	ui_window_set_size(window, (vec2){ 100, 75 });	
+	ui_window_set_position(window, (vec2){ 100 + 570, 75 + 60 });
+	ui_window_set_title(window, "Hello");
+	ui_window_set_border(window, (vec2){ 2.0, 2.0 });
 
-		UIObject slider = ui_new_object(layout, UI_SLIDER);
-		UI_SLIDER_struct *sdata = ui_data(slider);
-		sdata->max_value = 10;
-		sdata->value = 5;
-	}
+	ui_window_set_child(window, layout);
+
+	ui_map(window);
 
 	map = editor.map;
 	map_set_gfx_scene(map);
@@ -91,11 +98,6 @@ GAME_STATE_LEVEL_update(float delta)
 	const float f = fabs(sinf(time)) * 0.25;
 
 	vec2_dup(gfx_scene_text(text)->char_size, (vec2){ f, f });
-	
-	if(time > 2.0 && window != 0) {
-		ui_del_object(window);
-		window = 0;
-	}
 }
 
 void

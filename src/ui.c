@@ -55,6 +55,24 @@ static inline void add_child(UIObject parent, UIObject child)
 	UI_NODE(parent)->child_count ++;
 }
 
+static inline void add_child_last(UIObject parent, UIObject child)
+{
+	UIObject last_child = UI_NODE(parent)->last_child;
+	UIObject first_child = UI_NODE(parent)->child_list;
+
+	UI_NODE(child)->sibling_prev = last_child;
+	UI_NODE(child)->sibling_next = 0;
+
+	if(!first_child)
+		UI_NODE(parent)->child_list = child;
+	
+	if(last_child)
+		UI_NODE(last_child)->sibling_next = child;
+
+	UI_NODE(parent)->last_child = child;
+	UI_NODE(parent)->child_count++;
+}
+
 static inline void remove_child(UIObject parent, UIObject child) 
 {
 	UIObject next, prev;
@@ -81,13 +99,14 @@ static void _sys_int_cleanup(ObjectAllocator *alloc, ObjectID id)
 
 static UIObject hot, active;
 static UIObject root;
+static vec2 mouse_pos;
 
 void 
 ui_init(void)
 {
 	objalloc_init_allocator(&objects, sizeof(UIObjectNode), cache_aligned_allocator());
 	objects.clean_cbk = _sys_int_cleanup;
-	
+
 	ui_reset();
 }
 
@@ -116,13 +135,10 @@ UIObject
 ui_new_object(UIObject parent, UIObjectType object_type) 
 {
 	UIObject object = objalloc_alloc(&objects);
-	UI_NODE(object)->type = object_type;
-	UI_NODE(object)->parent = parent;
-	UI_NODE(object)->child_list = 0;
-	UI_NODE(object)->last_child = 0;
-	UI_NODE(object)->child_count = 0;
-	UI_NODE(object)->sibling_next = 0;
-	UI_NODE(object)->sibling_prev = 0;
+	memset(objalloc_data(&objects, object), 0, sizeof(UIObjectNode));
+	UI_NODE(object)->type         = object_type;
+	UI_NODE(object)->parent       = parent;
+
 
 	if(parent)
 		add_child(parent, object); 
@@ -169,6 +185,7 @@ ui_mouse_button(UIMouseButton button, bool state)
 	event.event_type = UI_MOUSE_BUTTON;
 	event.data.mouse.state = state;
 	event.data.mouse.button = button;
+	vec2_dup(event.data.mouse.position, mouse_pos);
 
 	for(UIObject child = ui_child(root); child; child = ui_child_next(child)) {
 		ui_call_event(child, &event, &rect);
@@ -184,8 +201,9 @@ ui_mouse_motion(float x, float y)
 	event.event_type = UI_MOUSE_MOTION;
 	event.data.mouse.position[0] = x;
 	event.data.mouse.position[1] = y;
+	vec2_dup(mouse_pos, event.data.mouse.position);
 
-	ui_set_hot(root);
+	ui_default_mouse_handle(root, &event, &rect);
 	for(UIObject child = ui_child(root); child; child = ui_child_next(child)) {
 		ui_call_event(child, &event, &rect);
 	}
@@ -200,13 +218,13 @@ ui_cleanup(void)
 void
 ui_call_event(UIObject object, UIEvent *event, Rectangle *rect)
 {
-	procs[((UIObjectNode*)objalloc_data(&objects, object))->type](object, event, rect);
+	procs[UI_NODE(object)->type](object, event, rect);
 }
 
 void *
 ui_data(UIObject object) 
 {
-	return &((UIObjectNode*)objalloc_data(&objects, object))->data;
+	return &UI_NODE(object)->data;
 }
 
 UIObject
@@ -233,6 +251,12 @@ UIObject
 ui_root(void)
 {
 	return root;
+}
+
+void
+ui_map(UIObject obj)
+{
+	ui_child_append(root, obj);
 }
 
 int
@@ -272,13 +296,40 @@ ui_get_parent(UIObject obj)
 }
 
 void
+ui_child_prepend(UIObject parent, UIObject child)
+{
+	if(UI_NODE(child)->parent)
+		remove_child(UI_NODE(child)->parent, child);
+
+	add_child(parent, child);
+	UI_NODE(child)->parent = parent;
+}
+
+void
+ui_child_append(UIObject parent, UIObject child)
+{
+	if(UI_NODE(child)->parent)
+		remove_child(UI_NODE(child)->parent, child);
+
+	add_child_last(parent, child);
+	UI_NODE(child)->parent = parent;
+}
+
+void
 ui_default_mouse_handle(UIObject obj, UIEvent *ev, Rectangle *rect)
 {
+	if(ev->event_type != UI_MOUSE_MOTION && ev->event_type != UI_MOUSE_BUTTON)
+		return;
+
 	if(ui_get_active() != 0)
 		return;
 
 	if(ui_get_hot() == ui_get_parent(obj)) {
 		if(rect_contains_point(rect, ev->data.mouse.position))
 			ui_set_hot(obj);
+	}
+	if(ui_get_hot() == obj) {
+		if(!rect_contains_point(rect, ev->data.mouse.position))
+			ui_set_hot(ui_get_parent(obj));
 	}
 }

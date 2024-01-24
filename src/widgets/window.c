@@ -3,35 +3,67 @@
 
 #define WINDOW_TITLE_HEIGHT 14
 
-void
-window_draw(UI_WINDOW_struct *window, Rectangle *all_window_rect)
+static void window_mouse_button(UIObject window, UIEvent *event);
+static void window_mouse_move(UIObject window, UIEvent *event);
+
+static void window_draw(UI_WINDOW_struct *window, Rectangle *all_window_rect);
+//static void window_draw_title(UI_WINDOW_struct *window, Rectangle *title_rect);
+
+
+UIObject
+ui_window_new(void)
 {
-	Rectangle rect = *all_window_rect;
-	vec2_sub(rect.half_size, rect.half_size, window->border);
+	UIObject window = ui_new_object(0, UI_WINDOW);
+	UI_WINDOW_struct *wdata = ui_data(window);
+	memset(wdata, 0, sizeof(*wdata));
 
-	/* border */
-	gfx_draw_texture_rect(gfx_white_texture(), all_window_rect->position, all_window_rect->half_size, 0.0, (vec4){ 0.3, 0.3, 0.3, 1.0 });
+	wdata->title_label = ui_label_new();
+	ui_label_set_text(wdata->title_label, "Window");
+	ui_label_set_color(wdata->title_label, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 
-	/* content */
-	gfx_draw_texture_rect(gfx_white_texture(), rect.position, rect.half_size, 0.0, (vec4){ 0.5, 0.5, 0.5, 1.0 });
+	wdata->title_layout = ui_layout_new();
+	ui_layout_set_order(wdata->title_layout, UI_LAYOUT_HORIZONTAL);
+	ui_layout_set_border(wdata->title_layout, 0, 0, 5, 5);
+	ui_layout_set_background(wdata->title_layout, (vec4){ 0.0, 0.0, 0.4, 1.0 });
+
+	ui_child_append(wdata->title_layout, wdata->title_label);
+	ui_child_append(window, wdata->title_layout);
+	return window;
 }
 
 void
-window_draw_title(UI_WINDOW_struct *window, Rectangle *title_rect)
+ui_window_set_size(UIObject window, vec2 size)
 {
-	vec2 title_size;
-	vec2 title_pos;
+	UI_WINDOW_struct *wdata = ui_data(window);
+	vec2_dup(wdata->window_rect.half_size, size);
+}
 
-	gfx_font_size(title_size, FONT_ROBOTO, 0.5, "%s", window->title);
+void
+ui_window_set_position(UIObject window, vec2 position)
+{
+	UI_WINDOW_struct *wdata = ui_data(window);
+	vec2_dup(wdata->window_rect.position, position);
+}
 
-	title_pos[0] = title_rect->position[0] - title_rect->half_size[0] + 5.0;
-	title_pos[1] = title_rect->position[1] - title_rect->half_size[1] + title_size[1];
+void
+ui_window_set_background(UIObject window, vec4 background)
+{
+	UI_WINDOW_struct *wdata = ui_data(window);
+	vec4_dup(wdata->background, background);
+}
 
+void
+ui_window_set_border(UIObject window, vec2 border)
+{
+	UI_WINDOW_struct *wdata = ui_data(window);
+	vec2_dup(wdata->border, border);
+}
 
-	gfx_push_clip(title_rect->position, title_rect->half_size);
-	gfx_draw_texture_rect(gfx_white_texture(), title_rect->position, title_rect->half_size, 0.0, (vec4){ 0.0, 0.0, 0.4, 1.0 });
-	gfx_draw_font2(FONT_ROBOTO, title_pos, 0.5, (vec4){ 1.0, 1.0, 1.0, 1.0 }, "%s", window->title);
-	gfx_pop_clip();
+void
+ui_window_set_title(UIObject window, const char *title)
+{
+	UI_WINDOW_struct *wdata = ui_data(window);
+	ui_label_set_text(wdata->title_label, title);
 }
 
 void
@@ -57,27 +89,82 @@ UI_WINDOW_event(UIObject obj, UIEvent *event, Rectangle *rect)
 	title_rect.half_size[0] = all_rect.half_size[0] - window->border[0];
 	title_rect.half_size[1] = WINDOW_TITLE_HEIGHT;
 
-	switch(event->event_type) {
-	case UI_DRAW:
+	if(event->event_type == UI_DRAW) {
 		window_draw(window, &all_rect);
-		window_draw_title(window, &title_rect);
-		gfx_push_clip(window->window_rect.position, window->window_rect.half_size);
-		/* fallthrough */
+	}
+	(void)title_rect;
 
-	case UI_MOUSE_MOTION:
-		ui_default_mouse_handle(obj, event, rect);
-		if(ui_get_hot() != obj)
-			return;
+	ui_default_mouse_handle(obj, event, &all_rect);
+	ui_call_event(window->title_layout, event, &title_rect);
+	ui_call_event(window->child, event, &window->window_rect);
 
-		/* fallthrough */
-	default: 
-		for(UIObject child = ui_child(obj); child; child = ui_child_next(child)) {
-			ui_call_event(child, event, &window->window_rect);
+	if(event->event_type == UI_MOUSE_MOTION) {
+		window_mouse_move(obj, event);
+	} else if(event->event_type == UI_MOUSE_BUTTON) {
+		window_mouse_button(obj, event);
+	}
+}
+
+
+void
+ui_window_set_child(UIObject window, UIObject child)
+{
+	UI_WINDOW_struct *w = ui_data(window);
+	ui_child_append(window, child);
+	w->child = child;
+}
+
+void
+window_draw(UI_WINDOW_struct *window, Rectangle *all_window_rect)
+{
+	Rectangle rect = *all_window_rect;
+	vec2_sub(rect.half_size, rect.half_size, window->border);
+
+	/* border */
+	gfx_draw_texture_rect(gfx_white_texture(), all_window_rect->position, all_window_rect->half_size, 0.0, (vec4){ 0.3, 0.3, 0.3, 1.0 });
+
+	/* content */
+	gfx_draw_texture_rect(gfx_white_texture(), rect.position, rect.half_size, 0.0, (vec4){ 0.5, 0.5, 0.5, 1.0 });
+}
+
+//void
+//window_draw_title(UI_WINDOW_struct *window, Rectangle *title_rect)
+//{
+//	(void)window;
+//	gfx_push_clip(title_rect->position, title_rect->half_size);
+//	gfx_draw_texture_rect(gfx_white_texture(), title_rect->position, title_rect->half_size, 0.0, (vec4){ 0.0, 0.0, 0.4, 1.0 });
+//	gfx_pop_clip();
+//}
+
+
+void 
+window_mouse_button(UIObject window, UIEvent *event)
+{
+	UI_WINDOW_struct *win = ui_data(window);
+	if(ui_get_active() == 0) {
+		if(event->data.mouse.button == UI_MOUSE_LEFT) {
+			if(ui_get_hot() == win->title_layout && event->data.mouse.state) {
+				ui_set_active(win->title_layout);
+				vec2_dup(win->drag_begin, event->data.mouse.position);
+				vec2_dup(win->drag_begin_pos, win->window_rect.position);
+			}
 		}
+	} else if(ui_get_active() == win->title_layout) {
+		if(event->data.mouse.button == UI_MOUSE_LEFT) {
+			if(!event->data.mouse.state) {
+				ui_set_active(0);
+			}
+		}
+	}
+}
 
-		if(event->event_type == UI_DRAW)
-			gfx_pop_clip();
-
-		break;
+void
+window_mouse_move(UIObject window, UIEvent *event)
+{
+	UI_WINDOW_struct *win = ui_data(window);
+	if(ui_get_active() == win->title_layout) {
+		vec2 delta;
+		vec2_sub(delta, win->drag_begin, event->data.mouse.position);
+		vec2_sub(win->window_rect.position, win->drag_begin_pos, delta);
 	}
 }

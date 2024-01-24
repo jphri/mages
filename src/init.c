@@ -4,6 +4,7 @@
 
 #include <SDL.h>
 
+#include "SDL_timer.h"
 #include "game_objects.h"
 #include "global.h"
 #include "game_state.h"
@@ -31,7 +32,6 @@ typedef struct {
 
 static void *cache_line_allocate(size_t size, void *user);
 static void  cache_line_deallocate(void *ptr, void *user);
-
 
 static GLADapiproc load_proc(const char *name) 
 {
@@ -63,6 +63,7 @@ static GameState current_state, next_state;
 static bool need_change;
 static float fps_time;
 static int fps;
+static Uint64 rendering_time;
 
 Global GLOBAL;
 
@@ -97,7 +98,7 @@ main(int argc, char *argv[])
 		printf("SDL_GL_CreateContext() failed\n");
 		return 0;
 	}
-	SDL_GL_SetSwapInterval(1);
+	SDL_GL_SetSwapInterval(0);
 	SDL_GL_MakeCurrent(GLOBAL.window, GLOBAL.glctx);
 	gladLoadGLES2(load_proc);
 	printf("OpenGL Version: %s\n", glGetString(GL_VERSION));
@@ -146,6 +147,7 @@ main(int argc, char *argv[])
 		float delta = (float)(curr_time - prev_time) / SDL_GetPerformanceFrequency();
 		prev_time = curr_time;
 
+		Uint64 begin_render_time = SDL_GetPerformanceCounter();
 		state_vtable[current_state].update(delta);
 		gfx_scene_update(delta);
 		phx_update(delta);
@@ -167,6 +169,7 @@ main(int argc, char *argv[])
 
 		gfx_camera_set_enabled(false);
 		ui_draw();
+		Uint64 end_render_time = SDL_GetPerformanceCounter();
 
 		SDL_GL_SwapWindow(GLOBAL.window);
 		if(need_change) {
@@ -177,12 +180,18 @@ main(int argc, char *argv[])
 			need_change = false;
 		}
 
+		rendering_time += end_render_time - begin_render_time;
+
 		fps++;
 		fps_time += delta;
 		if(fps_time > 1.0) {
-			printf("FPS: %d\n", fps);
+			double rend_time = rendering_time / (double)SDL_GetPerformanceFrequency();
+				   rend_time /= fps;
+			printf("FPS: %d | Avg rend time: %f ms (%0.2f estimated FPS)\n", fps, rend_time * 1000, 1.0 / rend_time);
 			fps_time = 0;
 			fps = 0;
+
+			rendering_time = 0;
 		}
 	}
 

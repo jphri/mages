@@ -213,6 +213,22 @@ typedef struct Rectangle {
 	vec2 half_size;
 } Rectangle;
 
+static inline Rectangle rect_from_boundaries(vec2 min, vec2 max)
+{
+	Rectangle rect;
+	rect.half_size[0] = (max[0] - min[0]) / 2.0;
+	rect.half_size[1] = (max[1] - min[1]) / 2.0;
+	rect.position[0] = rect.half_size[0] + min[0];
+	rect.position[1] = rect.half_size[1] + min[1];
+	return rect;
+}
+
+static inline void rect_boundaries(vec2 out_min, vec2 out_max, Rectangle *rect)
+{
+	vec2_sub(out_min, rect->position, rect->half_size);
+	vec2_add(out_max, rect->position, rect->half_size);
+}
+
 static inline void rect_intersect(Rectangle *rect_out, Rectangle *rect1, Rectangle *rect2)
 {
 	vec2 min1, max1;
@@ -220,20 +236,15 @@ static inline void rect_intersect(Rectangle *rect_out, Rectangle *rect1, Rectang
 
 	vec2 itsc_min, itsc_max;
 	
-	vec2_sub(min1, rect1->position, rect1->half_size);
-	vec2_add(max1, rect1->position, rect1->half_size);
-	vec2_sub(min2, rect2->position, rect2->half_size);
-	vec2_add(max2, rect2->position, rect2->half_size);
+	rect_boundaries(min1, max1, rect1);
+	rect_boundaries(min2, max2, rect2);
 
 	itsc_min[0] = min1[0] > min2[0] ? min1[0] : min2[0];
 	itsc_min[1] = min1[1] > min2[1] ? min1[1] : min2[1];
 	itsc_max[0] = max1[0] < max2[0] ? max1[0] : max2[0];
 	itsc_max[1] = max1[1] < max2[1] ? max1[1] : max2[1];
 
-	rect_out->half_size[0] = (itsc_max[0] - itsc_min[0]) / 2.0;
-	rect_out->half_size[1] = (itsc_max[1] - itsc_min[1]) / 2.0;
-	rect_out->position[0] = rect_out->half_size[0] + itsc_min[0];
-	rect_out->position[1] = rect_out->half_size[1] + itsc_min[1];
+	*rect_out = rect_from_boundaries(itsc_min, itsc_max);
 }
 
 static inline bool rect_contains_point(Rectangle *rect, vec2 point)
