@@ -105,6 +105,7 @@ void gfx_draw_begin(GraphicsTileMap *tmap);
 void gfx_push_clip(vec2 position, vec2 half_size);
 void gfx_pop_clip(void);
 void gfx_draw_texture_rect(TextureStamp *texture, vec2 position, vec2 size, float rotation, vec4 color);
+void gfx_draw_font(Font font, vec2 position, float height, vec4 color, StrView utf_text);
 void gfx_draw_font2(Font font, vec2 position, float height, vec4 color, const char *fmt, ...);
 void gfx_draw_line(vec2 p1, vec2 p2, float thickness, vec4 color);
 void gfx_draw_rect(vec2 position, vec2 half_size, float thickness, vec4 color);
@@ -136,5 +137,6 @@ TextureStamp *gfx_white_texture(void);
 Rectangle gfx_window_rectangle(void);
 
 void gfx_font_size(vec2 out_size, Font font, float height, const char *fmt, ...);
+void gfx_font_size_view(vec2 out_size, Font font, float height, StrView view);
 
 #endif

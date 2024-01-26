@@ -172,7 +172,7 @@ static void             load_font_info(Font font, Texture texture, const char *p
 
 static struct CharData  *find_char_idx(Font font, int charid);
 
-static void parse_buffer(char *buffer, int buffer_size, Font font, void *user_data, void (*cbk)(struct CharData *, Font font, vec2 char_offset, void *user_data));
+static void parse_buffer(StrView buffer_view, Font font, void *user_data, void (*cbk)(struct CharData *, Font font, vec2 char_offset, void *user_data));
 static void parser_font_size(struct CharData *, Font font, vec2 char_offset, void *parser);
 static void parser_font_render(struct CharData *, Font font, vec2 char_offset, void *parser);
 
@@ -386,7 +386,19 @@ gfx_draw_font2(Font font, vec2 position, float height, vec4 color, const char *f
 	vec2_dup(render.position, position);
 	render.height = height;
 
-	parse_buffer(buffer, characters, font, &render, parser_font_render);
+	parse_buffer(to_strview_buffer(buffer, characters), font, &render, parser_font_render);
+}
+
+void
+gfx_draw_font(Font font, vec2 position, float height, vec4 color, StrView str)
+{
+	FontRenderParser render;
+
+	vec4_dup(render.color, color);
+	vec2_dup(render.position, position);
+	render.height = height;
+
+	parse_buffer(str, font, &render, parser_font_render);
 }
 
 void
@@ -788,7 +800,7 @@ load_font_info(Font font, Texture font_texture, const char *path)
 	fbuf_open(&file, path, "r", allocator_default());
 
 	while(fbuf_read_line(&file, '\n') != EOF) {
-		StrView line = { fbuf_data(&file), fbuf_data(&file) + fbuf_data_size(&file) },
+		StrView line = to_strview_buffer(fbuf_data(&file), fbuf_data_size(&file)),
 		        ldup = line;
 		Parameter param;
 
@@ -949,27 +961,42 @@ gfx_font_size(vec2 out_size, Font font, float height, const char *fmt, ...)
 	buffer_size = vsnprintf(buffer, sizeof(buffer), fmt, va);
 	va_end(va);
 
-	parse_buffer(buffer, buffer_size, font, &parser, parser_font_size);
+	parse_buffer(to_strview_buffer(buffer, buffer_size), font, &parser, parser_font_size);
+	vec2_add_scaled(out_size, out_size, parser.size, height * 0.5);
+}
+
+void 
+gfx_font_size_view(vec2 out_size, Font font, float height, StrView view)
+{
+	out_size[0] = 0;
+	out_size[1] = 0;
+	
+	FontSizeParser parser = {0};
+
+	parse_buffer(view, font, &parser, parser_font_size);
 	vec2_add_scaled(out_size, out_size, parser.size, height * 0.5);
 }
 
 void
-parse_buffer(char *buffer, int buffer_size, Font font, void *user_data, void (*cbk)(struct CharData *, Font font, vec2 char_offset, void *user_data))
+parse_buffer(StrView buffer, Font font, void *user_data, void (*cbk)(struct CharData *, Font font, vec2 char_offset, void *user_data))
 {
 	struct CharData *char_data;
 	vec2 textoff = { 0, -(font_data[font].line_offset - font[font_data].baseline) };
 	vec2 char_off;
 
-	for(int i = 0; i < buffer_size; i++) {
-		switch(buffer[i]) {
+	for(;buffer.begin < buffer.end;) {
+		int code = utf8_decode(buffer);
+		switch(code) {
 		case '\n':
 			textoff[0] = 0.0;
 			textoff[1] += font_data[font].line_offset;
 			break;
 		default:
-			char_data = find_char_idx(FONT_ROBOTO, buffer[i]);
-			if(!char_data)
-				continue;
+			char_data = find_char_idx(FONT_ROBOTO, code);
+			if(!char_data) {
+				wprintf(L"cannot print character: %d (%c)\n", code, code);
+				goto next_character;
+			}
 
 			vec2_add_scaled(char_off, (vec2){ 0.0, 0.0 }, textoff, 1.0);
 			vec2_add_scaled(char_off, char_off, (vec2){ char_data->x_offset, char_data->y_offset }, 1.0);
@@ -977,6 +1004,8 @@ parse_buffer(char *buffer, int buffer_size, Font font, void *user_data, void (*c
 			cbk(char_data, font, char_off, user_data);
 			textoff[0] += char_data->x_advance;
 		}
+next_character:
+		utf8_advance(&buffer);
 	}
 }
 
@@ -986,11 +1015,11 @@ parser_font_size(struct CharData *c, Font font, vec2 char_offset, void *parser)
 	(void)font;
 	FontSizeParser *p = parser;
 
-	if(char_offset[0] > p->size[0]) {
+	if(char_offset[0] + c->width > p->size[0]) {
 		p->size[0] = char_offset[0] + c->width;
 	}
 	
-	if(char_offset[1] > p->size[1]) {
+	if(char_offset[1] + c->height > p->size[1]) {
 		p->size[1] = char_offset[1] + c->height;
 	}
 }
