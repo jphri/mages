@@ -58,20 +58,27 @@ GAME_STATE_LEVEL_init(void)
 	ui_label_set_text(label, "World");
 	ui_label_set_alignment(label, UI_LABEL_ALIGN_RIGHT);
 
+	UIObject stuff_layout = ui_layout_new();
+	ui_layout_set_order(stuff_layout, UI_LAYOUT_VERTICAL);
+	ui_layout_set_border(stuff_layout, 0., 0., 0., 0.);
+	ui_layout_append(stuff_layout, label);
+	ui_layout_append(stuff_layout, button);
+	ui_layout_append(stuff_layout, slider);
+
+	UIObject text_input = ui_text_input_new();
+
 	UIObject layout = ui_layout_new();
 	ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
 	ui_layout_set_border(layout, 0., 0., 0., 0.);
-	ui_layout_append(layout, label);
-	ui_layout_append(layout, button);
-	ui_layout_append(layout, slider);
+	ui_layout_append(layout, stuff_layout);
+	ui_layout_append(layout, text_input);
 
 	window = ui_window_new();
-	ui_window_set_size(window, (vec2){ 100, 75 });	
-	ui_window_set_position(window, (vec2){ 100 + 570, 75 + 60 });
+	ui_window_set_size(window, (vec2){ 100, 150 });	
+	ui_window_set_position(window, (vec2){ 100 + 570, 150 + 60 });
 	ui_window_set_title(window, "Hello");
 	ui_window_set_border(window, (vec2){ 2.0, 2.0 });
-
-	ui_window_set_child(window, layout);
+	ui_window_set_child(window,  layout);
 
 	ui_map(window);
 

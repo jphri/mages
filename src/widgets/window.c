@@ -9,25 +9,26 @@ static void window_mouse_move(UIObject window, UIEvent *event);
 static void window_draw(UI_WINDOW_struct *window, Rectangle *all_window_rect);
 //static void window_draw_title(UI_WINDOW_struct *window, Rectangle *title_rect);
 
-
 UIObject
 ui_window_new(void)
 {
 	UIObject window = ui_new_object(0, UI_WINDOW);
-	UI_WINDOW_struct *wdata = ui_data(window);
-	memset(wdata, 0, sizeof(*wdata));
+	UIObject title_label = ui_label_new();
+	UIObject title_layout = ui_layout_new();
 
-	wdata->title_label = ui_label_new();
-	ui_label_set_text(wdata->title_label, "Window");
-	ui_label_set_color(wdata->title_label, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+	ui_label_set_text(title_label, "Window");
+	ui_label_set_color(title_label, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 
-	wdata->title_layout = ui_layout_new();
-	ui_layout_set_order(wdata->title_layout, UI_LAYOUT_HORIZONTAL);
-	ui_layout_set_border(wdata->title_layout, 0, 0, 5, 5);
-	ui_layout_set_background(wdata->title_layout, (vec4){ 0.0, 0.0, 0.4, 1.0 });
+	ui_layout_set_order(title_layout, UI_LAYOUT_HORIZONTAL);
+	ui_layout_set_border(title_layout, 0, 0, 5, 5);
+	ui_layout_set_background(title_layout, (vec4){ 0.0, 0.0, 0.4, 1.0 });
+	ui_child_append(title_layout, title_label);
 
-	ui_child_append(wdata->title_layout, wdata->title_label);
-	ui_child_append(window, wdata->title_layout);
+	ui_child_append(window, title_layout);
+
+	WIDGET(UI_WINDOW, window)->title_label = title_label;
+	WIDGET(UI_WINDOW, window)->title_layout = title_layout;
+
 	return window;
 }
 

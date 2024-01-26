@@ -1014,13 +1014,15 @@ parser_font_size(struct CharData *c, Font font, vec2 char_offset, void *parser)
 {
 	(void)font;
 	FontSizeParser *p = parser;
+	float char_x = char_offset[0] + c->x_advance;
+	float char_y = char_offset[1] + c->height;
 
-	if(char_offset[0] + c->width > p->size[0]) {
-		p->size[0] = char_offset[0] + c->width;
+	if(char_x > p->size[0]) {
+		p->size[0] = char_x;
 	}
 	
-	if(char_offset[1] + c->height > p->size[1]) {
-		p->size[1] = char_offset[1] + c->height;
+	if(char_y > p->size[1]) {
+		p->size[1] = char_y;
 	}
 }
 

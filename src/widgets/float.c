@@ -16,7 +16,7 @@ UI_FLOAT_event(UIObject obj, UIEvent *ev, Rectangle *rect)
 		ui_default_mouse_handle(obj, ev, &fl->rect);
 		goto process_childs;
 		break;
-	case UI_MOUSE_BUTTON:
+	default:
 		goto process_childs;
 	}
 	return;

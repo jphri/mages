@@ -97,7 +97,7 @@ static void _sys_int_cleanup(ObjectAllocator *alloc, ObjectID id)
 	remove_child(UI_NODE(id)->parent, id);
 }
 
-static UIObject hot, active;
+static UIObject hot, active, text_active;
 static UIObject root;
 static vec2 mouse_pos;
 
@@ -293,6 +293,63 @@ UIObject
 ui_get_parent(UIObject obj)
 {
 	return UI_NODE(obj)->parent;
+}
+
+void
+ui_set_text_active(UIObject obj)
+{
+	text_active = obj;
+	if(obj)
+		enable_text_input();
+	else
+	 	disable_text_input();
+}
+
+UIObject
+ui_get_text_active(void)
+{
+	return text_active;
+}
+
+void
+ui_text(const char *text, size_t text_size)
+{
+	UIEvent event;
+	Rectangle rect = gfx_window_rectangle();
+
+	event.event_type = UI_TEXT_ENTRY;
+	event.data.text.text = text;
+	event.data.text.text_size = text_size;
+
+	if(!text_active)
+		return;
+
+	/* even if we know what element is requesting the
+	 * text data, we need to repass to its parents too
+	 */
+	for(UIObject child = ui_child(root); child; child = ui_child_next(child)) {
+		ui_call_event(child, &event, &rect);
+	}
+}
+
+void
+ui_key(UIKey key)
+{
+	UIEvent event;
+	Rectangle rect = gfx_window_rectangle();
+
+	event.event_type = UI_KEYBOARD;
+	event.data.key   = key;
+
+	if(!text_active)
+		return;
+
+	/* even if we know what element is requesting the
+	 * text data, we need to repass to its parents too
+	 */
+	for(UIObject child = ui_child(root); child; child = ui_child_next(child)) {
+		ui_call_event(child, &event, &rect);
+	}
 }
 
 void

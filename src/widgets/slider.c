@@ -16,12 +16,11 @@ UIObject
 ui_slider_new(void)
 {
 	UIObject slider =  ui_new_object(0, UI_SLIDER);
-	UI_SLIDER_struct *sdata = ui_data(slider);
-	sdata->max_value = 1;
-	sdata->value = 0;
-	sdata->old_value = 0;
-	sdata->cbk = NULL;
-	sdata->user_ptr = NULL;
+	WIDGET(UI_SLIDER, slider)->max_value = 1;
+	WIDGET(UI_SLIDER, slider)->value = 0;
+	WIDGET(UI_SLIDER, slider)->old_value = 0;
+	WIDGET(UI_SLIDER, slider)->cbk = NULL;
+	WIDGET(UI_SLIDER, slider)->user_ptr = NULL;
 
 	return slider;
 }
@@ -29,8 +28,7 @@ ui_slider_new(void)
 void
 ui_slider_set_max_value(UIObject slider, int max_value)
 {
-	UI_SLIDER_struct *sdata = ui_data(slider);
-	sdata->max_value = max_value;
+	WIDGET(UI_SLIDER, slider)->max_value = max_value;
 }
 
 void
@@ -164,6 +162,8 @@ UI_SLIDER_event(UIObject obj, UIEvent *ev, Rectangle *rect)
 		break;
 	case UI_MOUSE_BUTTON:
 		slider_button(obj, ev, rect);
+	default:
+		break;
 	}
 }
 

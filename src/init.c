@@ -4,6 +4,7 @@
 
 #include <SDL.h>
 
+#include "SDL_keyboard.h"
 #include "SDL_timer.h"
 #include "game_objects.h"
 #include "global.h"
@@ -135,11 +136,26 @@ main(int argc, char *argv[])
 				state_vtable[current_state].mouse_button(&event);
 				break;
 			case SDL_KEYDOWN:
+				switch(event.key.keysym.scancode) {
+				case SDL_SCANCODE_LEFT:      ui_key(UI_KEY_LEFT);      break;
+				case SDL_SCANCODE_RIGHT:     ui_key(UI_KEY_RIGHT);     break;
+				case SDL_SCANCODE_UP:        ui_key(UI_KEY_UP);        break;
+				case SDL_SCANCODE_DOWN:      ui_key(UI_KEY_DOWN);      break;
+				case SDL_SCANCODE_BACKSPACE: ui_key(UI_KEY_BACKSPACE); break;
+				case SDL_SCANCODE_RETURN:    ui_key(UI_KEY_ENTER);     break;
+				default:
+					break;
+				}
+				/* fallthrough */
 			case SDL_KEYUP:
 				state_vtable[current_state].keyboard(&event);
 				break;
 			case SDL_MOUSEWHEEL:
 				state_vtable[current_state].mouse_wheel(&event);
+				break;
+			case SDL_TEXTINPUT:
+				ui_text(event.text.text, strlen(event.text.text));
+				break;
 			}
 		}
 
@@ -217,6 +233,18 @@ cache_aligned_allocator(void)
 		.allocate = cache_line_allocate,
 		.deallocate = cache_line_deallocate
 	};
+}
+
+void
+enable_text_input(void)
+{
+	SDL_StartTextInput();
+}
+
+void
+disable_text_input(void)
+{
+	SDL_StopTextInput();
 }
 
 #if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))

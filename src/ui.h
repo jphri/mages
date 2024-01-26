@@ -1,16 +1,19 @@
 #ifndef UI_H
 #define UI_H
+
 #include "vecmath.h"
+#include "util.h"
 
 #include <stdbool.h>
 
-#define UI_WIDGET_LIST \
-	UI_WIDGET(UI_WINDOW) \
-	UI_WIDGET(UI_LAYOUT) \
-	UI_WIDGET(UI_LABEL)  \
-	UI_WIDGET(UI_BUTTON) \
-	UI_WIDGET(UI_SLIDER) \
-	UI_WIDGET(UI_FLOAT) 
+#define UI_WIDGET_LIST       \
+	UI_WIDGET(UI_WINDOW)     \
+	UI_WIDGET(UI_LAYOUT)     \
+	UI_WIDGET(UI_LABEL)      \
+	UI_WIDGET(UI_BUTTON)     \
+	UI_WIDGET(UI_SLIDER)     \
+	UI_WIDGET(UI_FLOAT)      \
+	UI_WIDGET(UI_TEXT_INPUT)
 
 typedef enum {
 	UI_NULL,
@@ -27,6 +30,15 @@ typedef enum {
 } UIMouseButton;
 
 typedef enum {
+	UI_KEY_LEFT,
+	UI_KEY_RIGHT,
+	UI_KEY_UP,
+	UI_KEY_DOWN,
+	UI_KEY_BACKSPACE,
+	UI_KEY_ENTER
+} UIKey;
+
+typedef enum {
 	UI_LAYOUT_HORIZONTAL,
 	UI_LAYOUT_VERTICAL
 } UILayoutOrder;
@@ -41,7 +53,9 @@ typedef struct {
 	enum {
 		UI_MOUSE_MOTION,
 		UI_MOUSE_BUTTON,
-		UI_DRAW
+		UI_DRAW,
+		UI_TEXT_ENTRY,
+		UI_KEYBOARD
 	} event_type;
 
 	union {
@@ -50,6 +64,12 @@ typedef struct {
 			int state;
 			vec2 position;
 		} mouse;
+		struct {
+			const char *text;
+			size_t      text_size;
+		} text;
+
+		UIKey key;
 	} data;
 } UIEvent;
 
@@ -59,6 +79,8 @@ typedef void UIEventProcessor(UIObject object, UIEvent *event, Rectangle *conten
 #define DEFINE_WIDGET(NAME) \
 typedef struct NAME##_struct NAME##_struct; \
 struct NAME##_struct
+
+#define WIDGET(NAME, ID) ((NAME##_struct*)ui_data(ID))
 
 DEFINE_WIDGET(UI_WINDOW) {
 	const char *title;
@@ -108,6 +130,12 @@ DEFINE_WIDGET(UI_SLIDER) {
 	void (*cbk)(UIObject, void *);
 };
 
+DEFINE_WIDGET(UI_TEXT_INPUT) {
+	ArrayBuffer text_buffer;
+	int carot;
+	float offset;
+};
+
 void ui_init(void);
 void ui_reset(void);
 void ui_terminate(void);
@@ -143,6 +171,9 @@ void     ui_slider_set_value(UIObject slider, int value);
 int      ui_slider_get_value(UIObject slider);
 void     ui_slider_set_callback(UIObject slider, void *userptr, void (*cbk)(UIObject, void *));
 
+UIObject ui_text_input_new(void);
+StrView  ui_text_input_get_str(UIObject obj);
+
 void     ui_map(UIObject obj);
 
 UIObject ui_new_object(UIObject parent, UIObjectType object_type);
@@ -151,8 +182,10 @@ void     ui_draw(void);
 
 void ui_set_hot(UIObject object);
 void ui_set_active(UIObject object);
+void ui_set_text_active(UIObject object);
 UIObject ui_get_hot(void);
 UIObject ui_get_active(void);
+UIObject ui_get_text_active(void);
 
 void ui_call_event(UIObject object, UIEvent *event, Rectangle *rect);
 void *ui_data(UIObject obj);
@@ -168,6 +201,8 @@ void     ui_child_prepend(UIObject parent, UIObject child);
 void ui_update(void);
 void ui_mouse_motion(float x, float y);
 void ui_mouse_button(UIMouseButton button, bool state);
+void ui_text(const char *buffer, size_t text_size);
+void ui_key(UIKey key);
 void ui_cleanup(void);
 
 UIObject ui_root(void);

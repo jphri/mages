@@ -15,5 +15,7 @@ typedef struct {
 
 extern Global GLOBAL;
 Allocator cache_aligned_allocator(void);
+void      enable_text_input(void);
+void      disable_text_input(void);
 
 #endif
