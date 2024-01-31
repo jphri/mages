@@ -7,6 +7,10 @@
 
 #include "util.h"
 
+#define UTF8_TWO_BYTES 0xC0
+#define UTF8_THREE_BYTES 0xE0
+#define UTF8_FOUR_BYTES 0xF0
+
 typedef struct {
 	ObjectID next, prev;
 	bool dead;
@@ -248,7 +252,7 @@ fbuf_read_line(FileBuffer *buffer, int delim)
 StrView
 fbuf_data_view(FileBuffer *buffer)
 {
-	return (StrView){ .begin = (char*)buffer->data_buffer.data, .end = (char*)buffer->data_buffer.data + buffer->data_buffer.size };
+	return to_strview_buffer(fbuf_data(buffer), fbuf_data_size(buffer));
 }
 
 void
@@ -263,8 +267,17 @@ StrView
 to_strview(const char *str)
 {
 	return (StrView) {
-		.begin = str,
-		.end = str + strlen(str)
+		.begin = (const unsigned char*)str,
+		.end = (const unsigned char*)str + strlen(str)
+	};
+}
+
+StrView 
+to_strview_buffer(const void *ptr, size_t s)
+{
+	return (StrView){
+		.begin = ptr,
+		.end = (const unsigned char*)ptr + s
 	};
 }
 
@@ -278,21 +291,21 @@ strview_token(StrView *str, const char *delim)
 
 	/* find the begin of next token */
 	while(str->begin < str->end)
-		if(strchr(delim, *str->begin) == NULL)
+		if(strchr(delim, utf8_decode(*str)) == NULL)
 			break;
 		else
-			str->begin++;
+			utf8_advance(str);
 	
 	result.begin = str->begin;
 	result.end = str->end;
 	
 	while(str->begin < str->end) {
-		if(strchr(delim, *str->begin) != NULL)
+		if(strchr(delim, utf8_decode(*str)) != NULL)
 			break;
-		str->begin++;
+		utf8_advance(str);
 	}
 	result.end = str->begin;
-	str->begin++;
+	utf8_advance(str);
 
 	return result;
 }
@@ -300,7 +313,7 @@ strview_token(StrView *str, const char *delim)
 int
 strview_cmp(StrView str, const char *str2)
 {
-	size_t len1 = str.end - str.begin;
+	size_t len1 = (unsigned char*)str.end - (unsigned char *)str.begin;
 	size_t len2 = strlen(str2);
 
 	if(len1 != len2)
@@ -312,7 +325,7 @@ strview_cmp(StrView str, const char *str2)
 int
 strview_int(StrView str, int *result)
 {
-	const char *s = str.begin;
+	const unsigned char *s = str.begin;
 	int is_negative = 0;
 
 	if(*s == '-') {
@@ -337,7 +350,7 @@ strview_int(StrView str, int *result)
 int
 strview_float(StrView str, float *result)
 {
-	const char *s;
+	const unsigned char *s;
 	int is_negative = 0;
 
 	int integer_part = 0;
@@ -346,9 +359,9 @@ strview_float(StrView str, float *result)
 	StrView ss = str;
 	StrView number = strview_token(&ss, ".");
 
-	if(*number.begin == '-') {
+	if(utf8_decode(number) == '-') {
 		is_negative = 1;
-		number.begin ++;
+		utf8_advance(&number);
 	}
 
 	*result = 0;
@@ -377,7 +390,7 @@ strview_float(StrView str, float *result)
 char *
 strview_str(StrView view)
 {
-	size_t size = view.end - view.begin;
+	size_t size = (unsigned char*)view.end - (unsigned char*)view.begin;
 	char *ptr = malloc(size + 1);
 
 	strview_str_mem(view, ptr, size + 1);
@@ -388,8 +401,8 @@ strview_str(StrView view)
 void
 strview_str_mem(StrView view, char *data, size_t size)
 {
-	size = (size > (size_t)(view.end - view.begin) + 1) ? (size_t)(view.end - view.begin) + 1 : size;
-	strncpy(data, view.begin, size);
+	size = (size > (size_t)((unsigned char*)view.end - (unsigned char*)view.begin) + 1) ? (size_t)((unsigned char*)view.end - (unsigned char*)view.begin) + 1 : size;
+	strncpy(data, (const char*)view.begin, size);
 	data[size-1] = 0;
 }
 
@@ -657,5 +670,104 @@ defaultalloc_deallocate(void *ptr, void *user_ptr)
 {
 	(void)user_ptr;
 	free(ptr);
+}
+
+int 
+utf8_decode(StrView str)
+{
+	int code = 0;
+	const unsigned char *begin = str.begin;
+	const unsigned char *end   = str.end;
+
+	if(begin > end) {
+		return -1;
+	}
+	
+	if(*begin < 0x80) {
+		return *begin;
+	}
+
+	if((*begin & 0xF0) == 0xF0) {
+		if((end - begin) < 4)
+			return -1;
+		code  = (*begin & 0x1f) << 18; begin++;
+		code |= (*begin & 0x3f) << 12; begin++;
+		code |= (*begin & 0x3f) <<  6; begin++;
+		code |= (*begin & 0x3f) <<  0; begin++;
+		return code;
+	}
+
+	if((*begin & 0xE0) == 0xE0) {
+		if((end - begin) < 3)
+			return -1;
+		code  = (*begin & 0x1f) << 12; begin++;
+		code |= (*begin & 0x3f) <<  6; begin++;
+		code |= (*begin & 0x3f) <<  0; begin++;
+		return code;
+	}
+
+	if((*begin & 0xC0) == 0xC0) {
+		if((end - begin) < 2)
+			return -1;
+		code  = (*begin & 0x1f) << 6; begin++;
+		code |= (*begin & 0x3f); begin++;
+		return code;
+	}
+	
+	return -1;
+}
+
+void
+utf8_advance(StrView *str)
+{
+	const unsigned char *begin = str->begin;
+	const unsigned char *end = str->end;
+
+	if((*begin & 0xF0) == 0xF0) {
+		begin += 4;
+	} else if((*begin & 0xE0) == 0xE0) {
+		begin += 3;
+	} else if((*begin & 0xC0) == 0xC0) {
+		begin += 2;
+	} else {
+		begin += 1;
+	}
+
+	str->begin = begin;
+	str->end = end;
+}
+
+int
+utf8_multibyte_next(StrView view, int from)
+{
+	const unsigned char *c = view.begin + from;
+	c++;
+	while(c < view.end) {
+		if((*c & 0x80) == 0x80)
+			c++;
+		else
+			break;
+	}
+	if(c > view.end)
+		c = view.end;
+	return (c - view.begin) - from;
+}
+
+int
+utf8_multibyte_prev(StrView view, int from)
+{
+	const unsigned char *c = view.begin + from;
+	c--;
+	while(c < view.begin) {
+		if((*c & 0x80) == 0x80)
+			c--;
+		else
+			break;
+	}
+	if(c < view.begin)
+		c = view.begin;
+
+	ptrdiff_t prev = from - (c - view.begin);
+	return prev;
 }
 

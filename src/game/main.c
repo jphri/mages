@@ -21,41 +21,66 @@ static Map *map;
 //static UIObject label;
 
 static char *text_test = "Hello";
-
-static void
-edit_button_cbk(void *ptr) 
-{
-	(void)ptr;
-	gstate_set(GAME_STATE_LEVEL_EDIT);
-}
+static SceneTextID text;
+static UIObject window;
+static float time = 0;
 
 static void pre_solve(Contact *contact);
+static void btn_callback(UIObject obj, void *userdata)
+{
+	(void)userdata;
+	(void)obj;
+
+	printf("Hello, world!\n");
+}
+
+static void slider_cbk(UIObject obj, void *userdata)
+{
+	(void)userdata;
+	(void)obj;
+
+	printf("Value: %d\n", ui_slider_get_value(obj));
+}
 
 void
 GAME_STATE_LEVEL_init(void)
 {
-	UIObject window = ui_new_object(0, UI_WINDOW);
-	ui_obj_set_size(window, (vec2){ 90, 35 });
-	ui_obj_set_position(window, (vec2){ 800 - 90, 35 });
-	ui_window_set_bg(window, (vec4){ 0.2, 0.2, 0.2, 1.0 });
-	ui_window_set_border(window, (vec4){ 0.6, 0.6, 0.6, 1.0 });
-	ui_window_set_border_size(window, (vec2){ 3, 3 });
+	UIObject button = ui_button_new();
+	ui_button_set_label(button, "Click Me");
+	ui_button_set_callback(button, NULL, btn_callback);
 
-	UIObject layout3 = ui_new_object(window, UI_LAYOUT);
-	ui_obj_set_size(layout3, (vec2){ 70, 35 });
-	ui_obj_set_position(layout3, (vec2) { 90, 35 });
-	ui_layout_set_order(layout3, UI_LAYOUT_VERTICAL);
+	UIObject slider = ui_slider_new();
+	ui_slider_set_max_value(slider, 10);
+	ui_slider_set_value(slider, 5);
+	ui_slider_set_callback(slider, NULL, slider_cbk);
 
-	//label = ui_new_object(layout3, UI_LABEL);
-	//ui_label_set_color(label, (vec4){ 1.0, 1.0, 0.0, 1.0 });
-	//ui_label_set_border(label, (vec2){ 10.0, 10.0 });
-	//ui_label_set_text(label, "Testing");
+	UIObject label = ui_label_new();
+	ui_label_set_text(label, "World");
+	ui_label_set_alignment(label, UI_LABEL_ALIGN_RIGHT);
 
-	UIObject edit_button = ui_new_object(layout3, UI_BUTTON);
-	ui_button_set_userptr(edit_button, NULL);
-	ui_button_set_label(edit_button, "Edit");
-	ui_button_set_label_border(edit_button, (vec2){ 2.0, 2.0 });
-	ui_button_set_callback(edit_button, edit_button_cbk);
+	UIObject stuff_layout = ui_layout_new();
+	ui_layout_set_order(stuff_layout, UI_LAYOUT_VERTICAL);
+	ui_layout_set_border(stuff_layout, 0., 0., 0., 0.);
+	ui_layout_append(stuff_layout, label);
+	ui_layout_append(stuff_layout, button);
+	ui_layout_append(stuff_layout, slider);
+
+	UIObject text_input = ui_text_input_new();
+
+	UIObject layout = ui_layout_new();
+	ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
+	ui_layout_set_border(layout, 0., 0., 0., 0.);
+	ui_layout_append(layout, stuff_layout);
+	ui_layout_append(layout, text_input);
+
+	window = ui_window_new();
+	ui_window_set_size(window, (vec2){ 100, 150 });	
+	ui_window_set_position(window, (vec2){ 100 + 570, 150 + 60 });
+	ui_window_set_title(window, "Hello");
+	ui_window_set_border(window, (vec2){ 2.0, 2.0 });
+	ui_window_set_child(window,  layout);
+
+	ui_map(window);
 
 	map = editor.map;
 	map_set_gfx_scene(map);
@@ -64,20 +89,22 @@ GAME_STATE_LEVEL_init(void)
 	GLOBAL.player_id = ent_player_new((vec2){ 15.0, 15.0 });
 	ent_dummy_new((vec2){ 25, 15 });
 	
-	SceneTextID text = gfx_scene_new_obj(0, SCENE_OBJECT_TEXT);
+	text = gfx_scene_new_obj(0, SCENE_OBJECT_TEXT);
 	vec4_dup(gfx_scene_text(text)->color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 	vec2_dup(gfx_scene_text(text)->position, (vec2){ 0.0, 0.0 });
 	vec2_dup(gfx_scene_text(text)->char_size, (vec2){ 0.05, 0.05 });
 	gfx_scene_text(text)->text_ptr = (RelPtr){ .base_pointer = (void**)&text_test, .offset = 0 };
 
 	phx_set_pre_solve(pre_solve);
-	audio_bgm_play(AUDIO_BUFFER_BGM_TEST, 1.0);
 }
 
 void
 GAME_STATE_LEVEL_update(float delta)
 {
-	(void)delta;
+	time += delta;
+	const float f = fabs(sinf(time)) * 0.25;
+
+	vec2_dup(gfx_scene_text(text)->char_size, (vec2){ f, f });
 }
 
 void
@@ -100,20 +127,21 @@ GAME_STATE_LEVEL_end(void)
 {
 	phx_reset();
 	ent_reset();
-	gfx_scene_reset();
 	ui_reset();
-
+	gfx_scene_reset();
 	audio_bgm_pause();
 }
 
 void GAME_STATE_LEVEL_mouse_move(SDL_Event *event) { (void)event; }
 void GAME_STATE_LEVEL_mouse_button(SDL_Event *event) { (void)event; }
+
 void 
 GAME_STATE_LEVEL_keyboard(SDL_Event *event) 
 { 
 	if(event->type == SDL_KEYDOWN && event->key.keysym.scancode == SDL_SCANCODE_K)
 		gstate_set(GAME_STATE_LEVEL_EDIT);
 }
+
 void GAME_STATE_LEVEL_mouse_wheel(SDL_Event *event) { (void)event; } 
 
 static void process_entity_collision(EntityID id, BodyID other, Contact *contact)

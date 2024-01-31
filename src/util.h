@@ -32,8 +32,8 @@ struct ArrayBuffer {
 };
 
 struct StrView {
-	const char *begin;
-	const char *end;
+	const unsigned char *begin;
+	const unsigned char *end;
 };
 
 struct ObjectAllocator {
@@ -118,6 +118,7 @@ int  fbuf_read_line(FileBuffer *buffer, int delim);
 StrView fbuf_data_view(FileBuffer *buffer);
 
 StrView to_strview(const char *str);
+StrView to_strview_buffer(const void *buffer, size_t size);
 StrView strview_token(StrView *str, const char *delim);
 int     strview_cmp(StrView str, const char *str2);
 char   *strview_str(StrView view);
@@ -149,6 +150,11 @@ Allocator allocator_default(void);
 
 void *alloct_allocate(Allocator *, size_t size);
 void  alloct_deallocate(Allocator *, void *ptr);
+
+int  utf8_decode(StrView span);
+void utf8_advance(StrView *span);
+int  utf8_multibyte_next(StrView view, int from);
+int  utf8_multibyte_prev(StrView view, int from);
 
 static inline void *to_ptr(RelPtr ptr) {
 	return ((unsigned char*)*ptr.base_pointer) + ptr.offset;
