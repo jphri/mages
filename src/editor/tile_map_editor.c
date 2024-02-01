@@ -56,7 +56,6 @@ static void select_mode_cbk(UIObject obj, void *ptr)
 	}
 }
 
-
 void
 GAME_STATE_LEVEL_EDIT_init(void)
 {
@@ -66,7 +65,10 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	#define BUTTON_MODE(MODE, NAME) \
 	{ \
 		UIObject btn = ui_button_new(); \
-		ui_button_set_label(btn, NAME); \
+		UIObject lbl = ui_label_new(); \
+	 	ui_label_set_text(lbl, NAME); \
+		ui_label_set_alignment(lbl, UI_LABEL_ALIGN_CENTER); \
+		ui_button_set_label(btn, lbl); \
 		ui_button_set_callback(btn, &state_vtable[MODE], select_mode_cbk); \
 		ui_layout_append(layout, btn); \
 	}
@@ -81,6 +83,7 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	ui_window_set_size(window, (vec2){ 120, 90 });
 	ui_window_set_position(window, (vec2){ 120 + 30, 90 + 30 });
 	ui_window_set_border(window, (vec2){ 2, 2 });
+	ui_window_set_decorated(window, false);
 	ui_window_set_child(window, layout);
 
 	ui_map(window);
@@ -88,7 +91,6 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	editor.map_atlas = SPRITE_TERRAIN;
 	if(editor.map == NULL)
 		editor.map = map_load("maps/test_map_2.map");
-
 }
 
 void
