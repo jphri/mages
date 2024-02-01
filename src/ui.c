@@ -128,7 +128,7 @@ ui_terminate(void)
 bool
 ui_is_active(void)
 {
-	return hot || active;
+	return hot != root || active;
 }
 
 UIObject
