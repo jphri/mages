@@ -45,9 +45,13 @@ static void slider_cbk(UIObject obj, void *userdata)
 void
 GAME_STATE_LEVEL_init(void)
 {
+	UIObject button_label = ui_label_new();
+	ui_label_set_alignment(button_label, UI_LABEL_ALIGN_LEFT);
+	ui_label_set_text(button_label, "Click Me!");
+	
 	UIObject button = ui_button_new();
-	ui_button_set_label(button, "Click Me");
 	ui_button_set_callback(button, NULL, btn_callback);
+	ui_button_set_label(button, button_label);
 
 	UIObject slider = ui_slider_new();
 	ui_slider_set_max_value(slider, 10);
@@ -78,6 +82,7 @@ GAME_STATE_LEVEL_init(void)
 	ui_window_set_position(window, (vec2){ 100 + 570, 150 + 60 });
 	ui_window_set_title(window, "Hello");
 	ui_window_set_border(window, (vec2){ 2.0, 2.0 });
+	ui_window_set_decorated(window, false);
 	ui_window_set_child(window,  layout);
 
 	ui_map(window);

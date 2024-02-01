@@ -3,18 +3,23 @@
 
 static void button_motion(UIObject obj, UIEvent *event, Rectangle *rect);
 static void button_mouse(UIObject obj, UIEvent *event);
-static void button_draw(UIObject obj, Rectangle *rect);
+static void button_draw(UIObject obj, UIEvent *event, Rectangle *rect);
 
 UIObject 
 ui_button_new(void)
 {
-	return ui_new_object(0, UI_BUTTON);
+	UIObject obj = ui_new_object(0, UI_BUTTON);
+	ui_button_set_label(obj, 0);
+	ui_button_set_callback(obj, NULL, NULL);
+	return obj;
 }
 
 void
-ui_button_set_label(UIObject object, const char *label)
+ui_button_set_label(UIObject object, UIObject label)
 {
 	UI_BUTTON_struct *btn = ui_data(object);
+	if(label)
+		ui_child_append(object, label);
 	btn->label = label;
 }
 
@@ -32,7 +37,7 @@ UI_BUTTON_event(UIObject obj, UIEvent *ev, Rectangle *content)
 	ui_default_mouse_handle(obj, ev, content);
 	switch(ev->event_type) {
 	case UI_DRAW:
-		button_draw(obj, content);
+		button_draw(obj, ev, content);
 		break;
 
 	case UI_MOUSE_MOTION:
@@ -78,11 +83,9 @@ button_mouse(UIObject obj, UIEvent *event)
 }
 
 static void 
-button_draw(UIObject obj, Rectangle *rect)
+button_draw(UIObject obj, UIEvent *event, Rectangle *rect)
 {
 	UI_BUTTON_struct *button = ui_data(obj);
-	vec2 content_size;
-	vec2 content_pos;
 
 	if(ui_get_active() == obj) {
 		gfx_draw_texture_rect(gfx_white_texture(), rect->position, rect->half_size, 0.0, (vec4){ 0.4, 0.4, 0.4, 1.0 });
@@ -91,7 +94,8 @@ button_draw(UIObject obj, Rectangle *rect)
 	} else 
 		gfx_draw_texture_rect(gfx_white_texture(), rect->position, rect->half_size, 0.0, (vec4){ 0.6, 0.6, 0.6, 1.0 });
 
-	gfx_font_size(content_size, FONT_ROBOTO, 1.0, "%s", button->label);
-	vec2_sub(content_pos, rect->position, content_size);
-	gfx_draw_font2(FONT_ROBOTO, content_pos, 1.0, (vec4){ 0.0, 0.0, 0.0, 1.0 }, "%s", button->label);
+	gfx_push_clip(rect->position, rect->half_size);
+	if(button->label)
+			ui_call_event(button->label, event, rect);
+	gfx_pop_clip();
 }

@@ -120,9 +120,9 @@ DEFINE_WIDGET(UI_LAYOUT) {
 };
 
 DEFINE_WIDGET(UI_BUTTON) {
-	const char *label;
 	void *user_ptr;
 	void (*callback)(UIObject button_obj, void *userptr);
+	UIObject label;
 };
 
 DEFINE_WIDGET(UI_SLIDER) {
@@ -159,7 +159,7 @@ void     ui_layout_set_background(UIObject layout, vec4 color);
 void     ui_layout_append(UIObject layout, UIObject child);
 
 UIObject ui_button_new(void);
-void     ui_button_set_label(UIObject object, const char *label);
+void     ui_button_set_label(UIObject object, UIObject label);
 void     ui_button_set_callback(UIObject object, void *ptr, void(*callback)(UIObject button_obj, void *user_ptr));
 
 UIObject ui_label_new(void);
