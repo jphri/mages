@@ -12,6 +12,7 @@
 #include "../graphics.h"
 #include "../util.h"
 #include "../map.h"
+#include "../ui.h"
 #include "editor.h"
 
 EditorGlobal editor;
@@ -39,12 +40,55 @@ static State state_vtable[] = {
 	}
 };
 
+static void select_mode_cbk(UIObject obj, void *ptr)
+{
+	(void)obj;
+
+	EditorState mode = (State*)ptr - state_vtable;
+	switch(mode) {
+	#define MODE(X) case X: editor.editor_state = X; break;
+	MODE(EDITOR_EDIT_COLLISION);
+	MODE(EDITOR_EDIT_MAP);
+	MODE(EDITOR_SELECT_TILE);
+	#undef HUE
+	default:
+		die("Wrong editor state\n");
+	}
+}
+
+
 void
 GAME_STATE_LEVEL_EDIT_init(void)
 {
+	UIObject layout = ui_layout_new();
+	ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
+
+	#define BUTTON_MODE(MODE, NAME) \
+	{ \
+		UIObject btn = ui_button_new(); \
+		ui_button_set_label(btn, NAME); \
+		ui_button_set_callback(btn, &state_vtable[MODE], select_mode_cbk); \
+		ui_layout_append(layout, btn); \
+	}
+
+	BUTTON_MODE(EDITOR_EDIT_MAP, "Edit Map");
+	BUTTON_MODE(EDITOR_EDIT_COLLISION, "Collision");
+	BUTTON_MODE(EDITOR_SELECT_TILE, "Select Tile");
+
+	#undef BUTTON_MODE
+
+	UIObject window = ui_window_new();
+	ui_window_set_size(window, (vec2){ 120, 90 });
+	ui_window_set_position(window, (vec2){ 120 + 30, 90 + 30 });
+	ui_window_set_border(window, (vec2){ 2, 2 });
+	ui_window_set_child(window, layout);
+
+	ui_map(window);
+
 	editor.map_atlas = SPRITE_TERRAIN;
 	if(editor.map == NULL)
 		editor.map = map_load("maps/test_map_2.map");
+
 }
 
 void
@@ -57,6 +101,8 @@ GAME_STATE_LEVEL_EDIT_render(void)
 void
 GAME_STATE_LEVEL_EDIT_mouse_button(SDL_Event *event)
 {
+	if(ui_is_active())
+		return;
 	if(state_vtable[editor.editor_state].mouse_button)
 		state_vtable[editor.editor_state].mouse_button(event);
 }
@@ -64,6 +110,8 @@ GAME_STATE_LEVEL_EDIT_mouse_button(SDL_Event *event)
 void
 GAME_STATE_LEVEL_EDIT_mouse_wheel(SDL_Event *event)
 {
+	if(ui_is_active())
+		return;
 	if(state_vtable[editor.editor_state].wheel)
 		state_vtable[editor.editor_state].wheel(event);
 }
@@ -71,6 +119,8 @@ GAME_STATE_LEVEL_EDIT_mouse_wheel(SDL_Event *event)
 void
 GAME_STATE_LEVEL_EDIT_mouse_move(SDL_Event *event) 
 {
+	if(ui_is_active())
+		return;
 	if(state_vtable[editor.editor_state].mouse_motion)
 		state_vtable[editor.editor_state].mouse_motion(event);
 }
@@ -78,6 +128,9 @@ GAME_STATE_LEVEL_EDIT_mouse_move(SDL_Event *event)
 void
 GAME_STATE_LEVEL_EDIT_keyboard(SDL_Event *event)
 {
+	if(ui_is_active())
+		return;
+
 	if(state_vtable[editor.editor_state].keyboard)
 		state_vtable[editor.editor_state].keyboard(event);
 	
