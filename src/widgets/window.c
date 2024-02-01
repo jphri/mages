@@ -30,6 +30,7 @@ ui_window_new(void)
 
 	WINDOW(window)->title_label = title_label;
 	WINDOW(window)->title_layout = title_layout;
+	WINDOW(window)->decorated = true;
 
 	return window;
 }
@@ -77,19 +78,24 @@ UI_WINDOW_event(UIObject obj, UIEvent *event, Rectangle *rect)
 
 	(void)rect;
 
-	// add border
-	vec2_dup(all_rect.position, WINDOW(obj)->window_rect.position);
-	vec2_add(all_rect.half_size, WINDOW(obj)->window_rect.half_size, WINDOW(obj)->border);
+	if(WINDOW(obj)->decorated) {
+		// add border
+		vec2_dup(all_rect.position, WINDOW(obj)->window_rect.position);
+		vec2_add(all_rect.half_size, WINDOW(obj)->window_rect.half_size, WINDOW(obj)->border);
 
-	// add title
-	vec2_sub(all_rect.position, all_rect.position, (vec2){ 0, WINDOW_TITLE_HEIGHT });
-	vec2_add(all_rect.half_size, all_rect.half_size, (vec2){ 0, WINDOW_TITLE_HEIGHT });
+		// add title
+		vec2_sub(all_rect.position, all_rect.position, (vec2){ 0, WINDOW_TITLE_HEIGHT });
+		vec2_add(all_rect.half_size, all_rect.half_size, (vec2){ 0, WINDOW_TITLE_HEIGHT });
 
-	// make title rect
-	title_rect.position[0] = all_rect.position[0];
-	title_rect.position[1] = all_rect.position[1] - all_rect.half_size[1] + WINDOW(obj)->border[1] + WINDOW_TITLE_HEIGHT;
-	title_rect.half_size[0] = all_rect.half_size[0] - WINDOW(obj)->border[0];
-	title_rect.half_size[1] = WINDOW_TITLE_HEIGHT;
+		// make title rect
+		title_rect.position[0] = all_rect.position[0];
+		title_rect.position[1] = all_rect.position[1] - all_rect.half_size[1] + WINDOW(obj)->border[1] + WINDOW_TITLE_HEIGHT;
+		title_rect.half_size[0] = all_rect.half_size[0] - WINDOW(obj)->border[0];
+		title_rect.half_size[1] = WINDOW_TITLE_HEIGHT;
+	} else {
+		vec2_dup(all_rect.position, WINDOW(obj)->window_rect.position);
+		vec2_dup(all_rect.half_size, WINDOW(obj)->window_rect.half_size);
+	}
 
 	if(event->event_type == UI_DRAW) {
 		window_draw(obj, &all_rect);
@@ -97,18 +103,23 @@ UI_WINDOW_event(UIObject obj, UIEvent *event, Rectangle *rect)
 	(void)title_rect;
 
 	ui_default_mouse_handle(obj, event, &all_rect);
-	ui_call_event(WINDOW(obj)->title_layout, event, &title_rect);
+
+	if(WINDOW(obj)->decorated)
+		ui_call_event(WINDOW(obj)->title_layout, event, &title_rect);
 
 	if(WINDOW(obj)->child)
 		ui_call_event(WINDOW(obj)->child, event, &WINDOW(obj)->window_rect);
 
-	if(event->event_type == UI_MOUSE_MOTION) {
-		window_mouse_move(obj, event);
-	} else if(event->event_type == UI_MOUSE_BUTTON) {
-		window_mouse_button(obj, event);
+	ui_call_event(WINDOW(obj)->child, event, &WINDOW(obj)->window_rect);
+
+	if(WINDOW(obj)->decorated) {
+		if(event->event_type == UI_MOUSE_MOTION) {
+			window_mouse_move(obj, event);
+		} else if(event->event_type == UI_MOUSE_BUTTON) {
+			window_mouse_button(obj, event);
+		}
 	}
 }
-
 
 void
 ui_window_set_child(UIObject window, UIObject child)
@@ -117,6 +128,12 @@ ui_window_set_child(UIObject window, UIObject child)
 	if(child)
 		ui_child_append(window, child);
 	w->child = child;
+}
+
+void
+ui_window_set_decorated(UIObject window, bool decorated)
+{
+	WINDOW(window)->decorated = decorated;
 }
 
 void
