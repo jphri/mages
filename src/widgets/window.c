@@ -6,8 +6,10 @@
 static void window_mouse_button(UIObject window, UIEvent *event);
 static void window_mouse_move(UIObject window, UIEvent *event);
 
-static void window_draw(UI_WINDOW_struct *window, Rectangle *all_window_rect);
+static void window_draw(UIObject window, Rectangle *all_window_rect);
 //static void window_draw_title(UI_WINDOW_struct *window, Rectangle *title_rect);
+
+#define WINDOW(obj) WIDGET(UI_WINDOW, obj)
 
 UIObject
 ui_window_new(void)
@@ -26,8 +28,8 @@ ui_window_new(void)
 
 	ui_child_append(window, title_layout);
 
-	WIDGET(UI_WINDOW, window)->title_label = title_label;
-	WIDGET(UI_WINDOW, window)->title_layout = title_layout;
+	WINDOW(window)->title_label = title_label;
+	WINDOW(window)->title_layout = title_layout;
 
 	return window;
 }
@@ -70,15 +72,14 @@ ui_window_set_title(UIObject window, const char *title)
 void
 UI_WINDOW_event(UIObject obj, UIEvent *event, Rectangle *rect)
 {
-	UI_WINDOW_struct *window = ui_data(obj);
 	Rectangle all_rect;
 	Rectangle title_rect;
 
 	(void)rect;
 
 	// add border
-	vec2_dup(all_rect.position, window->window_rect.position);
-	vec2_add(all_rect.half_size, window->window_rect.half_size, window->border);
+	vec2_dup(all_rect.position, WINDOW(obj)->window_rect.position);
+	vec2_add(all_rect.half_size, WINDOW(obj)->window_rect.half_size, WINDOW(obj)->border);
 
 	// add title
 	vec2_sub(all_rect.position, all_rect.position, (vec2){ 0, WINDOW_TITLE_HEIGHT });
@@ -86,18 +87,18 @@ UI_WINDOW_event(UIObject obj, UIEvent *event, Rectangle *rect)
 
 	// make title rect
 	title_rect.position[0] = all_rect.position[0];
-	title_rect.position[1] = all_rect.position[1] - all_rect.half_size[1] + window->border[1] + WINDOW_TITLE_HEIGHT;
-	title_rect.half_size[0] = all_rect.half_size[0] - window->border[0];
+	title_rect.position[1] = all_rect.position[1] - all_rect.half_size[1] + WINDOW(obj)->border[1] + WINDOW_TITLE_HEIGHT;
+	title_rect.half_size[0] = all_rect.half_size[0] - WINDOW(obj)->border[0];
 	title_rect.half_size[1] = WINDOW_TITLE_HEIGHT;
 
 	if(event->event_type == UI_DRAW) {
-		window_draw(window, &all_rect);
+		window_draw(obj, &all_rect);
 	}
 	(void)title_rect;
 
 	ui_default_mouse_handle(obj, event, &all_rect);
-	ui_call_event(window->title_layout, event, &title_rect);
-	ui_call_event(window->child, event, &window->window_rect);
+	ui_call_event(WINDOW(obj)->title_layout, event, &title_rect);
+	ui_call_event(WINDOW(obj)->child, event, &WINDOW(obj)->window_rect);
 
 	if(event->event_type == UI_MOUSE_MOTION) {
 		window_mouse_move(obj, event);
@@ -116,10 +117,10 @@ ui_window_set_child(UIObject window, UIObject child)
 }
 
 void
-window_draw(UI_WINDOW_struct *window, Rectangle *all_window_rect)
+window_draw(UIObject window, Rectangle *all_window_rect)
 {
 	Rectangle rect = *all_window_rect;
-	vec2_sub(rect.half_size, rect.half_size, window->border);
+	vec2_sub(rect.half_size, rect.half_size, WINDOW(window)->border);
 
 	/* border */
 	gfx_draw_texture_rect(gfx_white_texture(), all_window_rect->position, all_window_rect->half_size, 0.0, (vec4){ 0.3, 0.3, 0.3, 1.0 });
@@ -141,16 +142,15 @@ window_draw(UI_WINDOW_struct *window, Rectangle *all_window_rect)
 void 
 window_mouse_button(UIObject window, UIEvent *event)
 {
-	UI_WINDOW_struct *win = ui_data(window);
 	if(ui_get_active() == 0) {
 		if(event->data.mouse.button == UI_MOUSE_LEFT) {
-			if(ui_get_hot() == win->title_layout && event->data.mouse.state) {
-				ui_set_active(win->title_layout);
-				vec2_dup(win->drag_begin, event->data.mouse.position);
-				vec2_dup(win->drag_begin_pos, win->window_rect.position);
+			if(ui_get_hot() == WINDOW(window)->title_layout && event->data.mouse.state) {
+				ui_set_active(WINDOW(window)->title_layout);
+				vec2_dup(WINDOW(window)->drag_begin, event->data.mouse.position);
+				vec2_dup(WINDOW(window)->drag_begin_pos, WINDOW(window)->window_rect.position);
 			}
 		}
-	} else if(ui_get_active() == win->title_layout) {
+	} else if(ui_get_active() == WINDOW(window)->title_layout) {
 		if(event->data.mouse.button == UI_MOUSE_LEFT) {
 			if(!event->data.mouse.state) {
 				ui_set_active(0);
@@ -162,10 +162,9 @@ window_mouse_button(UIObject window, UIEvent *event)
 void
 window_mouse_move(UIObject window, UIEvent *event)
 {
-	UI_WINDOW_struct *win = ui_data(window);
-	if(ui_get_active() == win->title_layout) {
+	if(ui_get_active() == WINDOW(window)->title_layout) {
 		vec2 delta;
-		vec2_sub(delta, win->drag_begin, event->data.mouse.position);
-		vec2_sub(win->window_rect.position, win->drag_begin_pos, delta);
+		vec2_sub(delta, WINDOW(window)->drag_begin, event->data.mouse.position);
+		vec2_sub(WINDOW(window)->window_rect.position, WINDOW(window)->drag_begin_pos, delta);
 	}
 }
