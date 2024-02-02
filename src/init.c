@@ -118,6 +118,7 @@ main(int argc, char *argv[])
 		SDL_Event event;
 		int w, h;
 
+		ui_cleanup();
 		while(SDL_PollEvent(&event)) {
 			switch(event.type) {
 			case SDL_QUIT:
