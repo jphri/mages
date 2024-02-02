@@ -60,7 +60,7 @@ void
 GAME_STATE_LEVEL_EDIT_init(void)
 {
 	UIObject layout = ui_layout_new();
-	ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
+	ui_layout_set_order(layout, UI_LAYOUT_HORIZONTAL);
 
 	#define BUTTON_MODE(MODE, ICON_X, ICON_Y) \
 	{ \
@@ -84,8 +84,8 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	#undef BUTTON_MODE
 
 	UIObject window = ui_window_new();
-	ui_window_set_size(window, (vec2){ 120, 90 });
-	ui_window_set_position(window, (vec2){ 120 + 30, 90 + 30 });
+	ui_window_set_size(window, (vec2){ 120, 30 });
+	ui_window_set_position(window, (vec2){ 120 + 0, 30 + 0 });
 	ui_window_set_border(window, (vec2){ 2, 2 });
 	ui_window_set_decorated(window, false);
 	ui_window_set_child(window, layout);
