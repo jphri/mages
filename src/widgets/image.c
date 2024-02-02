@@ -34,10 +34,14 @@ UI_IMAGE_event(UIObject image, UIEvent *event, Rectangle *rect)
 	if(IMAGE(image)->keep_aspect) {
 		aspect = IMAGE(image)->image_stamp.size[0] / IMAGE(image)->image_stamp.size[1];
 	}
-
 	vec2_dup(r.position, rect->position);
 	r.half_size[1] = rect->half_size[1];
 	r.half_size[0] = r.half_size[1] * aspect;
+
+	if(r.half_size[0] > rect->half_size[0])  {
+		r.half_size[0] = rect->half_size[0];
+		r.half_size[1] = r.half_size[0] / aspect;
+	}
 
 	gfx_draw_texture_rect(
 		&IMAGE(image)->image_stamp, 
