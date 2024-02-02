@@ -9,6 +9,7 @@
 #include "../graphics.h"
 #include "../util.h"
 #include "../map.h"
+#include "../ui.h"
 #include "editor.h"
 
 static float zoom = 16.0;
@@ -16,6 +17,8 @@ static bool  ctrl_pressed = false;
 static vec2  begin_offset, move_offset, offset;
 static int current_layer = 0;
 static MouseState mouse_state;
+
+static UIObject controls_ui;
 
 void
 edit_keyboard(SDL_Event *event)
@@ -145,4 +148,22 @@ edit_render(void)
 		);
 	}
 	gfx_draw_end();
+}
+
+void
+edit_enter(void)
+{
+	controls_ui = ui_window_new();
+	ui_window_set_size(controls_ui, (vec2){ 150, 150 });
+	ui_window_set_position(controls_ui, (vec2){ 0 + 150, 600 - 150 });
+	ui_window_set_decorated(controls_ui, false);
+	ui_window_set_child(controls_ui, 0);
+
+	ui_map(controls_ui);
+}
+
+void
+edit_exit(void)
+{
+	ui_del_object(controls_ui);
 }

@@ -22,7 +22,9 @@ static State state_vtable[] = {
 		.wheel = edit_wheel,
 		.keyboard = edit_keyboard,
 		.mouse_button = edit_mouse_button,
-		.mouse_motion = edit_mouse_motion
+		.mouse_motion = edit_mouse_motion,
+		.enter = edit_enter,
+		.exit = edit_exit
 	},
 	[EDITOR_SELECT_TILE] = {
 		.render       = select_tile_render,
@@ -45,15 +47,7 @@ static void select_mode_cbk(UIObject obj, void *ptr)
 	(void)obj;
 
 	EditorState mode = (State*)ptr - state_vtable;
-	switch(mode) {
-	#define MODE(X) case X: editor.editor_state = X; break;
-	MODE(EDITOR_EDIT_COLLISION);
-	MODE(EDITOR_EDIT_MAP);
-	MODE(EDITOR_SELECT_TILE);
-	#undef HUE
-	default:
-		die("Wrong editor state\n");
-	}
+	editor_change_state(mode);
 }
 
 void
@@ -95,6 +89,10 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	editor.map_atlas = SPRITE_TERRAIN;
 	if(editor.map == NULL)
 		editor.map = map_load("maps/test_map_2.map");
+
+	if(state_vtable[editor.editor_state].enter) {
+		state_vtable[editor.editor_state].enter();
+	}
 }
 
 void
@@ -154,6 +152,9 @@ GAME_STATE_LEVEL_EDIT_update(float delta)
 void 
 GAME_STATE_LEVEL_EDIT_end(void) 
 {
+	if(state_vtable[editor.editor_state].enter) {
+		state_vtable[editor.editor_state].enter();
+	}
 }
 
 void
@@ -185,3 +186,16 @@ load_map(const char *map_file)
 		die("failed loading file %s\n", map_file);
 }
 
+void
+editor_change_state(EditorState state)
+{
+	if(state_vtable[editor.editor_state].exit) {
+		state_vtable[editor.editor_state].exit();
+	}
+
+	if(state_vtable[state].enter) {
+		state_vtable[state].enter();
+	}
+	editor.editor_state = state;
+	
+}

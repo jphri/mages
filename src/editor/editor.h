@@ -25,6 +25,8 @@ typedef struct {
 	void (*mouse_button)(SDL_Event *event);
 	void (*mouse_motion)(SDL_Event *event);
 	void (*keyboard)(SDL_Event *event);
+	void (*enter)(void);
+	void (*exit)(void);
 } State;
 
 typedef struct {
@@ -43,6 +45,8 @@ void edit_mouse_motion(SDL_Event *event);
 void edit_mouse_button(SDL_Event *event);
 void edit_keyboard(SDL_Event *event);
 void edit_wheel(SDL_Event *event);
+void edit_enter(void);
+void edit_exit(void);
 
 void select_tile_render(void);
 void select_tile_keyboard(SDL_Event *event);
@@ -59,5 +63,7 @@ void collision_keyboard(SDL_Event *event);
 void collision_wheel(SDL_Event *event);
 
 extern EditorGlobal editor;
+
+void editor_change_state(EditorState state);
 
 #endif
