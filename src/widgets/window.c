@@ -98,7 +98,9 @@ UI_WINDOW_event(UIObject obj, UIEvent *event, Rectangle *rect)
 
 	ui_default_mouse_handle(obj, event, &all_rect);
 	ui_call_event(WINDOW(obj)->title_layout, event, &title_rect);
-	ui_call_event(WINDOW(obj)->child, event, &WINDOW(obj)->window_rect);
+
+	if(WINDOW(obj)->child)
+		ui_call_event(WINDOW(obj)->child, event, &WINDOW(obj)->window_rect);
 
 	if(event->event_type == UI_MOUSE_MOTION) {
 		window_mouse_move(obj, event);
@@ -112,7 +114,8 @@ void
 ui_window_set_child(UIObject window, UIObject child)
 {
 	UI_WINDOW_struct *w = ui_data(window);
-	ui_child_append(window, child);
+	if(child)
+		ui_child_append(window, child);
 	w->child = child;
 }
 
