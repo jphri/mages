@@ -62,20 +62,24 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	UIObject layout = ui_layout_new();
 	ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
 
-	#define BUTTON_MODE(MODE, NAME) \
+	#define BUTTON_MODE(MODE, ICON_X, ICON_Y) \
 	{ \
 		UIObject btn = ui_button_new(); \
-		UIObject lbl = ui_label_new(); \
-	 	ui_label_set_text(lbl, NAME); \
-		ui_label_set_alignment(lbl, UI_LABEL_ALIGN_CENTER); \
-		ui_button_set_label(btn, lbl); \
+		UIObject img = ui_image_new();  \
+		ui_image_set_stamp(img, &(TextureStamp){   \
+			.texture = TEXTURE_UI, \
+			.position = { (ICON_X) / 256.0, (ICON_Y) / 256.0 }, \
+			.size     = { 8.0 / 256.0, 8.0 / 256.0 } \
+		}); \
+		ui_image_set_keep_aspect(img, true); \
+		ui_button_set_label(btn, img); \
 		ui_button_set_callback(btn, &state_vtable[MODE], select_mode_cbk); \
 		ui_layout_append(layout, btn); \
 	}
 
-	BUTTON_MODE(EDITOR_EDIT_MAP, "Edit Map");
-	BUTTON_MODE(EDITOR_EDIT_COLLISION, "Collision");
-	BUTTON_MODE(EDITOR_SELECT_TILE, "Select Tile");
+	BUTTON_MODE(EDITOR_EDIT_MAP, 2 * 8, 0 * 8);
+	BUTTON_MODE(EDITOR_EDIT_COLLISION, 3 * 8, 0 * 8);
+	BUTTON_MODE(EDITOR_SELECT_TILE, 4 * 8, 0 * 8);
 
 	#undef BUTTON_MODE
 
