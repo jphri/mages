@@ -3,6 +3,7 @@
 
 #include "vecmath.h"
 #include "util.h"
+#include "graphics.h"
 
 #include <stdbool.h>
 
@@ -13,7 +14,8 @@
 	UI_WIDGET(UI_BUTTON)     \
 	UI_WIDGET(UI_SLIDER)     \
 	UI_WIDGET(UI_FLOAT)      \
-	UI_WIDGET(UI_TEXT_INPUT)
+	UI_WIDGET(UI_TEXT_INPUT) \
+	UI_WIDGET(UI_IMAGE)      
 
 typedef enum {
 	UI_NULL,
@@ -138,6 +140,11 @@ DEFINE_WIDGET(UI_TEXT_INPUT) {
 	float offset;
 };
 
+DEFINE_WIDGET(UI_IMAGE) {
+	TextureStamp image_stamp;
+	bool keep_aspect;
+};
+
 void ui_init(void);
 void ui_reset(void);
 void ui_terminate(void);
@@ -176,6 +183,10 @@ void     ui_slider_set_callback(UIObject slider, void *userptr, void (*cbk)(UIOb
 
 UIObject ui_text_input_new(void);
 StrView  ui_text_input_get_str(UIObject obj);
+
+UIObject ui_image_new(void);
+void     ui_image_set_stamp(UIObject image, TextureStamp *stamp);
+void     ui_image_set_keep_aspect(UIObject image, bool keep);
 
 void     ui_map(UIObject obj);
 
