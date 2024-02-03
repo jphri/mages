@@ -53,8 +53,8 @@ edit_mouse_motion(SDL_Event *event)
 		offset[1] = begin_offset[1] + event->motion.y - move_offset[1];
 		break;
 	case MOUSE_DRAWING:
-		x = ((event->motion.x - offset[0]) / zoom);
-		y = ((event->motion.y - offset[1]) / zoom);
+		x = ((event->motion.x - offset[0] - 0.5) / zoom);
+		y = ((event->motion.y - offset[1] - 0.5) / zoom);
 		if(x < 0 || x >= editor.map->w || y < 0 || y >= editor.map->h) return;
 		editor.map->tiles[x + y * editor.map->w + current_layer * editor.map->w * editor.map->h] = editor.current_tile;
 	default:
