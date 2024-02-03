@@ -17,6 +17,7 @@ static bool  ctrl_pressed = false;
 static vec2  begin_offset, move_offset, offset;
 static int current_layer = 0;
 static MouseState mouse_state;
+static vec2 mouse_position;
 
 static UIObject controls_ui;
 
@@ -47,6 +48,9 @@ void
 edit_mouse_motion(SDL_Event *event)
 {
 	int x, y;
+	mouse_position[0] = event->motion.x;
+	mouse_position[1] = event->motion.y;
+
 	switch(mouse_state) {
 	case MOUSE_MOVING:
 		offset[0] = begin_offset[0] + event->motion.x - move_offset[0];
@@ -65,18 +69,29 @@ edit_mouse_motion(SDL_Event *event)
 void
 edit_mouse_button(SDL_Event *event)
 {
+	SDL_Event fake_event;
 	if(event->type == SDL_MOUSEBUTTONUP) {
 		mouse_state = MOUSE_NOTHING;
 	}
+	mouse_position[0] = event->motion.x;
+	mouse_position[1] = event->motion.y;
+
 	
 	if(event->type == SDL_MOUSEBUTTONDOWN && mouse_state == MOUSE_NOTHING) {
 		switch(event->button.button) {
-		case SDL_BUTTON_LEFT: mouse_state = MOUSE_DRAWING; break;
+		case SDL_BUTTON_LEFT: 
+			fake_event.type = SDL_MOUSEMOTION;
+			fake_event.motion.x = mouse_position[0];
+			fake_event.motion.y = mouse_position[1];
+			mouse_state = MOUSE_DRAWING; 
+			edit_mouse_motion(&fake_event);
+			break;
 		case SDL_BUTTON_RIGHT: 
 			move_offset[0] = event->button.x; 
 			move_offset[1] = event->button.y; 
 			vec2_dup(begin_offset, offset);
 			mouse_state = MOUSE_MOVING; 
+			
 			break;
 		}
 	}
