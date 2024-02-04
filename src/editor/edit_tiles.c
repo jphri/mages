@@ -21,6 +21,8 @@ static vec2 mouse_position;
 
 static UIObject controls_ui;
 
+static void draw_cursor(void);
+
 void
 edit_keyboard(SDL_Event *event)
 {
@@ -150,7 +152,7 @@ edit_render(void)
 		gfx_draw_line(
 			(vec2){ (x - 0.1), (0.0) }, 
 			(vec2){ (x - 0.1), (editor.map->h) },
-			0.1,
+			0.05,
 			(vec4){ 1.0, 1.0, 1.0, 1.0 }
 		);
 	}
@@ -158,9 +160,12 @@ edit_render(void)
 		gfx_draw_line(
 			(vec2){ (0.0),           (y - 0.1) }, 
 			(vec2){ (editor.map->w), (y - 0.1) },
-			0.1,
+			0.05,
 			(vec4){ 1.0, 1.0, 1.0, 1.0 }
 		);
+	}
+	if(!ui_is_active()) {
+		draw_cursor();
 	}
 	gfx_draw_end();
 }
@@ -181,4 +186,21 @@ void
 edit_exit(void)
 {
 	ui_del_object(controls_ui);
+}
+
+void
+draw_cursor(void)
+{
+	vec2 v;
+
+	vec2_sub(v, mouse_position, offset);
+	vec2_sub(v, v, (vec2){ 0.5, 0.5 });
+	vec2_div(v, v, (vec2){ zoom, zoom });
+	vec2_floor(v, v);
+	vec2_add(v, v, (vec2){ 0.5, 0.5 });
+
+	if(v[0] < 0 || v[0] >= editor.map->w || v[1] < 0 || v[1] >= editor.map->h) 
+		return;
+
+	gfx_draw_rect(v, (vec2){ 0.5 , 0.5 }, 0.05, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 }

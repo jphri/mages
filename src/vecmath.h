@@ -82,6 +82,12 @@ MATH_FUNC void vec##SIZE##_print(vec##SIZE r)\
 		printf("%f ", r[i]);\
 	}\
 	printf("\n");\
+}\
+MATH_FUNC void vec##SIZE##_floor(vec##SIZE r, vec##SIZE const a)\
+{\
+	for(int i = 0; i < SIZE; i++) {\
+		r[i] = floorf(a[i]); \
+	}\
 }
 
 #define VEC2_DUP(v) (vec2){ v[0], v[1] }
