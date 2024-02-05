@@ -21,9 +21,11 @@ typedef void (*CursorApply)(int x, int y);
 
 static void apply_cursor(int x, int y);
 static void pencil_apply(int x, int y);
+static void fill_apply(int x, int y);
 
 static CursorApply cursors[] = {
 	[CURSOR_MODE_PENCIL] = pencil_apply,
+	[CURSOR_MODE_FILL] = fill_apply
 };
 
 static float zoom = 16.0;
@@ -47,6 +49,12 @@ edit_keyboard(SDL_Event *event)
 		case SDLK_1: editor.editor_state = EDITOR_EDIT_MAP; break;
 		case SDLK_2: editor.editor_state = EDITOR_SELECT_TILE; break;
 		case SDLK_3: editor.editor_state = EDITOR_EDIT_COLLISION; break;
+		case SDLK_d:
+			if(cursor_mode == CURSOR_MODE_PENCIL)
+				cursor_mode = CURSOR_MODE_FILL;
+			else
+				cursor_mode = CURSOR_MODE_PENCIL;
+			break;
 		case SDLK_LCTRL: ctrl_pressed = true; break;
 		case SDLK_s:
 			if(ctrl_pressed) {
@@ -189,7 +197,6 @@ edit_render(void)
 void
 edit_enter(void)
 {
-	cursor_mode = CURSOR_MODE_PENCIL;
 	cursor_mode_size = 1.5;
 
 	controls_ui = ui_window_new();
@@ -246,4 +253,66 @@ pencil_apply(int x, int y)
 
 		editor.map->tiles[xx + yy * editor.map->w + current_layer * editor.map->w * editor.map->h] = editor.current_tile;
 	}
+}
+
+void
+fill_apply(int x, int y)
+{
+	typedef struct {
+		int x, y;
+		int state;
+	} StackElement;
+	ArrayBuffer stack;
+	StackElement *elem;
+	int reference_tile;
+	
+	reference_tile = editor.map->tiles[x + y * editor.map->w + current_layer * editor.map->w * editor.map->h];
+	if(reference_tile == editor.current_tile)
+		return;
+
+	arrbuf_init(&stack);
+	arrbuf_insert(&stack, sizeof(StackElement), &(StackElement) {
+		.x = x, .y = y, .state = 0
+	});
+
+	while((elem = arrbuf_peektop(&stack, sizeof(StackElement)))) {
+		if(elem->x < 0 || elem->x >= editor.map->w || elem->y < 0 || elem->y >= editor.map->h) {
+			arrbuf_poptop(&stack, sizeof(StackElement));
+			continue;
+		}
+		int current_tile = editor.map->tiles[elem->x + elem->y * editor.map->w + current_layer * editor.map->w * editor.map->h];
+		
+		if(reference_tile != current_tile) {
+			arrbuf_poptop(&stack, sizeof(StackElement));
+			continue;
+		}
+
+		StackElement elems[] = {
+			{
+				.x = elem->x - 1,
+				.y = elem->y,
+				.state = 0
+			},
+			{
+				.x = elem->x + 1,
+				.y = elem->y,
+				.state = 0
+			},
+			{
+				.x = elem->x,
+				.y = elem->y - 1,
+				.state = 0
+			},
+			{
+				.x = elem->x,
+				.y = elem->y + 1,
+				.state = 0
+			}
+		};
+		editor.map->tiles[elem->x + elem->y * editor.map->w + current_layer * editor.map->w * editor.map->h] = editor.current_tile;
+		/* elem dead here */
+		arrbuf_poptop(&stack, sizeof(StackElement));
+		arrbuf_insert(&stack, sizeof(elems), elems);
+	}
+	arrbuf_free(&stack);
 }
