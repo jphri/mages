@@ -15,7 +15,8 @@
 	UI_WIDGET(UI_SLIDER)     \
 	UI_WIDGET(UI_FLOAT)      \
 	UI_WIDGET(UI_TEXT_INPUT) \
-	UI_WIDGET(UI_IMAGE)      
+	UI_WIDGET(UI_IMAGE)      \
+	UI_WIDGET(UI_CHECKBOX)
 
 typedef enum {
 	UI_NULL,
@@ -145,6 +146,12 @@ DEFINE_WIDGET(UI_IMAGE) {
 	bool keep_aspect;
 };
 
+DEFINE_WIDGET(UI_CHECKBOX) {
+	bool toggled;
+	void *userptr;
+	void (*callback)(UIObject, void*);
+};
+
 void ui_init(void);
 void ui_reset(void);
 void ui_terminate(void);
@@ -187,6 +194,11 @@ StrView  ui_text_input_get_str(UIObject obj);
 UIObject ui_image_new(void);
 void     ui_image_set_stamp(UIObject image, TextureStamp *stamp);
 void     ui_image_set_keep_aspect(UIObject image, bool keep);
+
+UIObject ui_checkbox_new(void);
+void     ui_checkbox_set_toggled(UIObject obj, bool toggled);
+bool     ui_checkbox_get_toggled(UIObject obj);
+void     ui_checkbox_set_callback(UIObject obj, void *userptr, void(*cbk)(UIObject obj, void *userptr));
 
 void     ui_map(UIObject obj);
 
