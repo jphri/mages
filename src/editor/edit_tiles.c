@@ -12,6 +12,20 @@
 #include "../ui.h"
 #include "editor.h"
 
+typedef enum CursorMode {
+	CURSOR_MODE_PENCIL,
+	CURSOR_MODE_FILL
+} CursorMode;
+
+typedef void (*CursorApply)(int x, int y);
+
+static void apply_cursor(int x, int y);
+static void pencil_apply(int x, int y);
+
+static CursorApply cursors[] = {
+	[CURSOR_MODE_PENCIL] = pencil_apply,
+};
+
 static float zoom = 16.0;
 static bool  ctrl_pressed = false;
 static vec2  begin_offset, move_offset, offset;
@@ -20,6 +34,8 @@ static MouseState mouse_state;
 static vec2 mouse_position;
 
 static UIObject controls_ui;
+static CursorMode cursor_mode;
+static float cursor_mode_size;
 
 static void draw_cursor(void);
 
@@ -61,8 +77,8 @@ edit_mouse_motion(SDL_Event *event)
 	case MOUSE_DRAWING:
 		x = ((event->motion.x - offset[0] - 0.5) / zoom);
 		y = ((event->motion.y - offset[1] - 0.5) / zoom);
-		if(x < 0 || x >= editor.map->w || y < 0 || y >= editor.map->h) return;
-		editor.map->tiles[x + y * editor.map->w + current_layer * editor.map->w * editor.map->h] = editor.current_tile;
+		apply_cursor(x, y);
+		break;
 	default:
 		do {} while(0);
 	}
@@ -173,6 +189,9 @@ edit_render(void)
 void
 edit_enter(void)
 {
+	cursor_mode = CURSOR_MODE_PENCIL;
+	cursor_mode_size = 1.5;
+
 	controls_ui = ui_window_new();
 	ui_window_set_size(controls_ui, (vec2){ 150, 150 });
 	ui_window_set_position(controls_ui, (vec2){ 0 + 150, 600 - 150 });
@@ -203,4 +222,28 @@ draw_cursor(void)
 		return;
 
 	gfx_draw_rect(v, (vec2){ 0.5 , 0.5 }, 0.05, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+}
+
+void
+apply_cursor(int x, int y)
+{
+	if(cursors[cursor_mode])
+		cursors[cursor_mode](x, y);
+}
+
+void
+pencil_apply(int x, int y)
+{
+	int x_min = x - cursor_mode_size / 2;
+	int x_max = x + cursor_mode_size / 2;
+	int y_min = y - cursor_mode_size / 2;
+	int y_max = y + cursor_mode_size / 2;
+
+	for(int xx = x_min; xx <= x_max; xx++)
+	for(int yy = y_min; yy <= y_max; yy++) {
+		if(xx < 0 || xx >= editor.map->w || yy < 0 || yy >= editor.map->h)
+			continue;
+
+		editor.map->tiles[xx + yy * editor.map->w + current_layer * editor.map->w * editor.map->h] = editor.current_tile;
+	}
 }
