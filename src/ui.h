@@ -199,9 +199,6 @@ void     ui_checkbox_set_toggled(UIObject obj, bool toggled);
 bool     ui_checkbox_get_toggled(UIObject obj);
 void     ui_checkbox_set_callback(UIObject obj, void *userptr, void(*cbk)(UIObject obj, void *userptr));
 
-void     ui_map(UIObject obj);
-void     ui_unmap(UIObject obj);
-
 UIObject ui_new_object(UIObject parent, UIObjectType object_type);
 void     ui_del_object(UIObject object);
 void     ui_draw(void);

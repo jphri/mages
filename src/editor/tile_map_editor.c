@@ -84,7 +84,7 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	ui_window_set_decorated(window, false);
 	ui_window_set_child(window, layout);
 
-	ui_map(window);
+	ui_child_append(ui_root(), window);
 
 	editor.map_atlas = SPRITE_TERRAIN;
 	if(editor.map == NULL)

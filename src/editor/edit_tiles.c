@@ -272,10 +272,10 @@ edit_enter(void)
 	ui_window_set_decorated(context_menu, false);
 	ui_window_set_child(context_menu, layout);
 
-	ui_map(controls_ui);
-	ui_map(context_button);
+	ui_child_append(ui_root(), controls_ui);
+	ui_child_append(ui_root(), context_button);
 	if(context_shown) {
-		ui_map(context_menu);
+		ui_child_append(ui_root(), context_menu);
 	}
 }
 
@@ -416,7 +416,7 @@ void
 open_context_menu(void)
 {
 	ui_window_set_position(context_button, (vec2){ 30, 600 - 30 - 120 - 10 });
-	ui_map(context_menu);
+	ui_child_append(ui_root(), context_menu);
 }
 
 void
