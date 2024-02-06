@@ -125,6 +125,9 @@ void
 ui_window_set_child(UIObject window, UIObject child)
 {
 	UI_WINDOW_struct *w = ui_data(window);
+	if(w->child)
+		ui_deparent(w->child);
+
 	if(child)
 		ui_child_append(window, child);
 	w->child = child;
