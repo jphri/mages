@@ -69,22 +69,13 @@ slider_draw(UIObject obj, Rectangle *rect)
 	SliderInfo info = slider_info(obj, rect);
 	int state;
 
-	vec2 p1 = {
-		rect->position[0] - info.slider_half_size,
-		rect->position[1]
-	};
-	vec2 p2 = {
-		rect->position[0] + info.slider_half_size,
-		rect->position[1]
-	};
-
 	state = 0;
 	if(ui_get_active() == obj)
 		state = 2;
 	else if(ui_get_hot() == obj)
 		state = 1;
 
-	gfx_draw_line(p1, p2, 1.0, (vec4){ 0.0, 0.0, 0.0, 1.0 });
+	gfx_draw_texture_rect(gfx_white_texture(), rect->position, rect->half_size, 0.0, (vec4){ 0.2, 0.2, 0.2, 1.0 });
 	gfx_draw_texture_rect(
 		gfx_white_texture(), 
 		info.handle_rect.position, 
@@ -172,14 +163,14 @@ static SliderInfo slider_info(UIObject obj, Rectangle *rect)
 	SliderInfo slider;
 	UI_SLIDER_struct *ls = ui_data(obj);
 	
-	slider.width = 5.0;
+	slider.width = 6.0;
 	slider.border = 10.0;
-	slider.slider_border = slider.width + slider.border;
+	slider.slider_border = slider.width;
 	slider.slider_half_size = rect->half_size[0] - slider.slider_border;
 	slider.perc = ls->value / (float)ls->max_value;
 
 	slider.handle_rect.half_size[0] = slider.width;
-	slider.handle_rect.half_size[1] = 10;
+	slider.handle_rect.half_size[1] = rect->half_size[1];
 	slider.handle_rect.position[0] = rect->position[0] + (slider.perc * 2.0 - 1.0) * slider.slider_half_size;
 	slider.handle_rect.position[1] = rect->position[1];
 
