@@ -12,9 +12,12 @@
 #include "../ui.h"
 #include "editor.h"
 
+#define SLIDER_SIZE_PRECISION 4
+
 typedef enum CursorMode {
 	CURSOR_MODE_PENCIL,
-	CURSOR_MODE_FILL
+	CURSOR_MODE_FILL,
+	LAST_CURSOR_MODE
 } CursorMode;
 
 typedef void (*CursorApply)(int x, int y);
@@ -28,6 +31,13 @@ static CursorApply cursors[] = {
 	[CURSOR_MODE_FILL] = fill_apply
 };
 
+static struct {
+	TextureStamp image;
+} cursor_info[] = {
+	[CURSOR_MODE_PENCIL] = { .image = { .texture = TEXTURE_UI, .position = { 0.0 / 256.0, 16.0 / 256.0 }, .size = { 8.0 / 256.0, 8.0 / 256.0 } } },
+	[CURSOR_MODE_FILL]   = { .image = { .texture = TEXTURE_UI, .position = { 8.0 / 256.0, 16.0 / 256.0 }, .size = { 8.0 / 256.0, 8.0 / 256.0 } } },
+};
+
 static float zoom = 16.0;
 static bool  ctrl_pressed = false;
 static vec2  begin_offset, move_offset, offset;
@@ -39,6 +49,10 @@ static UIObject controls_ui;
 static CursorMode cursor_mode;
 static float cursor_mode_size;
 
+static UIObject cursor_checkboxes[LAST_CURSOR_MODE];
+
+static void cursor_size_cbk(UIObject obj, void *userptr);
+static void cursorchb_cbk(UIObject obj, void *userptr);
 static void draw_cursor(void);
 
 void
@@ -197,13 +211,37 @@ edit_render(void)
 void
 edit_enter(void)
 {
-	cursor_mode_size = 1.5;
+
+	UIObject layout = ui_layout_new();
+
+	UIObject cursor_layout = ui_layout_new();
+	ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
+	ui_layout_set_order(cursor_layout, UI_LAYOUT_HORIZONTAL);
+
+	for(int i = 0; i < LAST_CURSOR_MODE; i++) {
+		cursor_checkboxes[i] = ui_checkbox_new();
+		ui_checkbox_set_callback(cursor_checkboxes[i], &cursor_checkboxes[i], cursorchb_cbk);
+		ui_checkbox_set_toggled(cursor_checkboxes[i], (CursorMode)i == cursor_mode);
+		ui_layout_append(cursor_layout, cursor_checkboxes[i]);
+
+		UIObject img = ui_image_new();
+		ui_image_set_keep_aspect(img, true);
+		ui_image_set_stamp(img, &cursor_info[i].image);
+		ui_layout_append(cursor_layout, img);
+	}
+	ui_layout_append(layout, cursor_layout);
+
+	UIObject slider_size = ui_slider_new();
+	ui_slider_set_max_value(slider_size, 31 * SLIDER_SIZE_PRECISION);
+	ui_slider_set_value(slider_size, cursor_mode_size - 1);
+	ui_slider_set_callback(slider_size, NULL, cursor_size_cbk);
+	ui_layout_append(layout, slider_size);
 
 	controls_ui = ui_window_new();
 	ui_window_set_size(controls_ui, (vec2){ 150, 150 });
 	ui_window_set_position(controls_ui, (vec2){ 0 + 150, 600 - 150 });
 	ui_window_set_decorated(controls_ui, false);
-	ui_window_set_child(controls_ui, 0);
+	ui_window_set_child(controls_ui, layout);
 
 	ui_map(controls_ui);
 }
@@ -315,4 +353,23 @@ fill_apply(int x, int y)
 		arrbuf_insert(&stack, sizeof(elems), elems);
 	}
 	arrbuf_free(&stack);
+}
+
+void
+cursorchb_cbk(UIObject obj, void *userptr)
+{
+	(void)obj;
+	UIObject *self = userptr;
+	cursor_mode = self - cursor_checkboxes;
+	for(int i = 0; i < LAST_CURSOR_MODE; i++) {
+		ui_checkbox_set_toggled(cursor_checkboxes[i], &cursor_checkboxes[i] == self);
+	}
+}
+
+void
+cursor_size_cbk(UIObject obj, void *userptr)
+{
+	(void)userptr;
+	cursor_mode_size = ui_slider_get_value(obj) / (float)SLIDER_SIZE_PRECISION + 1;
+	printf("cursor_mode_size: %f\n", cursor_mode_size);
 }
