@@ -241,10 +241,10 @@ apply_cursor(int x, int y)
 void
 pencil_apply(int x, int y)
 {
-	int x_min = x - cursor_mode_size / 2;
-	int x_max = x + cursor_mode_size / 2;
-	int y_min = y - cursor_mode_size / 2;
-	int y_max = y + cursor_mode_size / 2;
+	int x_min = x - (int)(cursor_mode_size) / 2;
+	int x_max = x + (int)(cursor_mode_size) / 2;
+	int y_min = y - (int)(cursor_mode_size) / 2;
+	int y_max = y + (int)(cursor_mode_size) / 2;
 
 	for(int xx = x_min; xx <= x_max; xx++)
 	for(int yy = y_min; yy <= y_max; yy++) {
