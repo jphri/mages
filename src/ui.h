@@ -201,6 +201,7 @@ bool     ui_checkbox_get_toggled(UIObject obj);
 void     ui_checkbox_set_callback(UIObject obj, void *userptr, void(*cbk)(UIObject obj, void *userptr));
 
 void     ui_map(UIObject obj);
+void     ui_unmap(UIObject obj);
 
 UIObject ui_new_object(UIObject parent, UIObjectType object_type);
 void     ui_del_object(UIObject object);
@@ -223,6 +224,7 @@ UIObject ui_child_prev(UIObject object);
 int      ui_count_child(UIObject obj);
 void     ui_child_append(UIObject parent, UIObject child);
 void     ui_child_prepend(UIObject parent, UIObject child);
+void     ui_deparent(UIObject child);
 
 void ui_update(void);
 void ui_mouse_motion(float x, float y);

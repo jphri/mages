@@ -11,11 +11,17 @@
 typedef struct {
 	UIObjectType type;
 
-	UIObject parent;
+	UIObject parent, next_parent;
 	UIObject sibling_next, sibling_prev;
 	UIObject child_list;
 	UIObject last_child;
 	size_t child_count;
+
+	bool deserted;
+	enum {
+		PREPEND,
+		APPEND
+	} new_child_mode;
 
 	union {
 		#define UI_WIDGET(NAME) \
@@ -25,9 +31,15 @@ typedef struct {
 	} data;
 } UIObjectNode;
 
+typedef struct {
+	UIObject child;
+	UIObject to_parent;
+} Reparent;
+
 #define UI_NODE(ID) ((UIObjectNode*)objalloc_data(&objects, ID))
 
 static ObjectAllocator objects;
+static ArrayBuffer should_reparent;
 
 static UIEventProcessor *procs[LAST_UI_WIDGET] =
 {
@@ -91,12 +103,6 @@ static inline void remove_child(UIObject parent, UIObject child)
 	UI_NODE(parent)->child_count --;
 }
 
-static void _sys_int_cleanup(ObjectAllocator *alloc, ObjectID id)
-{
-	(void)alloc;
-	remove_child(UI_NODE(id)->parent, id);
-}
-
 static UIObject hot, active, text_active;
 static UIObject root;
 static vec2 mouse_pos;
@@ -104,15 +110,16 @@ static vec2 mouse_pos;
 void 
 ui_init(void)
 {
+	arrbuf_init(&should_reparent);
 	objalloc_init_allocator(&objects, sizeof(UIObjectNode), cache_aligned_allocator());
-	objects.clean_cbk = _sys_int_cleanup;
-
+	
 	ui_reset();
 }
 
 void
 ui_reset(void)
 {
+	arrbuf_clear(&should_reparent);
 	objalloc_reset(&objects);
 	root = ui_new_object(0, UI_NULL);
 	hot = 0;
@@ -155,6 +162,7 @@ ui_del_object(UIObject object)
 		ui_del_object(child);
 		child = next;
 	}
+	ui_deparent(object);
 	objalloc_free(&objects, object);
 }
 
@@ -212,6 +220,23 @@ ui_mouse_motion(float x, float y)
 void
 ui_cleanup(void)
 {
+	Span reparent = arrbuf_span(&should_reparent);
+	SPAN_FOR(reparent, dp, UIObject) {
+		if(ui_get_parent(*dp))
+			remove_child(ui_get_parent(*dp), *dp);
+
+		if(UI_NODE(*dp)->next_parent) {
+			switch(UI_NODE(*dp)->new_child_mode) {
+			case PREPEND:
+				add_child(UI_NODE(*dp)->next_parent, *dp);
+				break;
+			case APPEND:
+				add_child_last(UI_NODE(*dp)->next_parent, *dp);
+				break;
+			}
+		}
+		UI_NODE(*dp)->parent = UI_NODE(*dp)->next_parent;
+	}
 	objalloc_clean(&objects);
 }
 
@@ -241,7 +266,7 @@ UIObject
 ui_child_next(UIObject child)
 {
 	child = UI_NODE(child)->sibling_next;
-	while(child && objalloc_is_dead(&objects, child)) {
+	while(child && objalloc_is_dead(&objects, child) && UI_NODE(child)->deserted) {
 		child = UI_NODE(child)->sibling_next;
 	}
 	return child;
@@ -355,21 +380,19 @@ ui_key(UIKey key)
 void
 ui_child_prepend(UIObject parent, UIObject child)
 {
-	if(UI_NODE(child)->parent)
-		remove_child(UI_NODE(child)->parent, child);
-
-	add_child(parent, child);
-	UI_NODE(child)->parent = parent;
+	UI_NODE(child)->deserted = true;
+	UI_NODE(child)->next_parent = parent;
+	UI_NODE(child)->new_child_mode = PREPEND;
+	arrbuf_insert(&should_reparent, sizeof(child), &child);
 }
 
 void
 ui_child_append(UIObject parent, UIObject child)
 {
-	if(UI_NODE(child)->parent)
-		remove_child(UI_NODE(child)->parent, child);
-
-	add_child_last(parent, child);
-	UI_NODE(child)->parent = parent;
+	UI_NODE(child)->deserted = true;
+	UI_NODE(child)->next_parent = parent;
+	UI_NODE(child)->new_child_mode = APPEND;
+	arrbuf_insert(&should_reparent, sizeof(child), &child);
 }
 
 void
@@ -389,4 +412,10 @@ ui_default_mouse_handle(UIObject obj, UIEvent *ev, Rectangle *rect)
 		if(!rect_contains_point(rect, ev->data.mouse.position))
 			ui_set_hot(ui_get_parent(obj));
 	}
+}
+
+void
+ui_deparent(UIObject obj)
+{
+	ui_child_append(0, obj);
 }
