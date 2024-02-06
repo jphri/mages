@@ -45,15 +45,21 @@ static int current_layer = 0;
 static MouseState mouse_state;
 static vec2 mouse_position;
 
-static UIObject controls_ui;
+static UIObject controls_ui, context_menu, context_button;
 static CursorMode cursor_mode;
 static float cursor_mode_size;
+static bool context_shown;
 
 static UIObject cursor_checkboxes[LAST_CURSOR_MODE];
 
 static void cursor_size_cbk(UIObject obj, void *userptr);
 static void cursorchb_cbk(UIObject obj, void *userptr);
 static void draw_cursor(void);
+
+static void context_btn_cbk(UIObject obj, void *ptr);
+
+static void open_context_menu(void);
+static void close_context_menu(void);
 
 void
 edit_keyboard(SDL_Event *event)
@@ -211,7 +217,6 @@ edit_render(void)
 void
 edit_enter(void)
 {
-
 	UIObject layout = ui_layout_new();
 
 	UIObject cursor_layout = ui_layout_new();
@@ -229,7 +234,6 @@ edit_enter(void)
 		ui_image_set_stamp(img, &cursor_info[i].image);
 		ui_layout_append(cursor_layout, img);
 	}
-	ui_layout_append(layout, cursor_layout);
 
 	UIObject slider_size = ui_slider_new();
 	ui_slider_set_max_value(slider_size, 31 * SLIDER_SIZE_PRECISION);
@@ -238,18 +242,52 @@ edit_enter(void)
 	ui_layout_append(layout, slider_size);
 
 	controls_ui = ui_window_new();
-	ui_window_set_size(controls_ui, (vec2){ 150, 150 });
-	ui_window_set_position(controls_ui, (vec2){ 0 + 150, 600 - 150 });
+	ui_window_set_size(controls_ui, (vec2){ 90, 15 });
+	ui_window_set_position(controls_ui, (vec2){ 0 + 90, 600 - 15 });
 	ui_window_set_decorated(controls_ui, false);
-	ui_window_set_child(controls_ui, layout);
+	ui_window_set_child(controls_ui, cursor_layout);
+
+	context_button = ui_window_new();
+
+	UIObject context_btn = ui_button_new();
+	UIObject context_lbl = ui_label_new();
+	ui_label_set_text(context_lbl, "ctx");
+	ui_label_set_color(context_lbl, (vec4){ 1.0, 1.0, 0.0, 1.0 });
+	ui_label_set_alignment(context_lbl, UI_LABEL_ALIGN_CENTER);
+	ui_button_set_label(context_btn, context_lbl);
+	ui_button_set_callback(context_btn, NULL, context_btn_cbk);
+
+	ui_window_set_decorated(context_button, false);
+	ui_window_set_size(context_button, (vec2){ 30, 10 });
+	if(context_shown) {
+		ui_window_set_position(context_button, (vec2){ 30, 600 - 120 - 30 - 10 });
+	} else {
+		ui_window_set_position(context_button, (vec2){ 30, 600 - 30 - 10 });
+	}
+	ui_window_set_child(context_button, context_btn);
+
+	context_menu = ui_window_new();
+	ui_window_set_size(context_menu, (vec2){ 90, 60 });
+	ui_window_set_position(context_menu, (vec2){ 90, 600 - 30 - 60 });
+	ui_window_set_decorated(context_menu, false);
+	ui_window_set_child(context_menu, layout);
 
 	ui_map(controls_ui);
+	ui_map(context_button);
+	if(context_shown) {
+		ui_map(context_menu);
+	}
 }
 
 void
 edit_exit(void)
 {
 	ui_del_object(controls_ui);
+	ui_del_object(context_button);
+
+	if(context_menu) {
+		ui_del_object(context_menu);
+	}
 }
 
 void
@@ -372,4 +410,31 @@ cursor_size_cbk(UIObject obj, void *userptr)
 	(void)userptr;
 	cursor_mode_size = ui_slider_get_value(obj) / (float)SLIDER_SIZE_PRECISION + 1;
 	printf("cursor_mode_size: %f\n", cursor_mode_size);
+}
+
+void
+open_context_menu(void)
+{
+	ui_window_set_position(context_button, (vec2){ 30, 600 - 30 - 120 - 10 });
+	ui_map(context_menu);
+}
+
+void
+close_context_menu(void)
+{
+	ui_window_set_position(context_button, (vec2){ 30, 600 - 30 - 10 });
+	ui_deparent(context_menu);
+}
+
+void
+context_btn_cbk(UIObject obj, void *ptr)
+{
+	(void)obj;
+	(void)ptr;
+	context_shown = !context_shown;
+	if(context_shown) {
+		open_context_menu();
+	} else {
+		close_context_menu();
+	}
 }
