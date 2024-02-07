@@ -130,6 +130,7 @@ DEFINE_WIDGET(UI_BUTTON) {
 DEFINE_WIDGET(UI_SLIDER) {
 	int max_value;
 	int value, old_value;
+	float min, max;
 	void *user_ptr;
 	void (*cbk)(UIObject, void *);
 };
@@ -182,9 +183,12 @@ void     ui_label_set_border(UIObject object, vec2 border);
 void     ui_label_set_alignment(UIObject object, UILabelAlign align);
 
 UIObject ui_slider_new(void);
-void     ui_slider_set_max_value(UIObject slider, int max_value);
-void     ui_slider_set_value(UIObject slider, int value);
-int      ui_slider_get_value(UIObject slider);
+void     ui_slider_set_value_raw(UIObject slider, int value);
+void     ui_slider_set_value(UIObject slider, float value);
+float    ui_slider_get_value(UIObject slider);
+void     ui_slider_set_precision(UIObject slider, int values);
+void     ui_slider_set_min_value(UIObject slider, float min);
+void     ui_slider_set_max_value(UIObject slider, float max);
 void     ui_slider_set_callback(UIObject slider, void *userptr, void (*cbk)(UIObject, void *));
 
 UIObject ui_text_input_new(void);

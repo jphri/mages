@@ -39,7 +39,7 @@ static void slider_cbk(UIObject obj, void *userdata)
 	(void)userdata;
 	(void)obj;
 
-	printf("Value: %d\n", ui_slider_get_value(obj));
+	printf("Value: %f\n", ui_slider_get_value(obj));
 }
 
 void

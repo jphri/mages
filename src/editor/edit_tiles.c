@@ -12,7 +12,7 @@
 #include "../ui.h"
 #include "editor.h"
 
-#define SLIDER_SIZE_PRECISION 4
+#define SLIDER_SIZE_PRECISION 31
 
 typedef enum CursorMode {
 	CURSOR_MODE_PENCIL,
@@ -236,7 +236,11 @@ edit_enter(void)
 	}
 
 	UIObject slider_size = ui_slider_new();
-	ui_slider_set_max_value(slider_size, 31 * SLIDER_SIZE_PRECISION);
+	ui_slider_set_min_value(slider_size, 1.0);
+	ui_slider_set_max_value(slider_size, 32.0);
+	ui_slider_set_precision(slider_size, SLIDER_SIZE_PRECISION);
+	ui_slider_set_value(slider_size, 1.0);
+
 	ui_slider_set_value(slider_size, cursor_mode_size - 1);
 	ui_slider_set_callback(slider_size, NULL, cursor_size_cbk);
 	ui_layout_append(layout, slider_size);
@@ -408,7 +412,7 @@ void
 cursor_size_cbk(UIObject obj, void *userptr)
 {
 	(void)userptr;
-	cursor_mode_size = ui_slider_get_value(obj) / (float)SLIDER_SIZE_PRECISION + 1;
+	cursor_mode_size = ui_slider_get_value(obj);
 	printf("cursor_mode_size: %f\n", cursor_mode_size);
 }
 

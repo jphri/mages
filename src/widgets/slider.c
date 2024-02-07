@@ -22,19 +22,23 @@ ui_slider_new(void)
 	WIDGET(UI_SLIDER, slider)->old_value = 0;
 	WIDGET(UI_SLIDER, slider)->cbk = NULL;
 	WIDGET(UI_SLIDER, slider)->user_ptr = NULL;
+	WIDGET(UI_SLIDER, slider)->max = 1.0;
+	WIDGET(UI_SLIDER, slider)->min = 0.0;
+	WIDGET(UI_SLIDER, slider)->max_value = 64;
 	return slider;
 }
 
 void
-ui_slider_set_max_value(UIObject slider, int max_value)
+ui_slider_set_precision(UIObject slider, int max_value)
 {
 	WIDGET(UI_SLIDER, slider)->max_value = max_value;
 }
 
 void
-ui_slider_set_value(UIObject slider, int value)
+ui_slider_set_value_raw(UIObject slider, int value)
 {
 	UI_SLIDER_struct *sdata = ui_data(slider);
+	
 	sdata->value = value;
 	if(sdata->old_value != value) {
 		sdata->old_value = value;
@@ -43,11 +47,34 @@ ui_slider_set_value(UIObject slider, int value)
 	}
 }
 
-int
+void
+ui_slider_set_value(UIObject slider, float value)
+{
+	UI_SLIDER_struct *sdata = ui_data(slider);
+	float v = (value + sdata->min) * sdata->max_value / (sdata->max - sdata->min);
+	ui_slider_set_value_raw(slider, v);
+}
+
+float
 ui_slider_get_value(UIObject slider)
 {
 	UI_SLIDER_struct *sdata = ui_data(slider);
-	return sdata->value;
+	float delta = sdata->max - sdata->min;
+	return sdata->value * delta / sdata->max_value + sdata->min;
+}
+
+void
+ui_slider_set_max_value(UIObject slider, float max)
+{
+	UI_SLIDER_struct *sdata = ui_data(slider);
+	sdata->max = max;
+}
+
+void
+ui_slider_set_min_value(UIObject slider, float v)
+{
+	UI_SLIDER_struct *sdata = ui_data(slider);
+	sdata->min = v;
 }
 
 void
@@ -84,16 +111,15 @@ slider_draw(UIObject obj, Rectangle *rect)
 		0.0, 
 		colors[state]
 	);
-	gfx_font_size(label_position, FONT_ROBOTO, 12/32.0, "%d", WIDGET(UI_SLIDER, obj)->value);
+	gfx_font_size(label_position, FONT_ROBOTO, 12/32.0, "%0.2f", ui_slider_get_value(obj));
 	vec2_sub(label_position, rect->position, label_position);
 
-	gfx_draw_font2(FONT_ROBOTO, label_position, 12/32.0, (vec4){ 1.0, 1.0, 1.0, 1.0 }, "%d", WIDGET(UI_SLIDER, obj)->value);
+	gfx_draw_font2(FONT_ROBOTO, label_position, 12/32.0, (vec4){ 1.0, 1.0, 1.0, 1.0 }, "%0.2f", ui_slider_get_value(obj));
 }
 
 void
 slider_motion(UIObject obj, UIEvent *ev, Rectangle *rect)
 {
-	UI_SLIDER_struct *sl = ui_data(obj);
 	SliderInfo info = slider_info(obj, rect);
 	Rectangle handle_fix;
 
@@ -112,17 +138,18 @@ slider_motion(UIObject obj, UIEvent *ev, Rectangle *rect)
 	} 
 
 	if(ui_get_active() == obj) {
-		float p = ev->data.mouse.position[0] - rect->position[0];
+		int p = ev->data.mouse.position[0] - rect->position[0];
+			  p *= WIDGET(UI_SLIDER, obj)->max_value;
 			  p /= info.slider_half_size;
-			  p += 1.0;
-			  p /= 2.0;
+			  p += WIDGET(UI_SLIDER, obj)->max_value;
+			  p /= 2;
 		
 		if(p < 0)
 			p = 0;
-		if(p > 1)
-		 	p = 1;
+		if(p > WIDGET(UI_SLIDER, obj)->max_value)
+		 	p = WIDGET(UI_SLIDER, obj)->max_value;
 
-		ui_slider_set_value(obj, p * sl->max_value);
+		ui_slider_set_value_raw(obj, p);
 	}
 }
 
