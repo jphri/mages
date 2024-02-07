@@ -235,6 +235,7 @@ ui_cleanup(void)
 				break;
 			}
 		}
+		UI_NODE(*dp)->deserted = false;
 		UI_NODE(*dp)->parent = UI_NODE(*dp)->next_parent;
 	}
 	objalloc_clean(&objects);
