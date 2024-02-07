@@ -254,7 +254,7 @@ edit_init(void)
 				ui_layout_append(cursor_layout, img);
 			}
 		}
-		ui_window_set_child(controls_ui, cursor_layout);
+		ui_window_append_child(controls_ui, cursor_layout);
 	}
 
 	context_menu = ui_window_new();
@@ -310,7 +310,7 @@ edit_init(void)
 			ui_layout_append(layout, sublayout);
 
 		}
-		ui_window_set_child(context_menu, layout);
+		ui_window_append_child(context_menu, layout);
 	}
 
 	context_button = ui_window_new();
@@ -332,14 +332,11 @@ edit_init(void)
 		}
 		ui_button_set_callback(context_btn, NULL, context_btn_cbk);
 
-		ui_window_set_child(context_button, context_btn);
+		ui_window_append_child(context_button, context_btn);
 	}
 	
 	ui_child_append(tiles_root, controls_ui);
 	ui_child_append(tiles_root, context_button);
-	if(context_shown) {
-		ui_child_append(tiles_root, context_menu);
-	}
 }
 
 void
