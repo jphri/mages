@@ -106,11 +106,15 @@ UI_WINDOW_event(UIObject obj, UIEvent *event, Rectangle *rect)
 
 	if(WINDOW(obj)->decorated)
 		ui_call_event(WINDOW(obj)->title_layout, event, &title_rect);
+	
+	if(event->event_type == UI_DRAW)
+		gfx_push_clip(WINDOW(obj)->window_rect.position, WINDOW(obj)->window_rect.half_size);
 
 	if(WINDOW(obj)->child)
 		ui_call_event(WINDOW(obj)->child, event, &WINDOW(obj)->window_rect);
 
-	ui_call_event(WINDOW(obj)->child, event, &WINDOW(obj)->window_rect);
+	if(event->event_type == UI_DRAW)
+		gfx_pop_clip();
 
 	if(WINDOW(obj)->decorated) {
 		if(event->event_type == UI_MOUSE_MOTION) {
