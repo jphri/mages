@@ -27,7 +27,9 @@ ui_layout_set_border(UIObject layout, float left, float right, float up, float d
 void
 ui_layout_append(UIObject layout, UIObject obj)
 {
-	ui_child_append(layout, obj);
+	UIObject root = ui_new_object(0, UI_ROOT);
+	ui_child_append(layout, root);
+	ui_child_append(root, obj);
 }
 
 void
@@ -79,6 +81,11 @@ UI_LAYOUT_event(UIObject layout_obj, UIEvent *event, Rectangle *bound)
 	ui_default_mouse_handle(layout_obj, event, bound);
 
 	for(UIObject child = ui_child(layout_obj); child; child = ui_child_next(child)) {
+		if(ui_count_child(child) == 0) {
+			ui_del_object(child);
+			continue;
+		}
+
 		if(event->event_type == UI_DRAW) {
 			gfx_draw_texture_rect(gfx_white_texture(), bound->position, bound->half_size, 0.0, l->background);
 			gfx_push_clip(rec.position, rec.half_size);
