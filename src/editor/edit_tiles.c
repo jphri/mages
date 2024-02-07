@@ -13,6 +13,7 @@
 #include "editor.h"
 
 #define SLIDER_SIZE_PRECISION 31
+#define MAX_LAYERS 2
 
 typedef enum CursorMode {
 	CURSOR_MODE_PENCIL,
@@ -52,6 +53,7 @@ static bool context_shown;
 
 static UIObject cursor_checkboxes[LAST_CURSOR_MODE];
 
+static void layer_slider_cbk(UIObject slider, void *userptr);
 static void cursor_size_cbk(UIObject obj, void *userptr);
 static void cursorchb_cbk(UIObject obj, void *userptr);
 static void draw_cursor(void);
@@ -217,50 +219,86 @@ edit_render(void)
 void
 edit_enter(void)
 {
-	UIObject layout = ui_layout_new();
-
-	UIObject cursor_layout = ui_layout_new();
-	ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
-	ui_layout_set_order(cursor_layout, UI_LAYOUT_HORIZONTAL);
-
-	for(int i = 0; i < LAST_CURSOR_MODE; i++) {
-		cursor_checkboxes[i] = ui_checkbox_new();
-		ui_checkbox_set_callback(cursor_checkboxes[i], &cursor_checkboxes[i], cursorchb_cbk);
-		ui_checkbox_set_toggled(cursor_checkboxes[i], (CursorMode)i == cursor_mode);
-		ui_layout_append(cursor_layout, cursor_checkboxes[i]);
-
-		UIObject img = ui_image_new();
-		ui_image_set_keep_aspect(img, true);
-		ui_image_set_stamp(img, &cursor_info[i].image);
-		ui_layout_append(cursor_layout, img);
-	}
-
-	UIObject slider_size = ui_slider_new();
-	ui_slider_set_min_value(slider_size, 1.0);
-	ui_slider_set_max_value(slider_size, 32.0);
-	ui_slider_set_precision(slider_size, SLIDER_SIZE_PRECISION);
-	ui_slider_set_value(slider_size, 1.0);
-
-	ui_slider_set_value(slider_size, cursor_mode_size - 1);
-	ui_slider_set_callback(slider_size, NULL, cursor_size_cbk);
-	ui_layout_append(layout, slider_size);
-
 	controls_ui = ui_window_new();
 	ui_window_set_size(controls_ui, (vec2){ 90, 15 });
 	ui_window_set_position(controls_ui, (vec2){ 0 + 90, 600 - 15 });
 	ui_window_set_decorated(controls_ui, false);
-	ui_window_set_child(controls_ui, cursor_layout);
+	{
+		UIObject cursor_layout = ui_layout_new();
+		ui_layout_set_order(cursor_layout, UI_LAYOUT_HORIZONTAL);
+		{
+			for(int i = 0; i < LAST_CURSOR_MODE; i++) {
+				cursor_checkboxes[i] = ui_checkbox_new();
+				ui_checkbox_set_callback(cursor_checkboxes[i], &cursor_checkboxes[i], cursorchb_cbk);
+				ui_checkbox_set_toggled(cursor_checkboxes[i], (CursorMode)i == cursor_mode);
+				ui_layout_append(cursor_layout, cursor_checkboxes[i]);
+
+				UIObject img = ui_image_new();
+				ui_image_set_keep_aspect(img, true);
+				ui_image_set_stamp(img, &cursor_info[i].image);
+				ui_layout_append(cursor_layout, img);
+			}
+		}
+		ui_window_set_child(controls_ui, cursor_layout);
+	}
+
+	context_menu = ui_window_new();
+	ui_window_set_size(context_menu, (vec2){ 90, 60 });
+	ui_window_set_position(context_menu, (vec2){ 90, 600 - 30 - 60 });
+	ui_window_set_decorated(context_menu, false);
+	{
+		UIObject layout = ui_layout_new();
+		ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
+		{
+			UIObject sublayout = ui_layout_new();
+			ui_layout_set_order(sublayout, UI_LAYOUT_HORIZONTAL);
+			ui_layout_set_border(sublayout, 2.5, 2.5, 2.5, 2.5);
+			{
+				UIObject label = ui_label_new();
+				ui_label_set_text(label, "Cursor Size: ");
+				ui_label_set_alignment(label, UI_LABEL_ALIGN_RIGHT);
+				ui_label_set_color(label, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+				ui_layout_append(sublayout, label);
+
+				UIObject slider_size = ui_slider_new();
+				ui_slider_set_min_value(slider_size, 1.0);
+				ui_slider_set_max_value(slider_size, 32.0);
+				ui_slider_set_precision(slider_size, SLIDER_SIZE_PRECISION);
+				ui_slider_set_value(slider_size, cursor_mode_size);
+				ui_slider_set_callback(slider_size, NULL, cursor_size_cbk);
+
+				ui_layout_append(sublayout, slider_size);
+
+			}
+			ui_layout_append(layout, sublayout);
+
+			sublayout = ui_layout_new();
+			ui_layout_set_order(sublayout, UI_LAYOUT_HORIZONTAL);
+			ui_layout_set_border(sublayout, 2.5, 2.5, 2.5, 2.5);
+			{
+				UIObject label = ui_label_new();
+				ui_label_set_text(label, "Layer: ");
+				ui_label_set_alignment(label, UI_LABEL_ALIGN_RIGHT);
+				ui_label_set_color(label, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+				ui_layout_append(sublayout, label);
+
+				UIObject slider_size = ui_slider_new();
+				ui_slider_set_min_value(slider_size, 0.0);
+				ui_slider_set_max_value(slider_size, MAX_LAYERS - 1);
+				ui_slider_set_precision(slider_size, MAX_LAYERS - 1);
+				ui_slider_set_value(slider_size, current_layer);
+				ui_slider_set_callback(slider_size, NULL, layer_slider_cbk);
+
+				ui_layout_append(sublayout, slider_size);
+
+			}
+			ui_layout_append(layout, sublayout);
+
+		}
+		ui_window_set_child(context_menu, layout);
+	}
 
 	context_button = ui_window_new();
-
-	UIObject context_btn = ui_button_new();
-	UIObject context_lbl = ui_label_new();
-	ui_label_set_text(context_lbl, "ctx");
-	ui_label_set_color(context_lbl, (vec4){ 1.0, 1.0, 0.0, 1.0 });
-	ui_label_set_alignment(context_lbl, UI_LABEL_ALIGN_CENTER);
-	ui_button_set_label(context_btn, context_lbl);
-	ui_button_set_callback(context_btn, NULL, context_btn_cbk);
-
 	ui_window_set_decorated(context_button, false);
 	ui_window_set_size(context_button, (vec2){ 30, 10 });
 	if(context_shown) {
@@ -268,14 +306,20 @@ edit_enter(void)
 	} else {
 		ui_window_set_position(context_button, (vec2){ 30, 600 - 30 - 10 });
 	}
-	ui_window_set_child(context_button, context_btn);
+	{
+		UIObject context_btn = ui_button_new();
+		{
+			UIObject context_lbl = ui_label_new();
+			ui_label_set_text(context_lbl, "ctx");
+			ui_label_set_color(context_lbl, (vec4){ 1.0, 1.0, 0.0, 1.0 });
+			ui_label_set_alignment(context_lbl, UI_LABEL_ALIGN_CENTER);
+			ui_button_set_label(context_btn, context_lbl);
+		}
+		ui_button_set_callback(context_btn, NULL, context_btn_cbk);
 
-	context_menu = ui_window_new();
-	ui_window_set_size(context_menu, (vec2){ 90, 60 });
-	ui_window_set_position(context_menu, (vec2){ 90, 600 - 30 - 60 });
-	ui_window_set_decorated(context_menu, false);
-	ui_window_set_child(context_menu, layout);
-
+		ui_window_set_child(context_button, context_btn);
+	}
+	
 	ui_child_append(ui_root(), controls_ui);
 	ui_child_append(ui_root(), context_button);
 	if(context_shown) {
@@ -441,4 +485,11 @@ context_btn_cbk(UIObject obj, void *ptr)
 	} else {
 		close_context_menu();
 	}
+}
+
+void
+layer_slider_cbk(UIObject slider, void *ptr)
+{
+	(void)ptr;
+	current_layer = ui_slider_get_value(slider);
 }
