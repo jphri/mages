@@ -17,6 +17,7 @@ ui_window_new(void)
 	UIObject window = ui_new_object(0, UI_WINDOW);
 	UIObject title_label = ui_label_new();
 	UIObject title_layout = ui_layout_new();
+	UIObject child_root = ui_new_object(window, UI_ROOT);
 
 	ui_label_set_text(title_label, "Window");
 	ui_label_set_color(title_label, (vec4){ 1.0, 1.0, 1.0, 1.0 });
@@ -31,6 +32,7 @@ ui_window_new(void)
 	WINDOW(window)->title_label = title_label;
 	WINDOW(window)->title_layout = title_layout;
 	WINDOW(window)->decorated = true;
+	WINDOW(window)->child_root = child_root;
 
 	return window;
 }
@@ -110,8 +112,7 @@ UI_WINDOW_event(UIObject obj, UIEvent *event, Rectangle *rect)
 	if(event->event_type == UI_DRAW)
 		gfx_push_clip(WINDOW(obj)->window_rect.position, WINDOW(obj)->window_rect.half_size);
 
-	if(WINDOW(obj)->child)
-		ui_call_event(WINDOW(obj)->child, event, &WINDOW(obj)->window_rect);
+	ui_call_event(WINDOW(obj)->child_root, event, &WINDOW(obj)->window_rect);
 
 	if(event->event_type == UI_DRAW)
 		gfx_pop_clip();
@@ -126,15 +127,15 @@ UI_WINDOW_event(UIObject obj, UIEvent *event, Rectangle *rect)
 }
 
 void
-ui_window_set_child(UIObject window, UIObject child)
+ui_window_append_child(UIObject window, UIObject child)
 {
-	UI_WINDOW_struct *w = ui_data(window);
-	if(w->child)
-		ui_deparent(w->child);
+	ui_child_append(WINDOW(window)->child_root, child);
+}
 
-	if(child)
-		ui_child_append(window, child);
-	w->child = child;
+void
+ui_window_append_prepend(UIObject window, UIObject child)
+{
+	ui_child_append(WINDOW(window)->child_root, child);
 }
 
 void

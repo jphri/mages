@@ -96,7 +96,7 @@ DEFINE_WIDGET(UI_WINDOW) {
 
 	UIObject title_label;
 	UIObject title_layout;
-	UIObject child;
+	UIObject child_root;
 
 	vec2 drag_begin;
 	vec2 drag_begin_pos;
@@ -165,8 +165,9 @@ void     ui_window_set_position(UIObject window, vec2 position);
 void     ui_window_set_background(UIObject window, vec4 background);
 void     ui_window_set_title(UIObject window, const char *title);
 void     ui_window_set_border(UIObject window, vec2 border);
-void     ui_window_set_child(UIObject window, UIObject child);
 void     ui_window_set_decorated(UIObject window, bool decorated);
+void     ui_window_append_child(UIObject window, UIObject child);
+void     ui_window_prepend_child(UIObject window, UIObject child);
 
 UIObject ui_layout_new(void);
 void     ui_layout_set_order(UIObject layout, UILayoutOrder order);

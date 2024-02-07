@@ -83,7 +83,7 @@ GAME_STATE_LEVEL_init(void)
 	ui_window_set_title(window, "Hello");
 	ui_window_set_border(window, (vec2){ 2.0, 2.0 });
 	ui_window_set_decorated(window, false);
-	ui_window_set_child(window,  layout);
+	ui_window_append_child(window,  layout);
 
 	ui_child_append(ui_root(), window);
 
