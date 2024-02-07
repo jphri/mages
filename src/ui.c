@@ -121,7 +121,7 @@ ui_reset(void)
 {
 	arrbuf_clear(&should_reparent);
 	objalloc_reset(&objects);
-	root = ui_new_object(0, UI_NULL);
+	root = ui_new_object(0, UI_ROOT);
 	hot = 0;
 	active = 0;
 }
@@ -135,7 +135,7 @@ ui_terminate(void)
 bool
 ui_is_active(void)
 {
-	return hot != root || active;
+	return hot || active;
 }
 
 UIObject
@@ -145,7 +145,6 @@ ui_new_object(UIObject parent, UIObjectType object_type)
 	memset(objalloc_data(&objects, object), 0, sizeof(UIObjectNode));
 	UI_NODE(object)->type         = object_type;
 	UI_NODE(object)->parent       = parent;
-
 
 	if(parent)
 		add_child(parent, object); 
@@ -175,12 +174,7 @@ ui_draw(void)
 	event.event_type = UI_DRAW;
 
 	gfx_draw_begin(NULL);
-	/* the only retarded that do this in reverse is the root, lol */
-	/* lets laugh at the UI_NULL */
-	/* loooooooooooooool */
-	for(UIObject child = UI_NODE(root)->last_child; child; child = UI_NODE(child)->sibling_prev) {
-		ui_call_event(child, &event, &rect);
-	}
+	ui_call_event(root, &event, &rect);
 	gfx_draw_end();
 }
 
@@ -195,9 +189,7 @@ ui_mouse_button(UIMouseButton button, bool state)
 	event.data.mouse.button = button;
 	vec2_dup(event.data.mouse.position, mouse_pos);
 
-	for(UIObject child = ui_child(root); child; child = ui_child_next(child)) {
-		ui_call_event(child, &event, &rect);
-	}
+	ui_call_event(root, &event, &rect);
 }
 
 void
@@ -211,10 +203,7 @@ ui_mouse_motion(float x, float y)
 	event.data.mouse.position[1] = y;
 	vec2_dup(mouse_pos, event.data.mouse.position);
 
-	ui_default_mouse_handle(root, &event, &rect);
-	for(UIObject child = ui_child(root); child; child = ui_child_next(child)) {
-		ui_call_event(child, &event, &rect);
-	}
+	ui_call_event(root, &event, &rect);
 }
 
 void

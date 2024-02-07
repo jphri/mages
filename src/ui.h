@@ -8,6 +8,7 @@
 #include <stdbool.h>
 
 #define UI_WIDGET_LIST       \
+	UI_WIDGET(UI_ROOT)       \
 	UI_WIDGET(UI_WINDOW)     \
 	UI_WIDGET(UI_LAYOUT)     \
 	UI_WIDGET(UI_LABEL)      \
@@ -18,7 +19,6 @@
 	UI_WIDGET(UI_CHECKBOX)
 
 typedef enum {
-	UI_NULL,
 	#define UI_WIDGET(NAME) NAME,
 	UI_WIDGET_LIST
 	#undef UI_WIDGET
@@ -83,6 +83,8 @@ typedef struct NAME##_struct NAME##_struct; \
 struct NAME##_struct
 
 #define WIDGET(NAME, ID) ((NAME##_struct*)ui_data(ID))
+
+DEFINE_WIDGET(UI_ROOT) { char lol; };
 
 DEFINE_WIDGET(UI_WINDOW) {
 	const char *title;
