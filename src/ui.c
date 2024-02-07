@@ -203,6 +203,7 @@ ui_mouse_motion(float x, float y)
 	event.data.mouse.position[1] = y;
 	vec2_dup(mouse_pos, event.data.mouse.position);
 
+	ui_set_hot(0);
 	ui_call_event(root, &event, &rect);
 }
 
@@ -354,9 +355,7 @@ ui_text(const char *text, size_t text_size)
 	/* even if we know what element is requesting the
 	 * text data, we need to repass to its parents too
 	 */
-	for(UIObject child = ui_child(root); child; child = ui_child_next(child)) {
-		ui_call_event(child, &event, &rect);
-	}
+	ui_call_event(root, &event, &rect);
 }
 
 void
@@ -374,9 +373,7 @@ ui_key(UIKey key)
 	/* even if we know what element is requesting the
 	 * text data, we need to repass to its parents too
 	 */
-	for(UIObject child = ui_child(root); child; child = ui_child_next(child)) {
-		ui_call_event(child, &event, &rect);
-	}
+	ui_call_event(root, &event, &rect);
 }
 
 void
