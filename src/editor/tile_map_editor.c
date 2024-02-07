@@ -24,7 +24,9 @@ static State state_vtable[] = {
 		.mouse_button = edit_mouse_button,
 		.mouse_motion = edit_mouse_motion,
 		.enter = edit_enter,
-		.exit = edit_exit
+		.exit = edit_exit,
+		.init = edit_init,
+		.terminate = edit_terminate,
 	},
 	[EDITOR_SELECT_TILE] = {
 		.render       = select_tile_render,
@@ -83,12 +85,17 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	ui_window_set_border(window, (vec2){ 2, 2 });
 	ui_window_set_decorated(window, false);
 	ui_window_set_child(window, layout);
-
+	
 	ui_child_append(ui_root(), window);
 
 	editor.map_atlas = SPRITE_TERRAIN;
 	if(editor.map == NULL)
 		editor.map = map_load("maps/test_map_2.map");
+
+	for(int i = 0; i < LAST_EDITOR_STATE; i++) {
+		if(state_vtable[i].init)
+			state_vtable[i].init();
+	}
 
 	if(state_vtable[editor.editor_state].enter) {
 		state_vtable[editor.editor_state].enter();
@@ -152,8 +159,9 @@ GAME_STATE_LEVEL_EDIT_update(float delta)
 void 
 GAME_STATE_LEVEL_EDIT_end(void) 
 {
-	if(state_vtable[editor.editor_state].enter) {
-		state_vtable[editor.editor_state].enter();
+	for(int i = 0; i < LAST_EDITOR_STATE; i++) {
+		if(state_vtable[i].terminate)
+			state_vtable[i].terminate();
 	}
 }
 

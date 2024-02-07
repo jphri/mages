@@ -51,6 +51,8 @@ static CursorMode cursor_mode;
 static float cursor_mode_size;
 static bool context_shown;
 
+static UIObject tiles_root;
+
 static UIObject cursor_checkboxes[LAST_CURSOR_MODE];
 
 static void layer_slider_cbk(UIObject slider, void *userptr);
@@ -123,7 +125,6 @@ edit_mouse_button(SDL_Event *event)
 	}
 	mouse_position[0] = event->motion.x;
 	mouse_position[1] = event->motion.y;
-
 	
 	if(event->type == SDL_MOUSEBUTTONDOWN && mouse_state == MOUSE_NOTHING) {
 		switch(event->button.button) {
@@ -219,6 +220,20 @@ edit_render(void)
 void
 edit_enter(void)
 {
+	ui_child_append(ui_root(), tiles_root);
+}
+
+void
+edit_exit(void)
+{
+	ui_deparent(tiles_root);
+}
+
+void
+edit_init(void)
+{
+	tiles_root = ui_new_object(0, UI_ROOT);
+
 	controls_ui = ui_window_new();
 	ui_window_set_size(controls_ui, (vec2){ 90, 15 });
 	ui_window_set_position(controls_ui, (vec2){ 0 + 90, 600 - 15 });
@@ -320,23 +335,19 @@ edit_enter(void)
 		ui_window_set_child(context_button, context_btn);
 	}
 	
-	ui_child_append(ui_root(), controls_ui);
-	ui_child_append(ui_root(), context_button);
+	ui_child_append(tiles_root, controls_ui);
+	ui_child_append(tiles_root, context_button);
 	if(context_shown) {
-		ui_child_append(ui_root(), context_menu);
+		ui_child_append(tiles_root, context_menu);
 	}
 }
 
 void
-edit_exit(void)
+edit_terminate(void)
 {
-	ui_del_object(controls_ui);
-	ui_del_object(context_button);
-
-	if(context_menu) {
-		ui_del_object(context_menu);
-	}
+	ui_del_object(tiles_root);
 }
+
 
 void
 draw_cursor(void)
@@ -464,7 +475,7 @@ void
 open_context_menu(void)
 {
 	ui_window_set_position(context_button, (vec2){ 30, 600 - 30 - 120 - 10 });
-	ui_child_append(ui_root(), context_menu);
+	ui_child_append(tiles_root, context_menu);
 }
 
 void

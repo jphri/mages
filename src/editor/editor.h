@@ -3,6 +3,7 @@
 
 #include "../map.h"
 #include "../graphics.h"
+#include "../ui.h"
 #include <SDL.h>
 
 typedef enum {
@@ -20,6 +21,8 @@ typedef enum {
 } EditorState;
 
 typedef struct {
+	void (*init)(void);
+	void (*terminate)(void);
 	void (*render)(void);
 	void (*wheel)(SDL_Event *event);
 	void (*mouse_button)(SDL_Event *event);
@@ -47,6 +50,8 @@ void edit_keyboard(SDL_Event *event);
 void edit_wheel(SDL_Event *event);
 void edit_enter(void);
 void edit_exit(void);
+void edit_init(void);
+void edit_terminate(void);
 
 void select_tile_render(void);
 void select_tile_keyboard(SDL_Event *event);
