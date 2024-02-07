@@ -1,5 +1,6 @@
 #include "../ui.h"
 #include "../graphics.h"
+#include <stdio.h>
 
 typedef struct {
 	float width, border;
@@ -21,7 +22,6 @@ ui_slider_new(void)
 	WIDGET(UI_SLIDER, slider)->old_value = 0;
 	WIDGET(UI_SLIDER, slider)->cbk = NULL;
 	WIDGET(UI_SLIDER, slider)->user_ptr = NULL;
-
 	return slider;
 }
 
@@ -68,6 +68,7 @@ slider_draw(UIObject obj, Rectangle *rect)
 	};
 	SliderInfo info = slider_info(obj, rect);
 	int state;
+	vec2 label_position;
 
 	state = 0;
 	if(ui_get_active() == obj)
@@ -83,6 +84,10 @@ slider_draw(UIObject obj, Rectangle *rect)
 		0.0, 
 		colors[state]
 	);
+	gfx_font_size(label_position, FONT_ROBOTO, 12/32.0, "%d", WIDGET(UI_SLIDER, obj)->value);
+	vec2_sub(label_position, rect->position, label_position);
+
+	gfx_draw_font2(FONT_ROBOTO, label_position, 12/32.0, (vec4){ 1.0, 1.0, 1.0, 1.0 }, "%d", WIDGET(UI_SLIDER, obj)->value);
 }
 
 void
