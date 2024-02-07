@@ -274,6 +274,18 @@ ui_child_next(UIObject child)
 }
 
 UIObject
+ui_last_child(UIObject parent)
+{
+	return UI_NODE(parent)->last_child;
+}
+
+UIObject
+ui_child_prev(UIObject obj)
+{
+	return UI_NODE(obj)->sibling_prev;
+}
+
+UIObject
 ui_root(void)
 {
 	return root;
