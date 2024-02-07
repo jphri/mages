@@ -265,5 +265,37 @@ static inline bool rect_contains_point(Rectangle *rect, vec2 point)
 	return x_contains && y_contains;
 }
 
+static inline bool rect_contains_rect(Rectangle *outer, Rectangle *inner)
+{
+	vec2 min1, max1;
+	vec2 min2, max2;
+
+	rect_boundaries(min1, max1, outer);
+	rect_boundaries(min2, max2, inner);
+
+	return  min1[0] < min2[0] &&
+	        min1[1] < min2[1] &&
+	        max1[0] > max2[0] &&
+	        max1[1] > max2[1];
+}
+
+static inline void rect_accomodate(Rectangle *rect_out, Rectangle *rparent, Rectangle *rchild)
+{
+	vec2 min1, max1;
+	vec2 min2, max2;
+
+	vec2 itsc_min, itsc_max;
+	
+	rect_boundaries(min1, max1, rparent);
+	rect_boundaries(min2, max2, rchild);
+
+	itsc_min[0] = min1[0] < min2[0] ? min1[0] : min2[0];
+	itsc_min[1] = min1[1] < min2[1] ? min1[1] : min2[1];
+	itsc_max[0] = max1[0] > max2[0] ? max1[0] : max2[0];
+	itsc_max[1] = max1[1] > max2[1] ? max1[1] : max2[1];
+
+	*rect_out = rect_from_boundaries(itsc_min, itsc_max);
+}
+
 #undef MATH_FUNC
 #endif
