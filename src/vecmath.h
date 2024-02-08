@@ -273,10 +273,10 @@ static inline bool rect_contains_rect(Rectangle *outer, Rectangle *inner)
 	rect_boundaries(min1, max1, outer);
 	rect_boundaries(min2, max2, inner);
 
-	return  min1[0] < min2[0] &&
-	        min1[1] < min2[1] &&
-	        max1[0] > max2[0] &&
-	        max1[1] > max2[1];
+	return  min1[0] <= min2[0] &&
+	        min1[1] <= min2[1] &&
+	        max1[0] >= max2[0] &&
+	        max1[1] >= max2[1];
 }
 
 static inline void rect_accomodate(Rectangle *rect_out, Rectangle *rparent, Rectangle *rchild)
