@@ -125,18 +125,6 @@ slider_motion(UIObject obj, UIEvent *ev, Rectangle *rect)
 
 	rect_intersect(&handle_fix, rect, &info.handle_rect);
 	
-	if(ui_get_active() == 0) {
-		if(ui_get_hot() == obj) {
-			if(!rect_contains_point(&handle_fix, ev->data.mouse.position)) {
-				ui_set_hot(0);
-			}
-		} else {
-			if(rect_contains_point(&handle_fix, ev->data.mouse.position)) {
-				ui_set_hot(obj);
-			}
-		}
-	} 
-
 	if(ui_get_active() == obj) {
 		int p = ev->data.mouse.position[0] - rect->position[0];
 			  p *= WIDGET(UI_SLIDER, obj)->max_value;
