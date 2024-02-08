@@ -40,6 +40,7 @@ typedef struct {
 
 static ObjectAllocator objects;
 static ArrayBuffer should_reparent;
+static ArrayBuffer container_stack;
 
 static UIEventProcessor *procs[LAST_UI_WIDGET] =
 {
@@ -111,6 +112,7 @@ void
 ui_init(void)
 {
 	arrbuf_init(&should_reparent);
+	arrbuf_init(&container_stack);
 	objalloc_init_allocator(&objects, sizeof(UIObjectNode), cache_aligned_allocator());
 	
 	ui_reset();
@@ -417,4 +419,28 @@ void
 ui_deparent(UIObject obj)
 {
 	ui_child_append(0, obj);
+}
+
+void
+ui_container_push(Rectangle *rect)
+{
+	arrbuf_insert(&container_stack, sizeof(*rect), rect);
+}
+
+void
+ui_container_pop(void)
+{
+	arrbuf_poptop(&container_stack, sizeof(Rectangle));
+}
+
+Rectangle *
+ui_container_get(void)
+{
+	return arrbuf_peektop(&container_stack, sizeof(Rectangle));
+}
+
+void
+ui_container_publish(Rectangle *rect)
+{
+	rect_accomodate(ui_container_get(), ui_container_get(), rect);
 }

@@ -176,6 +176,7 @@ void
 UI_SLIDER_event(UIObject obj, UIEvent *ev, Rectangle *rect)
 {
 	ui_default_mouse_handle(obj, ev, rect);
+	ui_container_publish(rect);
 	switch(ev->event_type) {
 	case UI_DRAW:
 		slider_draw(obj, rect);

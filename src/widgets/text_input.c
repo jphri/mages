@@ -17,6 +17,7 @@ ui_text_input_new(void)
 void 
 UI_TEXT_INPUT_event(UIObject obj, UIEvent *event, Rectangle *rect)
 {
+	ui_container_publish(rect);
 	switch(event->event_type) {
 	case UI_DRAW:
 		tinput_draw(obj, rect);

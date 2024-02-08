@@ -210,6 +210,11 @@ UIObject ui_new_object(UIObject parent, UIObjectType object_type);
 void     ui_del_object(UIObject object);
 void     ui_draw(void);
 
+void       ui_container_push(Rectangle *rect);
+void       ui_container_pop(void);
+Rectangle *ui_container_get(void);
+void       ui_container_publish(Rectangle *rect);
+
 void ui_set_hot(UIObject object);
 void ui_set_active(UIObject object);
 void ui_set_text_active(UIObject object);

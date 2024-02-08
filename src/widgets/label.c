@@ -67,6 +67,7 @@ label_draw(UIObject obj, Rectangle *rect)
 void
 UI_LABEL_event(UIObject label_obj, UIEvent *event, Rectangle *rect) 
 {
+	ui_container_publish(rect);
 	if(event->event_type == UI_DRAW)
 		label_draw(label_obj, rect);
 }

@@ -35,6 +35,7 @@ void
 UI_BUTTON_event(UIObject obj, UIEvent *ev, Rectangle *content)
 {
 	ui_default_mouse_handle(obj, ev, content);
+	ui_container_publish(content);
 	switch(ev->event_type) {
 	case UI_DRAW:
 		button_draw(obj, ev, content);
