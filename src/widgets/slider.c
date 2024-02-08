@@ -147,8 +147,10 @@ slider_button(UIObject obj, UIEvent *ev, Rectangle *rect)
 	(void)rect;
 	if(ui_get_active() == 0) {
 		if(ui_get_hot() == obj) {
-			if(ev->data.mouse.button == UI_MOUSE_LEFT && ev->data.mouse.state)
+			if(ev->data.mouse.button == UI_MOUSE_LEFT && ev->data.mouse.state) {
 				ui_set_active(obj);
+				slider_motion(obj, ev, rect);
+			}
 		}
 	}
 
