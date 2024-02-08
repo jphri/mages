@@ -126,7 +126,7 @@ slider_motion(UIObject obj, UIEvent *ev, Rectangle *rect)
 	rect_intersect(&handle_fix, rect, &info.handle_rect);
 	
 	if(ui_get_active() == obj) {
-		int p = ev->data.mouse.position[0] - rect->position[0];
+		float p = ev->data.mouse.position[0] - rect->position[0];
 			  p *= WIDGET(UI_SLIDER, obj)->max_value;
 			  p /= info.slider_half_size;
 			  p += WIDGET(UI_SLIDER, obj)->max_value;
@@ -137,7 +137,7 @@ slider_motion(UIObject obj, UIEvent *ev, Rectangle *rect)
 		if(p > WIDGET(UI_SLIDER, obj)->max_value)
 		 	p = WIDGET(UI_SLIDER, obj)->max_value;
 
-		ui_slider_set_value_raw(obj, p);
+		ui_slider_set_value_raw(obj, roundf(p));
 	}
 }
 
