@@ -18,6 +18,8 @@
 	UI_WIDGET(UI_IMAGE)      \
 	UI_WIDGET(UI_CHECKBOX)
 
+#define UI_LAYOUT_RELATIVE -1
+
 typedef enum {
 	#define UI_WIDGET(NAME) NAME,
 	UI_WIDGET_LIST
@@ -121,6 +123,7 @@ DEFINE_WIDGET(UI_LAYOUT) {
 	UILayoutOrder order;
 	vec4 border;
 	vec4 background;
+	float fixed_size;
 };
 
 DEFINE_WIDGET(UI_BUTTON) {
@@ -174,6 +177,8 @@ void     ui_layout_set_order(UIObject layout, UILayoutOrder order);
 void     ui_layout_set_border(UIObject layout, float left, float right, float up, float down);
 void     ui_layout_set_background(UIObject layout, vec4 color);
 void     ui_layout_append(UIObject layout, UIObject child);
+/* size < 0 = relative */
+void     ui_layout_set_fixed_size(UIObject layout, float size);
 
 UIObject ui_button_new(void);
 void     ui_button_set_label(UIObject object, UIObject label);
