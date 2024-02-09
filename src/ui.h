@@ -19,6 +19,7 @@
 	UI_WIDGET(UI_CHECKBOX)
 
 #define UI_LAYOUT_RELATIVE -1
+#define UI_SLIDER_HANDLE_SIZE_RELATIVE -1
 
 typedef enum {
 	#define UI_WIDGET(NAME) NAME,
@@ -137,6 +138,7 @@ DEFINE_WIDGET(UI_SLIDER) {
 	int value, old_value;
 	float min, max;
 	void *user_ptr;
+	float handle_size;
 	void (*cbk)(UIObject, void *);
 };
 
@@ -198,6 +200,7 @@ void     ui_slider_set_precision(UIObject slider, int values);
 void     ui_slider_set_min_value(UIObject slider, float min);
 void     ui_slider_set_max_value(UIObject slider, float max);
 void     ui_slider_set_callback(UIObject slider, void *userptr, void (*cbk)(UIObject, void *));
+void     ui_slider_set_handle_size(UIObject object, float size);
 
 UIObject ui_text_input_new(void);
 StrView  ui_text_input_get_str(UIObject obj);

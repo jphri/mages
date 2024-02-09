@@ -25,6 +25,7 @@ ui_slider_new(void)
 	WIDGET(UI_SLIDER, slider)->max = 1.0;
 	WIDGET(UI_SLIDER, slider)->min = 0.0;
 	WIDGET(UI_SLIDER, slider)->max_value = 64;
+	WIDGET(UI_SLIDER, slider)->handle_size = 5.0;
 	return slider;
 }
 
@@ -32,6 +33,12 @@ void
 ui_slider_set_precision(UIObject slider, int max_value)
 {
 	WIDGET(UI_SLIDER, slider)->max_value = max_value;
+}
+
+void
+ui_slider_set_handle_size(UIObject object, float size)
+{
+	WIDGET(UI_SLIDER, object)->handle_size = size;
 }
 
 void
@@ -185,8 +192,13 @@ static SliderInfo slider_info(UIObject obj, Rectangle *rect)
 {
 	SliderInfo slider;
 	UI_SLIDER_struct *ls = ui_data(obj);
+
+	if(WIDGET(UI_SLIDER, obj)->handle_size < 0) {
+		slider.width = rect->half_size[0] / (WIDGET(UI_SLIDER, obj)->max_value + 1);
+	} else {
+		slider.width = WIDGET(UI_SLIDER, obj)->handle_size;
+	}
 	
-	slider.width = 6.0;
 	slider.border = 10.0;
 	slider.slider_border = slider.width;
 	slider.slider_half_size = rect->half_size[0] - slider.slider_border;
