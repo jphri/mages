@@ -92,6 +92,12 @@ ui_slider_set_callback(UIObject slider, void *userptr, void (*cbk)(UIObject, voi
 	sdata->cbk = cbk;
 }
 
+void
+ui_slider_set_vertical(UIObject slider, bool v)
+{
+	WIDGET(UI_SLIDER, slider)->vertical = v;
+}
+
 static void
 slider_draw(UIObject obj, Rectangle *rect)
 {
@@ -130,10 +136,12 @@ slider_motion(UIObject obj, UIEvent *ev, Rectangle *rect)
 	SliderInfo info = slider_info(obj, rect);
 	Rectangle handle_fix;
 
+	int axis = WIDGET(UI_SLIDER, obj)->vertical;
+
 	rect_intersect(&handle_fix, rect, &info.handle_rect);
 	
 	if(ui_get_active() == obj) {
-		float p = ev->data.mouse.position[0] - rect->position[0];
+		float p = ev->data.mouse.position[axis] - rect->position[axis];
 			  p *= WIDGET(UI_SLIDER, obj)->max_value;
 			  p /= info.slider_half_size;
 			  p += WIDGET(UI_SLIDER, obj)->max_value;
@@ -201,13 +209,16 @@ static SliderInfo slider_info(UIObject obj, Rectangle *rect)
 	
 	slider.border = 10.0;
 	slider.slider_border = slider.width;
-	slider.slider_half_size = rect->half_size[0] - slider.slider_border;
 	slider.perc = ls->value / (float)ls->max_value;
 
-	slider.handle_rect.half_size[0] = slider.width;
-	slider.handle_rect.half_size[1] = rect->half_size[1];
-	slider.handle_rect.position[0] = rect->position[0] + (slider.perc * 2.0 - 1.0) * slider.slider_half_size;
-	slider.handle_rect.position[1] = rect->position[1];
+	int axis = WIDGET(UI_SLIDER, obj)->vertical,
+	    anti_axis = 1 - axis;
+
+	slider.slider_half_size = rect->half_size[axis] - slider.slider_border;
+	slider.handle_rect.half_size[axis] = slider.width;
+	slider.handle_rect.half_size[anti_axis] = rect->half_size[anti_axis];
+	slider.handle_rect.position[axis] = rect->position[axis] + (slider.perc * 2.0 - 1.0) * slider.slider_half_size;
+	slider.handle_rect.position[anti_axis] = rect->position[anti_axis];
 
 	return slider;
 }

@@ -139,6 +139,7 @@ DEFINE_WIDGET(UI_SLIDER) {
 	float min, max;
 	void *user_ptr;
 	float handle_size;
+	bool vertical;
 	void (*cbk)(UIObject, void *);
 };
 
@@ -201,6 +202,7 @@ void     ui_slider_set_min_value(UIObject slider, float min);
 void     ui_slider_set_max_value(UIObject slider, float max);
 void     ui_slider_set_callback(UIObject slider, void *userptr, void (*cbk)(UIObject, void *));
 void     ui_slider_set_handle_size(UIObject object, float size);
+void     ui_slider_set_vertical(UIObject object, bool slider);
 
 UIObject ui_text_input_new(void);
 StrView  ui_text_input_get_str(UIObject obj);
