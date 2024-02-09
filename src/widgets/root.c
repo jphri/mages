@@ -3,7 +3,6 @@
 void
 UI_ROOT_event(UIObject obj, UIEvent *ev, Rectangle *rect)
 {
-	ui_body_push(rect);
 	switch(ev->event_type) {
 	case UI_DRAW:
 		/* the only retarded that do this in reverse is the root, lol */
@@ -25,8 +24,4 @@ UI_ROOT_event(UIObject obj, UIEvent *ev, Rectangle *rect)
 		}
 		break;
 	}
-	if(!rect_contains_rect(rect, ui_body_get())) {
-		printf("Need increase...\n");
-	}
-	ui_body_pop();
 }

@@ -79,6 +79,7 @@ UI_WINDOW_event(UIObject obj, UIEvent *event, Rectangle *rect)
 	Rectangle title_rect;
 
 	(void)rect;
+
 	if(WINDOW(obj)->decorated) {
 		// add border
 		vec2_dup(all_rect.position, WINDOW(obj)->window_rect.position);
@@ -102,7 +103,6 @@ UI_WINDOW_event(UIObject obj, UIEvent *event, Rectangle *rect)
 		window_draw(obj, &all_rect);
 	}
 	(void)title_rect;
-	ui_body_publish(&all_rect);
 
 	ui_default_mouse_handle(obj, event, &all_rect);
 
