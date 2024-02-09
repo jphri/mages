@@ -42,7 +42,7 @@ UI_CHECKBOX_event(UIObject obj, UIEvent *event, Rectangle *rect)
 	actual_rect.half_size[0] = aspect;
 	actual_rect.half_size[1] = aspect;
 
-	ui_container_publish(rect);
+	ui_body_publish(rect);
 
 	ui_default_mouse_handle(obj, event, &actual_rect);
 	switch(event->event_type) {

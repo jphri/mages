@@ -422,25 +422,25 @@ ui_deparent(UIObject obj)
 }
 
 void
-ui_container_push(Rectangle *rect)
+ui_body_push(Rectangle *rect)
 {
 	arrbuf_insert(&container_stack, sizeof(*rect), rect);
 }
 
 void
-ui_container_pop(void)
+ui_body_pop(void)
 {
 	arrbuf_poptop(&container_stack, sizeof(Rectangle));
 }
 
 Rectangle *
-ui_container_get(void)
+ui_body_get(void)
 {
 	return arrbuf_peektop(&container_stack, sizeof(Rectangle));
 }
 
 void
-ui_container_publish(Rectangle *rect)
+ui_body_publish(Rectangle *rect)
 {
-	rect_accomodate(ui_container_get(), ui_container_get(), rect);
+	rect_accomodate(ui_body_get(), ui_body_get(), rect);
 }

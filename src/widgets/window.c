@@ -102,7 +102,7 @@ UI_WINDOW_event(UIObject obj, UIEvent *event, Rectangle *rect)
 		window_draw(obj, &all_rect);
 	}
 	(void)title_rect;
-	ui_container_publish(&all_rect);
+	ui_body_publish(&all_rect);
 
 	ui_default_mouse_handle(obj, event, &all_rect);
 
