@@ -46,7 +46,7 @@ static int current_layer = 0;
 static MouseState mouse_state;
 static vec2 mouse_position;
 
-static UIObject controls_ui, context_menu, context_button;
+static UIObject controls_ui, context_menu, context_button, tileset_window;
 static CursorMode cursor_mode;
 static float cursor_mode_size;
 static bool context_shown;
@@ -61,6 +61,7 @@ static void cursorchb_cbk(UIObject obj, void *userptr);
 static void draw_cursor(void);
 
 static void context_btn_cbk(UIObject obj, void *ptr);
+static void tileset_btn_cbk(UIObject obj, void *ptr);
 
 static void open_context_menu(void);
 static void close_context_menu(void);
@@ -313,6 +314,32 @@ edit_init(void)
 		ui_window_append_child(context_menu, layout);
 	}
 
+	tileset_window = ui_window_new();
+	ui_window_set_decorated(tileset_window, false);
+	ui_window_set_size(tileset_window, (vec2){ 150, 150 });
+	ui_window_set_position(tileset_window, (vec2){ 800 - 150, 600 - 150 });
+	{
+		/* tileset goes here */
+	}
+
+	UIObject tileset_btn_window = ui_window_new();
+	ui_window_set_decorated(tileset_btn_window, false);
+	ui_window_set_size(tileset_btn_window, (vec2){ 30, 10 });
+	ui_window_set_position(tileset_btn_window, (vec2){ 800 - 30, 600 - 10 });
+	{
+		UIObject tileset_btn = ui_button_new();
+		ui_button_set_callback(tileset_btn, NULL, tileset_btn_cbk);
+		{
+			UIObject tileset_lbl = ui_label_new();
+
+			ui_label_set_color(tileset_lbl, (vec4){ 1.0, 1.0, 0.0, 1.0 });
+			ui_label_set_text(tileset_lbl, "Tiles");
+			ui_label_set_alignment(tileset_lbl, UI_LABEL_ALIGN_CENTER);
+			ui_button_set_label(tileset_btn, tileset_lbl);
+		}
+		ui_window_append_child(tileset_btn_window, tileset_btn);
+	}
+
 	context_button = ui_window_new();
 	ui_window_set_decorated(context_button, false);
 	ui_window_set_size(context_button, (vec2){ 30, 10 });
@@ -334,7 +361,10 @@ edit_init(void)
 
 		ui_window_append_child(context_button, context_btn);
 	}
+
+	(void)tileset_btn_cbk;
 	
+	ui_child_append(tiles_root, tileset_btn_window);
 	ui_child_append(tiles_root, controls_ui);
 	ui_child_append(tiles_root, context_button);
 }
@@ -500,4 +530,19 @@ layer_slider_cbk(UIObject slider, void *ptr)
 {
 	(void)ptr;
 	current_layer = ui_slider_get_value(slider);
+}
+
+void
+tileset_btn_cbk(UIObject obj, void *ptr)
+{
+	(void)ptr;
+	obj = ui_get_parent(ui_get_parent(obj));
+
+	if(ui_get_parent(tileset_window) == 0) {
+		ui_child_append(tiles_root, tileset_window);
+		ui_window_set_position(obj, (vec2){ 800 - 30, 600 - 10 - 300 });
+	} else {
+		ui_deparent(tileset_window);
+		ui_window_set_position(obj, (vec2){ 800 - 30, 600 - 10 });
+	}
 }
