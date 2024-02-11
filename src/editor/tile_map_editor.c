@@ -265,7 +265,7 @@ GAME_STATE_LEVEL_EDIT_init(void)
 
 	editor.map_atlas = SPRITE_TERRAIN;
 	if(editor.map == NULL)
-		editor.map = map_load("maps/test_map_2.map");
+		editor.map = map_alloc(16, 16);
 
 	for(int i = 0; i < LAST_EDITOR_STATE; i++) {
 		if(state_vtable[i].init)
