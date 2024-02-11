@@ -58,6 +58,7 @@ static UIObject cursor_checkboxes[LAST_CURSOR_MODE];
 static void layer_slider_cbk(UIObject slider, void *userptr);
 static void cursor_size_cbk(UIObject obj, void *userptr);
 static void cursorchb_cbk(UIObject obj, void *userptr);
+static void tileselect_cbk(UIObject obj, void *userptr);
 static void draw_cursor(void);
 
 static void context_btn_cbk(UIObject obj, void *ptr);
@@ -320,6 +321,7 @@ edit_init(void)
 	ui_window_set_position(tileset_window, (vec2){ 800 - 150, 600 - 150 });
 	{
 		UIObject tileset = ui_tileset_sel_new();
+		ui_tileset_sel_set_cbk(tileset, NULL, tileselect_cbk);
 
 		ui_window_append_child(tileset_window, tileset);
 	}
@@ -547,4 +549,12 @@ tileset_btn_cbk(UIObject obj, void *ptr)
 		ui_deparent(tileset_window);
 		ui_window_set_position(obj, (vec2){ 800 - 30, 600 - 10 });
 	}
+}
+
+void 
+tileselect_cbk(UIObject obj, void *userptr)
+{
+	(void)userptr;
+
+	editor.current_tile = ui_tileset_sel_get_selected(obj);
 }

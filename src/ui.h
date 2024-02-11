@@ -167,6 +167,10 @@ DEFINE_WIDGET(UI_TILESET_SEL) {
 	vec2 begin_offset;
 	
 	int rows, cols;
+	int selected;
+
+	void *userptr;
+	void (*cbk)(UIObject, void *);
 };
 
 void ui_init(void);
@@ -228,8 +232,8 @@ void     ui_checkbox_set_callback(UIObject obj, void *userptr, void(*cbk)(UIObje
 
 UIObject ui_tileset_sel_new(void);
 void     ui_tileset_sel_set_tileset(UIObject tilesel, SpriteType tileset);
-UIObject ui_tileset_sel_get_selected(UIObject tilesel);
-void     ui_tileset_sel_cbk(UIObject tilesel, void (*)(UIObject obj, void *userptr));
+int      ui_tileset_sel_get_selected(UIObject tilesel);
+void     ui_tileset_sel_set_cbk(UIObject tilesel, void *userptr, void (*)(UIObject obj, void *userptr));
 
 UIObject ui_new_object(UIObject parent, UIObjectType object_type);
 void     ui_del_object(UIObject object);
