@@ -1043,6 +1043,13 @@ parser_font_render(struct CharData *char_data, Font font, vec2 char_offset, void
 	);
 }
 
+void
+gfx_sprite_count_rows_cols(SpriteType type, int *rows, int *cols)
+{
+	*rows = sprite_atlas[type].rows;
+	*cols = sprite_atlas[type].cols;
+}
+
 static void
 sprite_buffer_reserve(int count_sprites)
 {
