@@ -37,6 +37,9 @@ static State state_vtable[] = {
 	}
 };
 
+static UIObject new_window;
+static void newbtn_cbk(UIObject btn, void *userptr);
+
 static void select_mode_cbk(UIObject obj, void *ptr)
 {
 	(void)obj;
@@ -79,6 +82,110 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	ui_window_append_child(window, layout);
 	
 	ui_child_append(ui_root(), window);
+
+	UIObject file_buttons_window = ui_window_new();
+	ui_window_set_decorated(file_buttons_window, false);
+	ui_window_set_size(file_buttons_window, (vec2){ 40, 40 });
+	ui_window_set_position(file_buttons_window, UI_ORIGIN_TOP_RIGHT, (vec2){ -40, 40 });
+	{
+		UIObject layout = ui_layout_new();
+		ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
+		{
+			UIObject save_btn = ui_button_new();
+			{
+				UIObject save_label = ui_label_new();
+				ui_label_set_text(save_label, "Save");
+				ui_label_set_color(save_label, (vec4){ 1.0, 1.0, 0.0, 1.0 });
+				ui_button_set_label(save_btn, save_label);
+			}
+			ui_layout_append(layout, save_btn);
+
+			UIObject load_btn = ui_button_new();
+			{
+				UIObject load_label = ui_label_new();
+				ui_label_set_text(load_label, "Load");
+				ui_label_set_color(load_label, (vec4){ 1.0, 1.0, 0.0, 1.0 });
+				ui_button_set_label(load_btn, load_label);
+			}
+			ui_layout_append(layout, load_btn);
+
+			UIObject new_btn = ui_button_new();
+			ui_button_set_callback(new_btn, NULL, newbtn_cbk);
+			{
+				UIObject label = ui_label_new();
+				ui_label_set_text(label, "New");
+				ui_label_set_color(label, (vec4){ 1.0, 1.0, 0.0, 1.0 });
+				ui_button_set_label(new_btn, label);
+			}
+			ui_layout_append(layout, new_btn);
+		}
+
+		ui_window_append_child(file_buttons_window, layout);
+	}
+	ui_child_append(ui_root(), file_buttons_window);
+
+	new_window = ui_window_new();
+	ui_window_set_size(new_window, (vec2){ 120, 90 });
+	ui_window_set_position(new_window, UI_ORIGIN_CENTER, (vec2){ 0.0, 0.0 });
+	ui_window_set_title(new_window, "New");
+	ui_window_set_decorated(new_window, true);
+	{
+		UIObject layout = ui_layout_new();
+		ui_layout_set_border(layout, 30, 30, 20, 20);
+		ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
+		ui_layout_set_fixed_size(layout, 20.0);
+		{
+			UIObject subv, lbl;
+			
+			#define SUBV(NAME_FIELD)\
+				subv = ui_layout_new(); \
+				ui_layout_set_order(subv, UI_LAYOUT_HORIZONTAL); \
+				ui_layout_set_border(subv, 5, 5, 5, 5); \
+				lbl = ui_label_new(); \
+				ui_label_set_alignment(lbl, UI_LABEL_ALIGN_CENTER);\
+				ui_label_set_color(lbl, (vec4){ 1.0, 1.0, 0.0, 1.0 });\
+				ui_label_set_text(lbl, NAME_FIELD);\
+				ui_child_append(subv, lbl); 
+
+			#define END_SUBV ui_layout_append(layout, subv)
+			
+			SUBV("Width: ") {
+				UIObject text = ui_text_input_new();
+				ui_child_append(subv, text);
+			} END_SUBV;
+
+			SUBV("Height: ") {
+				UIObject text = ui_text_input_new();
+				ui_child_append(subv, text);
+			} END_SUBV;
+
+			subv = ui_layout_new(); \
+			ui_layout_set_order(subv, UI_LAYOUT_HORIZONTAL); \
+			ui_layout_set_border(subv, 5, 5, 5, 5);
+			{
+				UIObject new = ui_button_new();
+				{
+					UIObject label = ui_label_new();
+					ui_label_set_text(label, "New");
+					ui_label_set_alignment(label, UI_LABEL_ALIGN_CENTER);
+					ui_button_set_label(new, label);
+				}
+				ui_child_append(subv, new);
+
+				UIObject cancel = ui_button_new();
+				{
+					UIObject label = ui_label_new();
+					ui_label_set_text(label, "Cancel");
+					ui_label_set_alignment(label, UI_LABEL_ALIGN_CENTER);
+					ui_button_set_label(cancel, label);
+				}
+				ui_child_append(subv, cancel);
+			}
+			ui_child_append(layout, subv);
+		}
+
+		ui_window_append_child(new_window, layout);
+	}
 
 	editor.map_atlas = SPRITE_TERRAIN;
 	if(editor.map == NULL)
@@ -198,4 +305,13 @@ editor_change_state(EditorState state)
 	}
 	editor.editor_state = state;
 	
+}
+
+void
+newbtn_cbk(UIObject btn, void *userptr)
+{
+	(void)btn;
+	(void)userptr;
+
+	ui_child_prepend(ui_root(), new_window);
 }
