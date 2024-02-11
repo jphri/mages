@@ -1,7 +1,7 @@
 #include "../ui.h"
 #include "SDL_log.h"
 
-#define SPRITE_SIZE 16
+#define SPRITE_SIZE 32
 #define SCALE 1.0
 
 #define TSET(OBJ) WIDGET(UI_TILESET_SEL, OBJ)
