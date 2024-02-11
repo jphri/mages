@@ -2,7 +2,6 @@
 #include "SDL_log.h"
 
 #define SPRITE_SIZE 32
-#define SCALE 1.0
 
 #define TSET(OBJ) WIDGET(UI_TILESET_SEL, OBJ)
 
@@ -13,8 +12,22 @@ UIObject
 ui_tileset_sel_new(void)
 {
 	UIObject tileset =  ui_new_object(0, UI_TILESET_SEL);
+	UIObject hscroll = ui_slider_new();
+	UIObject vscroll = ui_slider_new();
+
+	ui_slider_enable_label(hscroll, false);
+	ui_slider_enable_label(vscroll, false);
+	ui_slider_set_vertical(vscroll, true);
+
+
+	ui_child_append(tileset, hscroll);
+	ui_child_append(tileset, vscroll);
+
 	gfx_sprite_count_rows_cols(SPRITE_TERRAIN, &TSET(tileset)->rows, &TSET(tileset)->cols);
 	TSET(tileset)->cbk = NULL;
+	TSET(tileset)->hscroll = hscroll;
+	TSET(tileset)->vscroll = vscroll;
+
 	return tileset;
 }
 
@@ -36,6 +49,44 @@ UI_TILESET_SEL_event(UIObject obj, UIEvent *ev, Rectangle *r)
 {
 	(void)obj;
 	ui_default_mouse_handle(obj, ev, r);
+
+	vec2 line_min, line_max;
+	rect_boundaries(line_min, line_max, r);
+	
+	line_max[0] = line_min[0] + TSET(obj)->rows * SPRITE_SIZE;
+	line_max[1] = line_min[1] + TSET(obj)->cols * SPRITE_SIZE ;
+
+	Rectangle total = rect_from_boundaries(line_min, line_max);
+
+	if(total.position[1] > r->position[1]) {
+		float handle_size = r->half_size[1] * r->half_size[1] / total.half_size[1];
+
+		ui_slider_set_min_value(TSET(obj)->vscroll, 0.0);
+		ui_slider_set_max_value(TSET(obj)->vscroll, total.position[1] - r->position[1] + 5.0);
+		ui_slider_set_precision(TSET(obj)->vscroll, total.position[1] - r->position[1] + 5);
+		ui_slider_set_handle_size(TSET(obj)->vscroll, handle_size);
+
+		ui_call_event(TSET(obj)->vscroll, ev, &(Rectangle){
+			.position = { r->position[0] + r->half_size[0] - 5.0, r->position[1] },
+			.half_size = { 5.0, r->half_size[1] }
+		});
+	}
+
+	if(total.position[0] > r->position[0]) {
+		float rect_offset = total.position[1] > r->position[1] ? 5.0 : 0.0;
+		float handle_size = (r->half_size[1] - rect_offset) * r->half_size[1] / total.half_size[1];
+
+		ui_slider_set_min_value(TSET(obj)->hscroll, 0.0);
+		ui_slider_set_max_value(TSET(obj)->hscroll, total.position[0] - r->position[0] + 5.0);
+		ui_slider_set_precision(TSET(obj)->hscroll, total.position[0] - r->position[0] + 5);
+		ui_slider_set_handle_size(TSET(obj)->hscroll, handle_size);
+
+		ui_call_event(TSET(obj)->hscroll, ev, &(Rectangle){
+			.position = { r->position[0] - rect_offset, r->position[1] + r->half_size[1] - 5.0 },
+			.half_size = { r->half_size[0] - rect_offset, 5.0 }
+		});
+	}
+
 	switch(ev->event_type) {
 	case UI_DRAW:
 		draw_tileset(obj, r);
@@ -54,12 +105,20 @@ draw_tileset(UIObject obj, Rectangle *rect)
 	vec2 line_min, line_max;
 	rect_boundaries(line_min, line_max, rect);
 
-	line_max[0] = line_min[0] + TSET(obj)->rows * SPRITE_SIZE * SCALE;
-	line_max[1] = line_min[1] + TSET(obj)->cols * SPRITE_SIZE * SCALE;
+	line_max[0] = line_min[0] + TSET(obj)->rows * SPRITE_SIZE;
+	line_max[1] = line_min[1] + TSET(obj)->cols * SPRITE_SIZE ;
 
 	for(int i = 0; i < TSET(obj)->rows * TSET(obj)->cols; i++) {
-		float x = (     (i % TSET(obj)->cols) + 0.5) * SPRITE_SIZE * SCALE + line_min[0];
-		float y = ((int)(i / TSET(obj)->cols) + 0.5) * SPRITE_SIZE * SCALE + line_min[1];
+		float x = (     (i % TSET(obj)->cols) + 0.5) * SPRITE_SIZE + line_min[0];
+		float y = ((int)(i / TSET(obj)->cols) + 0.5) * SPRITE_SIZE + line_min[1];
+
+		Rectangle tile_rect = {
+			.position  = { x, y },
+			.half_size = { SPRITE_SIZE / 2.0, SPRITE_SIZE / 2.0 }
+		};
+
+		if(!rect_contains_rect(rect, &tile_rect))
+			continue;
 
 		int spr = i - 1;
 		int spr_x = spr % TSET(obj)->cols;
@@ -106,8 +165,8 @@ tileset_button(UIObject obj, UIEvent *ev, Rectangle *rect)
 	Rectangle r;
 	rect_boundaries(line_min, line_max, rect);
 
-	line_max[0] = line_min[0] + TSET(obj)->rows * SPRITE_SIZE * SCALE;
-	line_max[1] = line_min[1] + TSET(obj)->cols * SPRITE_SIZE * SCALE;
+	line_max[0] = line_min[0] + TSET(obj)->rows * SPRITE_SIZE ;
+	line_max[1] = line_min[1] + TSET(obj)->cols * SPRITE_SIZE ;
 
 	r = rect_from_boundaries(line_min, line_max);
 

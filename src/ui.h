@@ -172,6 +172,8 @@ DEFINE_WIDGET(UI_TILESET_SEL) {
 
 	void *userptr;
 	void (*cbk)(UIObject, void *);
+
+	UIObject hscroll, vscroll;
 };
 
 void ui_init(void);
