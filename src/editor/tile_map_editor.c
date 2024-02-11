@@ -73,7 +73,7 @@ GAME_STATE_LEVEL_EDIT_init(void)
 
 	UIObject window = ui_window_new();
 	ui_window_set_size(window, (vec2){ 80, 30 });
-	ui_window_set_position(window, (vec2){ 80 + 0, 30 + 0 });
+	ui_window_set_position(window, UI_ORIGIN_TOP_LEFT, (vec2){ 80, 30 });
 	ui_window_set_border(window, (vec2){ 2, 2 });
 	ui_window_set_decorated(window, false);
 	ui_window_append_child(window, layout);

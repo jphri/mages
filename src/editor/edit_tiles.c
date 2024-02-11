@@ -229,7 +229,7 @@ edit_init(void)
 
 	controls_ui = ui_window_new();
 	ui_window_set_size(controls_ui, (vec2){ 90, 15 });
-	ui_window_set_position(controls_ui, (vec2){ 0 + 90, 600 - 15 });
+	ui_window_set_position(controls_ui, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 0 + 90, - 15 });
 	ui_window_set_decorated(controls_ui, false);
 	{
 		UIObject cursor_layout = ui_layout_new();
@@ -252,7 +252,7 @@ edit_init(void)
 
 	context_menu = ui_window_new();
 	ui_window_set_size(context_menu, (vec2){ 90, 60 });
-	ui_window_set_position(context_menu, (vec2){ 90, 600 - 30 - 60 });
+	ui_window_set_position(context_menu, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 90, - 30 - 60 });
 	ui_window_set_decorated(context_menu, false);
 	{
 		UIObject layout = ui_layout_new();
@@ -309,7 +309,7 @@ edit_init(void)
 	tileset_window = ui_window_new();
 	ui_window_set_decorated(tileset_window, false);
 	ui_window_set_size(tileset_window, (vec2){ 150, 150 });
-	ui_window_set_position(tileset_window, (vec2){ 800 - 150, 600 - 150 });
+	ui_window_set_position(tileset_window, UI_ORIGIN_BOTTOM_RIGHT, (vec2){ - 150, - 150 });
 	{
 		UIObject tileset = ui_tileset_sel_new();
 		ui_tileset_sel_set_cbk(tileset, NULL, tileselect_cbk);
@@ -320,7 +320,7 @@ edit_init(void)
 	UIObject tileset_btn_window = ui_window_new();
 	ui_window_set_decorated(tileset_btn_window, false);
 	ui_window_set_size(tileset_btn_window, (vec2){ 30, 10 });
-	ui_window_set_position(tileset_btn_window, (vec2){ 800 - 30, 600 - 10 });
+	ui_window_set_position(tileset_btn_window, UI_ORIGIN_BOTTOM_RIGHT, (vec2){ -30, - 10 });
 	{
 		UIObject tileset_btn = ui_button_new();
 		ui_button_set_callback(tileset_btn, NULL, tileset_btn_cbk);
@@ -338,11 +338,7 @@ edit_init(void)
 	context_button = ui_window_new();
 	ui_window_set_decorated(context_button, false);
 	ui_window_set_size(context_button, (vec2){ 30, 10 });
-	if(context_shown) {
-		ui_window_set_position(context_button, (vec2){ 30, 600 - 120 - 30 - 10 });
-	} else {
-		ui_window_set_position(context_button, (vec2){ 30, 600 - 30 - 10 });
-	}
+	ui_window_set_position(context_button, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 30, - 30 - 10 });
 	{
 		UIObject context_btn = ui_button_new();
 		{
@@ -496,14 +492,14 @@ cursor_size_cbk(UIObject obj, void *userptr)
 void
 open_context_menu(void)
 {
-	ui_window_set_position(context_button, (vec2){ 30, 600 - 30 - 120 - 10 });
+	ui_window_set_position(context_button, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 30, - 30 - 120 - 10 });
 	ui_child_append(tiles_root, context_menu);
 }
 
 void
 close_context_menu(void)
 {
-	ui_window_set_position(context_button, (vec2){ 30, 600 - 30 - 10 });
+	ui_window_set_position(context_button, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 30, - 30 - 10 });
 	ui_deparent(context_menu);
 }
 
@@ -535,10 +531,10 @@ tileset_btn_cbk(UIObject obj, void *ptr)
 
 	if(ui_get_parent(tileset_window) == 0) {
 		ui_child_append(tiles_root, tileset_window);
-		ui_window_set_position(obj, (vec2){ 800 - 30, 600 - 10 - 300 });
+		ui_window_set_position(obj, UI_ORIGIN_BOTTOM_RIGHT, (vec2){ -30, -10 - 300 });
 	} else {
 		ui_deparent(tileset_window);
-		ui_window_set_position(obj, (vec2){ 800 - 30, 600 - 10 });
+		ui_window_set_position(obj,UI_ORIGIN_BOTTOM_RIGHT, (vec2){ -30, -10 });
 	}
 }
 

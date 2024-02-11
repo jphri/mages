@@ -339,6 +339,22 @@ ui_get_type(UIObject obj)
 	return UI_NODE(obj)->type;
 }
 
+void
+ui_position_translate(UIPosition *pos, Rectangle *bound, vec2 out_pos)
+{
+	vec2 min, max;
+	rect_boundaries(min, max, bound);
+
+	switch(pos->origin) {
+	case UI_ORIGIN_TOP_LEFT:     vec2_add(out_pos, pos->position, (vec2){ min[0], min[1] }); break;
+	case UI_ORIGIN_TOP_RIGHT:    vec2_add(out_pos, pos->position, (vec2){ max[0], min[1] }); break;
+	case UI_ORIGIN_BOTTOM_LEFT:  vec2_add(out_pos, pos->position, (vec2){ min[0], max[1] }); break;
+	case UI_ORIGIN_BOTTOM_RIGHT: vec2_add(out_pos, pos->position, (vec2){ max[0], max[1] }); break;
+	case UI_ORIGIN_CENTER:       vec2_add(out_pos, pos->position, bound->position); break;
+	case UI_ORIGIN_ABSOLUTE:     vec2_dup(out_pos, pos->position); break;
+	}
+}
+
 UIObject
 ui_get_text_active(void)
 {

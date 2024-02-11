@@ -45,10 +45,11 @@ ui_window_set_size(UIObject window, vec2 size)
 }
 
 void
-ui_window_set_position(UIObject window, vec2 position)
+ui_window_set_position(UIObject window, UIOrigin origin, vec2 position)
 {
 	UI_WINDOW_struct *wdata = ui_data(window);
-	vec2_dup(wdata->window_rect.position, position);
+	vec2_dup(wdata->position.position, position);
+	wdata->position.origin = origin;
 }
 
 void
@@ -78,8 +79,7 @@ UI_WINDOW_event(UIObject obj, UIEvent *event, Rectangle *rect)
 	Rectangle all_rect;
 	Rectangle title_rect;
 
-	(void)rect;
-
+	ui_position_translate(&WINDOW(obj)->position, rect, WINDOW(obj)->window_rect.position);
 	if(WINDOW(obj)->decorated) {
 		// add border
 		vec2_dup(all_rect.position, WINDOW(obj)->window_rect.position);
@@ -175,7 +175,7 @@ window_mouse_button(UIObject window, UIEvent *event)
 			if(ui_get_hot() == WINDOW(window)->title_layout && event->data.mouse.state) {
 				ui_set_active(WINDOW(window)->title_layout);
 				vec2_dup(WINDOW(window)->drag_begin, event->data.mouse.position);
-				vec2_dup(WINDOW(window)->drag_begin_pos, WINDOW(window)->window_rect.position);
+				vec2_dup(WINDOW(window)->drag_begin_pos, WINDOW(window)->position.position);
 			}
 		}
 	} else if(ui_get_active() == WINDOW(window)->title_layout) {
@@ -193,6 +193,6 @@ window_mouse_move(UIObject window, UIEvent *event)
 	if(ui_get_active() == WINDOW(window)->title_layout) {
 		vec2 delta;
 		vec2_sub(delta, WINDOW(window)->drag_begin, event->data.mouse.position);
-		vec2_sub(WINDOW(window)->window_rect.position, WINDOW(window)->drag_begin_pos, delta);
+		vec2_sub(WINDOW(window)->position.position, WINDOW(window)->drag_begin_pos, delta);
 	}
 }

@@ -79,6 +79,20 @@ typedef struct {
 	} data;
 } UIEvent;
 
+typedef enum {
+	UI_ORIGIN_TOP_LEFT,
+	UI_ORIGIN_TOP_RIGHT,
+	UI_ORIGIN_BOTTOM_LEFT,
+	UI_ORIGIN_BOTTOM_RIGHT,
+	UI_ORIGIN_CENTER,
+	UI_ORIGIN_ABSOLUTE
+} UIOrigin;
+
+typedef struct UIPosition {
+	vec2 position;
+	UIOrigin origin;
+} UIPosition;
+
 typedef unsigned int UIObject;
 typedef void UIEventProcessor(UIObject object, UIEvent *event, Rectangle *content);
 
@@ -104,6 +118,8 @@ DEFINE_WIDGET(UI_WINDOW) {
 
 	vec2 drag_begin;
 	vec2 drag_begin_pos;
+
+	UIPosition position;
 
 	bool decorated;
 };
@@ -182,7 +198,7 @@ bool ui_is_active(void);
 
 UIObject ui_window_new(void);
 void     ui_window_set_size(UIObject window, vec2 size);
-void     ui_window_set_position(UIObject window, vec2 position);
+void     ui_window_set_position(UIObject window, UIOrigin origin, vec2 position);
 void     ui_window_set_background(UIObject window, vec4 background);
 void     ui_window_set_title(UIObject window, const char *title);
 void     ui_window_set_border(UIObject window, vec2 border);
@@ -262,6 +278,8 @@ void     ui_child_prepend(UIObject parent, UIObject child);
 void     ui_deparent(UIObject child);
 
 UIObjectType ui_get_type(UIObject obj);
+
+void ui_position_translate(UIPosition *pos, Rectangle *bound, vec2 out_pos);
 
 void ui_update(void);
 void ui_mouse_motion(float x, float y);
