@@ -171,6 +171,7 @@ main(int argc, char *argv[])
 		ent_update(delta);
 
 		SDL_GetWindowSize(GLOBAL.window, &w, &h);
+		glViewport(0, 0, w, h);
 
 		gfx_make_framebuffers(w, h);
 		//gfx_setup_draw_framebuffers();
