@@ -5,6 +5,7 @@
 
 #define TSET(OBJ) WIDGET(UI_TILESET_SEL, OBJ)
 
+static void process_scrolls(UIObject tileset, UIEvent *ev, Rectangle *rect);
 static void draw_tileset(UIObject tileset, Rectangle *rect);
 static void tileset_button(UIObject tileset, UIEvent *ev, Rectangle *rect);
 
@@ -55,51 +56,17 @@ UI_TILESET_SEL_event(UIObject obj, UIEvent *ev, Rectangle *r)
 	(void)obj;
 	ui_default_mouse_handle(obj, ev, r);
 
-	vec2 line_min, line_max;
-	rect_boundaries(line_min, line_max, r);
-	
-	line_max[0] = line_min[0] + TSET(obj)->rows * SPRITE_SIZE;
-	line_max[1] = line_min[1] + TSET(obj)->cols * SPRITE_SIZE ;
-
-	Rectangle total = rect_from_boundaries(line_min, line_max);
-
-	if(total.position[1] > r->position[1]) {
-		float handle_size = r->half_size[1] * r->half_size[1] / total.half_size[1];
-		float delta = (total.position[1] - r->position[1]) * 2.0;
-
-		ui_slider_set_min_value(TSET(obj)->vscroll, 0.0);
-		ui_slider_set_max_value(TSET(obj)->vscroll, delta + 10);
-		ui_slider_set_precision(TSET(obj)->vscroll, delta + 10);
-		ui_slider_set_handle_size(TSET(obj)->vscroll, handle_size);
-
-		ui_call_event(TSET(obj)->vscroll, ev, &(Rectangle){
-			.position = { r->position[0] + r->half_size[0] - 5.0, r->position[1] },
-			.half_size = { 5.0, r->half_size[1] }
-		});
-	}
-
-	if(total.position[0] > r->position[0]) {
-		float rect_offset = total.position[1] > r->position[1] ? 5.0 : 0.0;
-		float handle_size = (r->half_size[1] - rect_offset) * r->half_size[1] / total.half_size[1];
-		float delta = (total.position[0] - r->position[0]) * 2.0;
-
-		ui_slider_set_min_value(TSET(obj)->hscroll, 0.0);
-		ui_slider_set_max_value(TSET(obj)->hscroll, delta + 10);
-		ui_slider_set_precision(TSET(obj)->hscroll, delta + 10);
-		ui_slider_set_handle_size(TSET(obj)->hscroll, handle_size);
-
-		ui_call_event(TSET(obj)->hscroll, ev, &(Rectangle){
-			.position = { r->position[0] - rect_offset, r->position[1] + r->half_size[1] - 5.0 },
-			.half_size = { r->half_size[0] - rect_offset, 5.0 }
-		});
-	}
-
 	switch(ev->event_type) {
 	case UI_DRAW:
 		draw_tileset(obj, r);
+		process_scrolls(obj, ev, r);
 		break;
 	case UI_MOUSE_BUTTON:
+		process_scrolls(obj, ev, r);
 		tileset_button(obj, ev, r);
+		break;
+	case UI_MOUSE_MOTION:
+		process_scrolls(obj, ev, r);
 		break;
 	default:
 		break;
@@ -170,7 +137,7 @@ tileset_button(UIObject obj, UIEvent *ev, Rectangle *rect)
 	line_max[1] = line_min[1] + TSET(obj)->cols * SPRITE_SIZE;
 
 	r = rect_from_boundaries(line_min, line_max);
-
+	
 	if(ui_get_hot() == obj && ev->data.mouse.button == UI_MOUSE_LEFT && ev->data.mouse.state) {
 		vec2 p;
 		if(!rect_contains_point(&r, ev->data.mouse.position))
@@ -184,6 +151,49 @@ tileset_button(UIObject obj, UIEvent *ev, Rectangle *rect)
 		TSET(obj)->selected = index;
 		if(TSET(obj)->cbk)
 			TSET(obj)->cbk(obj, TSET(obj)->userptr);
+	}
+}
+
+void
+process_scrolls(UIObject obj, UIEvent *ev, Rectangle *r)
+{
+	vec2 line_min, line_max;
+	rect_boundaries(line_min, line_max, r);
+	
+	line_max[0] = line_min[0] + TSET(obj)->rows * SPRITE_SIZE;
+	line_max[1] = line_min[1] + TSET(obj)->cols * SPRITE_SIZE ;
+
+	Rectangle total = rect_from_boundaries(line_min, line_max);
+
+	if(total.position[1] > r->position[1]) {
+		float handle_size = r->half_size[1] * r->half_size[1] / total.half_size[1];
+		float delta = (total.position[1] - r->position[1]) * 2.0;
+
+		ui_slider_set_min_value(TSET(obj)->vscroll, 0.0);
+		ui_slider_set_max_value(TSET(obj)->vscroll, delta + 10);
+		ui_slider_set_precision(TSET(obj)->vscroll, delta + 10);
+		ui_slider_set_handle_size(TSET(obj)->vscroll, handle_size);
+
+		ui_call_event(TSET(obj)->vscroll, ev, &(Rectangle){
+			.position = { r->position[0] + r->half_size[0] - 5.0, r->position[1] },
+			.half_size = { 5.0, r->half_size[1] }
+		});
+	}
+
+	if(total.position[0] > r->position[0]) {
+		float rect_offset = total.position[1] > r->position[1] ? 5.0 : 0.0;
+		float handle_size = (r->half_size[1] - rect_offset) * r->half_size[1] / total.half_size[1];
+		float delta = (total.position[0] - r->position[0]) * 2.0;
+
+		ui_slider_set_min_value(TSET(obj)->hscroll, 0.0);
+		ui_slider_set_max_value(TSET(obj)->hscroll, delta + 10);
+		ui_slider_set_precision(TSET(obj)->hscroll, delta + 10);
+		ui_slider_set_handle_size(TSET(obj)->hscroll, handle_size);
+
+		ui_call_event(TSET(obj)->hscroll, ev, &(Rectangle){
+			.position = { r->position[0] - rect_offset, r->position[1] + r->half_size[1] - 5.0 },
+			.half_size = { r->half_size[0] - rect_offset, 5.0 }
+		});
 	}
 }
 
