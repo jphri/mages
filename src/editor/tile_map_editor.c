@@ -330,7 +330,19 @@ newbtn_new_cbk(UIObject obj, void *userptr)
 	(void)obj;
 	(void)userptr;
 
-	/* TODO: create new window here */
+	int width, height;
+
+	StrView width_text = ui_text_input_get_str(new_width);
+	StrView height_text = ui_text_input_get_str(new_height);
+
+	if(!strview_int(width_text, &width))
+		return;
+
+	if(!strview_int(height_text, &height))
+		return;
+	
+	map_free(editor.map);
+	editor.map = map_alloc(width, height);
 	ui_deparent(new_window);
 }
 
