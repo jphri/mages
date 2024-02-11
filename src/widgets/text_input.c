@@ -17,6 +17,14 @@ ui_text_input_new(void)
 	return obj;
 }
 
+StrView
+ui_text_input_get_str(UIObject obj)
+{
+	void *buffer = WIDGET(UI_TEXT_INPUT, obj)->text_buffer.data;
+	size_t size  = WIDGET(UI_TEXT_INPUT, obj)->text_buffer.size;
+	return to_strview_buffer(buffer, size);
+}
+
 void 
 ui_text_input_set_filter(UIObject obj, int (*filter)(int codepoint))
 {
