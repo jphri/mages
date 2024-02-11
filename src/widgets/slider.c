@@ -26,7 +26,14 @@ ui_slider_new(void)
 	WIDGET(UI_SLIDER, slider)->min = 0.0;
 	WIDGET(UI_SLIDER, slider)->max_value = 64;
 	WIDGET(UI_SLIDER, slider)->handle_size = 5.0;
+	WIDGET(UI_SLIDER, slider)->label = true;
 	return slider;
+}
+
+void
+ui_slider_enable_label(UIObject obj, bool value)
+{
+	WIDGET(UI_SLIDER, obj)->label = value;
 }
 
 void
@@ -124,11 +131,14 @@ slider_draw(UIObject obj, Rectangle *rect)
 		0.0, 
 		colors[state]
 	);
-	gfx_font_size(label_position, FONT_ROBOTO, 12/32.0, "%0.2f", ui_slider_get_value(obj));
-	vec2_sub(label_position, rect->position, label_position);
 
-	gfx_draw_font2(FONT_ROBOTO, label_position, 12/32.0, (vec4){ 1.0, 1.0, 1.0, 1.0 }, "%0.2f", ui_slider_get_value(obj));
+	if(WIDGET(UI_SLIDER, obj)->label) {
+		gfx_font_size(label_position, FONT_ROBOTO, 12/32.0, "%0.2f", ui_slider_get_value(obj));
+		vec2_sub(label_position, rect->position, label_position);
+		gfx_draw_font2(FONT_ROBOTO, label_position, 12/32.0, (vec4){ 1.0, 1.0, 1.0, 1.0 }, "%0.2f", ui_slider_get_value(obj));
+	}
 }
+
 
 void
 slider_motion(UIObject obj, UIEvent *ev, Rectangle *rect)
