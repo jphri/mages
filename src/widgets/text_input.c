@@ -25,6 +25,15 @@ ui_text_input_get_str(UIObject obj)
 	return to_strview_buffer(buffer, size);
 }
 
+void
+ui_text_input_clear(UIObject obj)
+{
+	arrbuf_clear(&WIDGET(UI_TEXT_INPUT, obj)->text_buffer);
+	WIDGET(UI_TEXT_INPUT, obj)->carot = 0;
+	WIDGET(UI_TEXT_INPUT, obj)->offset = 0;
+	
+}
+
 void 
 ui_text_input_set_filter(UIObject obj, int (*filter)(int codepoint))
 {
