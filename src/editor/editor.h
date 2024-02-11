@@ -38,7 +38,7 @@ typedef struct {
 	SpriteType map_atlas;
 } EditorGlobal;
 
-void export_map(const char *map_file);
+int export_map(const char *map_file);
 void load_map(const char *map_file);
 
 void edit_render(void);

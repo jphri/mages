@@ -47,6 +47,9 @@ static void newbtn_new_cbk(UIObject btn, void *userptr);
 static UIObject load_window, load_path;
 static void loadbtn_load_cbk(UIObject btn, void *userptr);
 
+static UIObject save_window, save_path;
+static void save_btn_cbk(UIObject btn, void *userptr);
+
 
 static void select_mode_cbk(UIObject obj, void *ptr)
 {
@@ -100,6 +103,8 @@ GAME_STATE_LEVEL_EDIT_init(void)
 		ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
 		{
 			UIObject save_btn = ui_button_new();
+			ui_button_set_callback(save_btn, &save_window, open_cbk);
+			
 			{
 				UIObject save_label = ui_label_new();
 				ui_label_set_text(save_label, "Save");
@@ -171,7 +176,7 @@ GAME_STATE_LEVEL_EDIT_init(void)
 				ui_child_append(subv, new_height);
 			} END_SUBV;
 
-			subv = ui_layout_new(); \
+			subv = ui_layout_new();
 			ui_layout_set_order(subv, UI_LAYOUT_HORIZONTAL); \
 			ui_layout_set_border(subv, 5, 5, 5, 5);
 			{
@@ -232,7 +237,7 @@ GAME_STATE_LEVEL_EDIT_init(void)
 				ui_child_append(subv, load_path);
 			} END_SUBV;
 
-			subv = ui_layout_new(); \
+			subv = ui_layout_new();
 			ui_layout_set_order(subv, UI_LAYOUT_HORIZONTAL); \
 			ui_layout_set_border(subv, 5, 5, 5, 5);
 			{
@@ -261,6 +266,66 @@ GAME_STATE_LEVEL_EDIT_init(void)
 		}
 
 		ui_window_append_child(load_window, layout);
+	}
+
+	save_window = ui_window_new();
+	ui_window_set_size(save_window, (vec2){ 120, 90 });
+	ui_window_set_position(save_window, UI_ORIGIN_CENTER, (vec2){ 0.0, 0.0 });
+	ui_window_set_title(save_window, "New");
+	ui_window_set_decorated(save_window, true);
+	{
+		UIObject layout = ui_layout_new();
+		ui_layout_set_border(layout, 30, 30, 20, 20);
+		ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
+		ui_layout_set_fixed_size(layout, 20.0);
+		{
+			UIObject subv, lbl;
+			
+			#define SUBV(NAME_FIELD)\
+				subv = ui_layout_new(); \
+				ui_layout_set_order(subv, UI_LAYOUT_HORIZONTAL); \
+				ui_layout_set_border(subv, 5, 5, 5, 5); \
+				lbl = ui_label_new(); \
+				ui_label_set_alignment(lbl, UI_LABEL_ALIGN_CENTER);\
+				ui_label_set_color(lbl, (vec4){ 1.0, 1.0, 0.0, 1.0 });\
+				ui_label_set_text(lbl, NAME_FIELD);\
+				ui_child_append(subv, lbl); 
+
+			#define END_SUBV ui_layout_append(layout, subv)
+			
+			SUBV("Path: ") {
+				save_path = ui_text_input_new();
+				ui_child_append(subv, save_path);
+			} END_SUBV;
+
+			subv = ui_layout_new();
+			ui_layout_set_order(subv, UI_LAYOUT_HORIZONTAL); \
+			ui_layout_set_border(subv, 5, 5, 5, 5);
+			{
+				UIObject save = ui_button_new();
+				ui_button_set_callback(save, NULL, save_btn_cbk);
+				{
+					UIObject label = ui_label_new();
+					ui_label_set_text(label, "Save");
+					ui_label_set_alignment(label, UI_LABEL_ALIGN_CENTER);
+					ui_button_set_label(save, label);
+				}
+				ui_child_append(subv, save);
+
+				UIObject cancel = ui_button_new();
+				ui_button_set_callback(cancel, &save_window, cancel_cbk);
+				{
+					UIObject label = ui_label_new();
+					ui_label_set_text(label, "Cancel");
+					ui_label_set_alignment(label, UI_LABEL_ALIGN_CENTER);
+					ui_button_set_label(cancel, label);
+				}
+				ui_child_append(subv, cancel);
+			}
+			ui_child_append(layout, subv);
+		}
+
+		ui_window_append_child(save_window, layout);
 	}
 
 	editor.map_atlas = SPRITE_TERRAIN;
@@ -340,7 +405,7 @@ GAME_STATE_LEVEL_EDIT_end(void)
 	}
 }
 
-void
+int
 export_map(const char *map_file) 
 {
 	size_t map_data_size;
@@ -350,15 +415,21 @@ export_map(const char *map_file)
 		goto error_open;
 	
 	int f = fwrite(map_data, 1, map_data_size, fp);
-	if(f < (int)(map_data_size))
+	if(f < (int)(map_data_size)) {
 		printf("Error saving file: %s\n", map_file);
-	else
+		goto error_save;
+	} else
 		printf("File saved at %s\n", map_file);
 	
 	fclose(fp);
 	
+	return 1;
+error_save:
+	fclose(fp);
 error_open:
 	free(map_data);
+
+	return 0;
 }
 
 void
@@ -399,8 +470,6 @@ cancel_cbk(UIObject obj, void *userptr)
 	(void)userptr;
 	ui_deparent(*(UIObject*)userptr);
 }
-
-
 
 void
 newbtn_new_cbk(UIObject obj, void *userptr)
@@ -445,4 +514,19 @@ loadbtn_load_cbk(UIObject obj, void *userptr)
 
 	free(fixed_path);
 	ui_deparent(load_window);
+}
+
+void
+save_btn_cbk(UIObject obj, void *userptr)
+{
+	(void)obj;
+	(void)userptr;
+	StrView path = ui_text_input_get_str(save_path);
+
+	char *fixed_path = strview_str(path);
+
+	if(export_map(fixed_path)) {
+		ui_deparent(save_window);
+	}
+	free(fixed_path);
 }
