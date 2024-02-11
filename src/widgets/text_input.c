@@ -23,10 +23,14 @@ UI_TEXT_INPUT_event(UIObject obj, UIEvent *event, Rectangle *rect)
 		break;
 	case UI_MOUSE_BUTTON:
 		ui_default_mouse_handle(obj, event, rect);
-		if(ui_get_hot() == obj)
-			ui_set_text_active(obj);
-		else
-		 	ui_set_text_active(0);
+
+		if(ui_get_text_active() == obj) {
+			if(ui_get_hot() != obj)
+				ui_set_text_active(0);
+		} else if(ui_get_text_active() == 0) {
+			if(ui_get_hot() == obj)
+				ui_set_text_active(obj);
+		}
 
 		break;
 	case UI_TEXT_ENTRY:
