@@ -165,6 +165,8 @@ DEFINE_WIDGET(UI_TEXT_INPUT) {
 	ArrayBuffer text_buffer;
 	int carot;
 	float offset;
+
+	int (*filter)(int codepoint);
 };
 
 DEFINE_WIDGET(UI_IMAGE) {
@@ -238,6 +240,7 @@ void     ui_slider_set_vertical(UIObject object, bool slider);
 void     ui_slider_enable_label(UIObject obj, bool value);
 
 UIObject ui_text_input_new(void);
+void     ui_text_input_set_filter(UIObject obj, int (*filter)(int codepoint));
 StrView  ui_text_input_get_str(UIObject obj);
 
 UIObject ui_image_new(void);

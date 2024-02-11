@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <ctype.h>
 #include <glad/gles2.h>
 
 #include <SDL.h>
@@ -37,8 +38,10 @@ static State state_vtable[] = {
 	}
 };
 
-static UIObject new_window;
+static UIObject new_window, new_width, new_height;
 static void newbtn_cbk(UIObject btn, void *userptr);
+static void newbtn_new_cbk(UIObject btn, void *userptr);
+static void newbtn_cancel_cbk(UIObject btn, void *userptr);
 
 static void select_mode_cbk(UIObject obj, void *ptr)
 {
@@ -150,13 +153,15 @@ GAME_STATE_LEVEL_EDIT_init(void)
 			#define END_SUBV ui_layout_append(layout, subv)
 			
 			SUBV("Width: ") {
-				UIObject text = ui_text_input_new();
-				ui_child_append(subv, text);
+				new_width = ui_text_input_new();
+				ui_text_input_set_filter(new_width, isdigit);
+				ui_child_append(subv, new_width);
 			} END_SUBV;
 
 			SUBV("Height: ") {
-				UIObject text = ui_text_input_new();
-				ui_child_append(subv, text);
+				new_height = ui_text_input_new();
+				ui_text_input_set_filter(new_height, isdigit);
+				ui_child_append(subv, new_height);
 			} END_SUBV;
 
 			subv = ui_layout_new(); \
@@ -164,6 +169,7 @@ GAME_STATE_LEVEL_EDIT_init(void)
 			ui_layout_set_border(subv, 5, 5, 5, 5);
 			{
 				UIObject new = ui_button_new();
+				ui_button_set_callback(new, NULL, newbtn_new_cbk);
 				{
 					UIObject label = ui_label_new();
 					ui_label_set_text(label, "New");
@@ -173,6 +179,8 @@ GAME_STATE_LEVEL_EDIT_init(void)
 				ui_child_append(subv, new);
 
 				UIObject cancel = ui_button_new();
+				ui_button_set_callback(cancel, NULL, newbtn_cancel_cbk);
+				
 				{
 					UIObject label = ui_label_new();
 					ui_label_set_text(label, "Cancel");
@@ -314,4 +322,22 @@ newbtn_cbk(UIObject btn, void *userptr)
 	(void)userptr;
 
 	ui_child_prepend(ui_root(), new_window);
+}
+
+void
+newbtn_new_cbk(UIObject obj, void *userptr)
+{
+	(void)obj;
+	(void)userptr;
+
+	/* TODO: create new window here */
+	ui_deparent(new_window);
+}
+
+void
+newbtn_cancel_cbk(UIObject obj, void *userptr)
+{
+	(void)obj;
+	(void)userptr;
+	ui_deparent(new_window);
 }
