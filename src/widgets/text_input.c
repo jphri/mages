@@ -1,3 +1,5 @@
+#include <ctype.h>
+
 #include "../ui.h"
 #include "../graphics.h"
 
@@ -11,7 +13,31 @@ ui_text_input_new(void)
 	arrbuf_init(&WIDGET(UI_TEXT_INPUT, obj)->text_buffer);
 	WIDGET(UI_TEXT_INPUT, obj)->carot = 0;
 	WIDGET(UI_TEXT_INPUT, obj)->offset = 0;
+	ui_text_input_set_filter(obj, isprint);
 	return obj;
+}
+
+StrView
+ui_text_input_get_str(UIObject obj)
+{
+	void *buffer = WIDGET(UI_TEXT_INPUT, obj)->text_buffer.data;
+	size_t size  = WIDGET(UI_TEXT_INPUT, obj)->text_buffer.size;
+	return to_strview_buffer(buffer, size);
+}
+
+void
+ui_text_input_clear(UIObject obj)
+{
+	arrbuf_clear(&WIDGET(UI_TEXT_INPUT, obj)->text_buffer);
+	WIDGET(UI_TEXT_INPUT, obj)->carot = 0;
+	WIDGET(UI_TEXT_INPUT, obj)->offset = 0;
+	
+}
+
+void 
+ui_text_input_set_filter(UIObject obj, int (*filter)(int codepoint))
+{
+	WIDGET(UI_TEXT_INPUT, obj)->filter = filter;
 }
 
 void 
@@ -23,14 +49,24 @@ UI_TEXT_INPUT_event(UIObject obj, UIEvent *event, Rectangle *rect)
 		break;
 	case UI_MOUSE_BUTTON:
 		ui_default_mouse_handle(obj, event, rect);
-		if(ui_get_hot() == obj)
-			ui_set_text_active(obj);
-		else
-		 	ui_set_text_active(0);
+
+		if(ui_get_text_active() == obj) {
+			if(ui_get_hot() != obj)
+				ui_set_text_active(0);
+		} else if(ui_get_text_active() == 0) {
+			if(ui_get_hot() == obj)
+				ui_set_text_active(obj);
+		}
 
 		break;
 	case UI_TEXT_ENTRY:
 		if(ui_get_text_active() == obj) {
+			StrView str = to_strview_buffer(event->data.text.text, event->data.text.text_size);
+			int f = WIDGET(UI_TEXT_INPUT, obj)->filter(utf8_decode(str));
+
+			if(!f)
+				return;
+
 			arrbuf_insert_at(&WIDGET(UI_TEXT_INPUT, obj)->text_buffer, event->data.text.text_size, event->data.text.text, WIDGET(UI_TEXT_INPUT, obj)->carot);
 			WIDGET(UI_TEXT_INPUT, obj)->carot += event->data.text.text_size;
 		}
