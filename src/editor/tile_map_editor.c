@@ -28,13 +28,6 @@ static State state_vtable[] = {
 		.init = edit_init,
 		.terminate = edit_terminate,
 	},
-	[EDITOR_SELECT_TILE] = {
-		.render       = select_tile_render,
-		.wheel        = select_tile_wheel,
-		.keyboard     = select_tile_keyboard,
-		.mouse_button = select_tile_mouse_button,
-		.mouse_motion = select_tile_mouse_motion
-	},
 	[EDITOR_EDIT_COLLISION] = {
 		.render       = collision_render,
 		.wheel        = collision_wheel,
@@ -75,13 +68,12 @@ GAME_STATE_LEVEL_EDIT_init(void)
 
 	BUTTON_MODE(EDITOR_EDIT_MAP, 2 * 8, 0 * 8);
 	BUTTON_MODE(EDITOR_EDIT_COLLISION, 3 * 8, 0 * 8);
-	BUTTON_MODE(EDITOR_SELECT_TILE, 4 * 8, 0 * 8);
 
 	#undef BUTTON_MODE
 
 	UIObject window = ui_window_new();
-	ui_window_set_size(window, (vec2){ 120, 30 });
-	ui_window_set_position(window, (vec2){ 120 + 0, 30 + 0 });
+	ui_window_set_size(window, (vec2){ 80, 30 });
+	ui_window_set_position(window, (vec2){ 80 + 0, 30 + 0 });
 	ui_window_set_border(window, (vec2){ 2, 2 });
 	ui_window_set_decorated(window, false);
 	ui_window_append_child(window, layout);

@@ -72,15 +72,6 @@ edit_keyboard(SDL_Event *event)
 {
 	if(event->type == SDL_KEYDOWN) {
 		switch(event->key.keysym.sym) {
-		case SDLK_1: editor.editor_state = EDITOR_EDIT_MAP; break;
-		case SDLK_2: editor.editor_state = EDITOR_SELECT_TILE; break;
-		case SDLK_3: editor.editor_state = EDITOR_EDIT_COLLISION; break;
-		case SDLK_d:
-			if(cursor_mode == CURSOR_MODE_PENCIL)
-				cursor_mode = CURSOR_MODE_FILL;
-			else
-				cursor_mode = CURSOR_MODE_PENCIL;
-			break;
 		case SDLK_LCTRL: ctrl_pressed = true; break;
 		case SDLK_s:
 			if(ctrl_pressed) {
