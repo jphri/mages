@@ -38,10 +38,15 @@ static State state_vtable[] = {
 	}
 };
 
+static void open_cbk(UIObject obj, void (*userptr));
+static void cancel_cbk(UIObject btn, void *userptr);
+
 static UIObject new_window, new_width, new_height;
-static void newbtn_cbk(UIObject btn, void *userptr);
 static void newbtn_new_cbk(UIObject btn, void *userptr);
-static void newbtn_cancel_cbk(UIObject btn, void *userptr);
+
+static UIObject load_window, load_path;
+static void loadbtn_load_cbk(UIObject btn, void *userptr);
+
 
 static void select_mode_cbk(UIObject obj, void *ptr)
 {
@@ -104,6 +109,8 @@ GAME_STATE_LEVEL_EDIT_init(void)
 			ui_layout_append(layout, save_btn);
 
 			UIObject load_btn = ui_button_new();
+			ui_button_set_callback(load_btn, &load_window, open_cbk);
+			
 			{
 				UIObject load_label = ui_label_new();
 				ui_label_set_text(load_label, "Load");
@@ -113,7 +120,7 @@ GAME_STATE_LEVEL_EDIT_init(void)
 			ui_layout_append(layout, load_btn);
 
 			UIObject new_btn = ui_button_new();
-			ui_button_set_callback(new_btn, NULL, newbtn_cbk);
+			ui_button_set_callback(new_btn, &new_window, open_cbk);
 			{
 				UIObject label = ui_label_new();
 				ui_label_set_text(label, "New");
@@ -179,7 +186,7 @@ GAME_STATE_LEVEL_EDIT_init(void)
 				ui_child_append(subv, new);
 
 				UIObject cancel = ui_button_new();
-				ui_button_set_callback(cancel, NULL, newbtn_cancel_cbk);
+				ui_button_set_callback(cancel, &new_window, cancel_cbk);
 				
 				{
 					UIObject label = ui_label_new();
@@ -193,6 +200,67 @@ GAME_STATE_LEVEL_EDIT_init(void)
 		}
 
 		ui_window_append_child(new_window, layout);
+	}
+
+	load_window = ui_window_new();
+	ui_window_set_size(load_window, (vec2){ 120, 90 });
+	ui_window_set_position(load_window, UI_ORIGIN_CENTER, (vec2){ 0.0, 0.0 });
+	ui_window_set_title(load_window, "New");
+	ui_window_set_decorated(load_window, true);
+	{
+		UIObject layout = ui_layout_new();
+		ui_layout_set_border(layout, 30, 30, 20, 20);
+		ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
+		ui_layout_set_fixed_size(layout, 20.0);
+		{
+			UIObject subv, lbl;
+			
+			#define SUBV(NAME_FIELD)\
+				subv = ui_layout_new(); \
+				ui_layout_set_order(subv, UI_LAYOUT_HORIZONTAL); \
+				ui_layout_set_border(subv, 5, 5, 5, 5); \
+				lbl = ui_label_new(); \
+				ui_label_set_alignment(lbl, UI_LABEL_ALIGN_CENTER);\
+				ui_label_set_color(lbl, (vec4){ 1.0, 1.0, 0.0, 1.0 });\
+				ui_label_set_text(lbl, NAME_FIELD);\
+				ui_child_append(subv, lbl); 
+
+			#define END_SUBV ui_layout_append(layout, subv)
+			
+			SUBV("Path: ") {
+				load_path = ui_text_input_new();
+				ui_child_append(subv, load_path);
+			} END_SUBV;
+
+			subv = ui_layout_new(); \
+			ui_layout_set_order(subv, UI_LAYOUT_HORIZONTAL); \
+			ui_layout_set_border(subv, 5, 5, 5, 5);
+			{
+				UIObject load = ui_button_new();
+				ui_button_set_callback(load, NULL, loadbtn_load_cbk);
+				{
+					UIObject label = ui_label_new();
+					ui_label_set_text(label, "Load");
+					ui_label_set_alignment(label, UI_LABEL_ALIGN_CENTER);
+					ui_button_set_label(load, label);
+				}
+				ui_child_append(subv, load);
+
+				UIObject cancel = ui_button_new();
+				ui_button_set_callback(cancel, &load_window, cancel_cbk);
+				
+				{
+					UIObject label = ui_label_new();
+					ui_label_set_text(label, "Cancel");
+					ui_label_set_alignment(label, UI_LABEL_ALIGN_CENTER);
+					ui_button_set_label(cancel, label);
+				}
+				ui_child_append(subv, cancel);
+			}
+			ui_child_append(layout, subv);
+		}
+
+		ui_window_append_child(load_window, layout);
 	}
 
 	editor.map_atlas = SPRITE_TERRAIN;
@@ -316,13 +384,23 @@ editor_change_state(EditorState state)
 }
 
 void
-newbtn_cbk(UIObject btn, void *userptr)
+open_cbk(UIObject btn, void *userptr)
 {
 	(void)btn;
 	(void)userptr;
 
-	ui_child_prepend(ui_root(), new_window);
+	ui_child_prepend(ui_root(), *(UIObject*)userptr);
 }
+
+void
+cancel_cbk(UIObject obj, void *userptr)
+{
+	(void)obj;
+	(void)userptr;
+	ui_deparent(*(UIObject*)userptr);
+}
+
+
 
 void
 newbtn_new_cbk(UIObject obj, void *userptr)
@@ -347,9 +425,24 @@ newbtn_new_cbk(UIObject obj, void *userptr)
 }
 
 void
-newbtn_cancel_cbk(UIObject obj, void *userptr)
+loadbtn_load_cbk(UIObject obj, void *userptr)
 {
 	(void)obj;
 	(void)userptr;
-	ui_deparent(new_window);
+	StrView path = ui_text_input_get_str(load_path);
+
+	char *fixed_path = strview_str(path);
+	
+	Map *n_map = map_load(fixed_path);
+
+	if(!n_map) {
+		free(fixed_path);
+		return;
+	}
+
+	map_free(editor.map);
+	editor.map = n_map;
+
+	free(fixed_path);
+	ui_deparent(load_window);
 }
