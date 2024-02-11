@@ -491,6 +491,9 @@ newbtn_new_cbk(UIObject obj, void *userptr)
 	map_free(editor.map);
 	editor.map = map_alloc(width, height);
 	ui_deparent(new_window);
+	ui_text_input_clear(new_width);
+	ui_text_input_clear(new_height);
+	
 }
 
 void
@@ -514,6 +517,7 @@ loadbtn_load_cbk(UIObject obj, void *userptr)
 
 	free(fixed_path);
 	ui_deparent(load_window);
+	ui_text_input_clear(load_path);
 }
 
 void
@@ -527,6 +531,8 @@ save_btn_cbk(UIObject obj, void *userptr)
 
 	if(export_map(fixed_path)) {
 		ui_deparent(save_window);
+		ui_text_input_clear(save_path);
 	}
 	free(fixed_path);
+
 }
