@@ -8,6 +8,9 @@
 static void draw_tileset(UIObject tileset, Rectangle *rect);
 static void tileset_button(UIObject tileset, UIEvent *ev, Rectangle *rect);
 
+static void vscroll_cbk(UIObject vscroll, void *ptr);
+static void hscroll_cbk(UIObject hscroll, void *ptr);
+
 UIObject 
 ui_tileset_sel_new(void)
 {
@@ -19,6 +22,8 @@ ui_tileset_sel_new(void)
 	ui_slider_enable_label(vscroll, false);
 	ui_slider_set_vertical(vscroll, true);
 
+	ui_slider_set_callback(vscroll, NULL, vscroll_cbk);
+	ui_slider_set_callback(hscroll, NULL, hscroll_cbk);
 
 	ui_child_append(tileset, hscroll);
 	ui_child_append(tileset, vscroll);
@@ -60,10 +65,11 @@ UI_TILESET_SEL_event(UIObject obj, UIEvent *ev, Rectangle *r)
 
 	if(total.position[1] > r->position[1]) {
 		float handle_size = r->half_size[1] * r->half_size[1] / total.half_size[1];
+		float delta = (total.position[1] - r->position[1]) * 2.0;
 
 		ui_slider_set_min_value(TSET(obj)->vscroll, 0.0);
-		ui_slider_set_max_value(TSET(obj)->vscroll, total.position[1] - r->position[1] + 5.0);
-		ui_slider_set_precision(TSET(obj)->vscroll, total.position[1] - r->position[1] + 5);
+		ui_slider_set_max_value(TSET(obj)->vscroll, delta + 10);
+		ui_slider_set_precision(TSET(obj)->vscroll, delta + 10);
 		ui_slider_set_handle_size(TSET(obj)->vscroll, handle_size);
 
 		ui_call_event(TSET(obj)->vscroll, ev, &(Rectangle){
@@ -75,10 +81,11 @@ UI_TILESET_SEL_event(UIObject obj, UIEvent *ev, Rectangle *r)
 	if(total.position[0] > r->position[0]) {
 		float rect_offset = total.position[1] > r->position[1] ? 5.0 : 0.0;
 		float handle_size = (r->half_size[1] - rect_offset) * r->half_size[1] / total.half_size[1];
+		float delta = (total.position[0] - r->position[0]) * 2.0;
 
 		ui_slider_set_min_value(TSET(obj)->hscroll, 0.0);
-		ui_slider_set_max_value(TSET(obj)->hscroll, total.position[0] - r->position[0] + 5.0);
-		ui_slider_set_precision(TSET(obj)->hscroll, total.position[0] - r->position[0] + 5);
+		ui_slider_set_max_value(TSET(obj)->hscroll, delta + 10);
+		ui_slider_set_precision(TSET(obj)->hscroll, delta + 10);
 		ui_slider_set_handle_size(TSET(obj)->hscroll, handle_size);
 
 		ui_call_event(TSET(obj)->hscroll, ev, &(Rectangle){
@@ -105,20 +112,13 @@ draw_tileset(UIObject obj, Rectangle *rect)
 	vec2 line_min, line_max;
 	rect_boundaries(line_min, line_max, rect);
 
+	vec2_sub(line_min, line_min, TSET(obj)->offset);
 	line_max[0] = line_min[0] + TSET(obj)->rows * SPRITE_SIZE;
-	line_max[1] = line_min[1] + TSET(obj)->cols * SPRITE_SIZE ;
+	line_max[1] = line_min[1] + TSET(obj)->cols * SPRITE_SIZE;
 
 	for(int i = 0; i < TSET(obj)->rows * TSET(obj)->cols; i++) {
 		float x = (     (i % TSET(obj)->cols) + 0.5) * SPRITE_SIZE + line_min[0];
 		float y = ((int)(i / TSET(obj)->cols) + 0.5) * SPRITE_SIZE + line_min[1];
-
-		Rectangle tile_rect = {
-			.position  = { x, y },
-			.half_size = { SPRITE_SIZE / 2.0, SPRITE_SIZE / 2.0 }
-		};
-
-		if(!rect_contains_rect(rect, &tile_rect))
-			continue;
 
 		int spr = i - 1;
 		int spr_x = spr % TSET(obj)->cols;
@@ -165,8 +165,9 @@ tileset_button(UIObject obj, UIEvent *ev, Rectangle *rect)
 	Rectangle r;
 	rect_boundaries(line_min, line_max, rect);
 
-	line_max[0] = line_min[0] + TSET(obj)->rows * SPRITE_SIZE ;
-	line_max[1] = line_min[1] + TSET(obj)->cols * SPRITE_SIZE ;
+	vec2_sub(line_min, line_min, TSET(obj)->offset);
+	line_max[0] = line_min[0] + TSET(obj)->rows * SPRITE_SIZE;
+	line_max[1] = line_min[1] + TSET(obj)->cols * SPRITE_SIZE;
 
 	r = rect_from_boundaries(line_min, line_max);
 
@@ -176,7 +177,7 @@ tileset_button(UIObject obj, UIEvent *ev, Rectangle *rect)
 			return;
 
 		vec2_sub(p, ev->data.mouse.position, line_min);
-		vec2_div(p, p, (vec2){ TSET(obj)->cols, TSET(obj)->rows });
+		vec2_div(p, p, (vec2){ SPRITE_SIZE, SPRITE_SIZE });
 		vec2_floor(p, p);
 
 		int index = p[0] + p[1] * TSET(obj)->cols;
@@ -184,4 +185,21 @@ tileset_button(UIObject obj, UIEvent *ev, Rectangle *rect)
 		if(TSET(obj)->cbk)
 			TSET(obj)->cbk(obj, TSET(obj)->userptr);
 	}
+}
+
+void 
+vscroll_cbk(UIObject vscroll, void *ptr)
+{
+	(void)ptr;
+
+	UIObject tset = ui_get_parent(vscroll);
+	TSET(tset)->offset[1] = ui_slider_get_value(vscroll);
+}
+
+void hscroll_cbk(UIObject hscroll, void *ptr)
+{
+	(void)ptr;
+
+	UIObject tset = ui_get_parent(hscroll);
+	TSET(tset)->offset[0] = ui_slider_get_value(hscroll);
 }

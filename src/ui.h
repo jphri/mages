@@ -165,7 +165,6 @@ DEFINE_WIDGET(UI_CHECKBOX) {
 DEFINE_WIDGET(UI_TILESET_SEL) {
 	SpriteType tile_sprites;
 	vec2 offset;
-	vec2 begin_offset;
 	
 	int rows, cols;
 	int selected;
