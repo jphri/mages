@@ -7,16 +7,17 @@
 
 #include <stdbool.h>
 
-#define UI_WIDGET_LIST       \
-	UI_WIDGET(UI_ROOT)       \
-	UI_WIDGET(UI_WINDOW)     \
-	UI_WIDGET(UI_LAYOUT)     \
-	UI_WIDGET(UI_LABEL)      \
-	UI_WIDGET(UI_BUTTON)     \
-	UI_WIDGET(UI_SLIDER)     \
-	UI_WIDGET(UI_TEXT_INPUT) \
-	UI_WIDGET(UI_IMAGE)      \
-	UI_WIDGET(UI_CHECKBOX)
+#define UI_WIDGET_LIST           \
+	UI_WIDGET(UI_ROOT)           \
+	UI_WIDGET(UI_WINDOW)         \
+	UI_WIDGET(UI_LAYOUT)         \
+	UI_WIDGET(UI_LABEL)          \
+	UI_WIDGET(UI_BUTTON)         \
+	UI_WIDGET(UI_SLIDER)         \
+	UI_WIDGET(UI_TEXT_INPUT)     \
+	UI_WIDGET(UI_IMAGE)          \
+	UI_WIDGET(UI_CHECKBOX)       \
+	UI_WIDGET(UI_TILESET_SEL)
 
 #define UI_LAYOUT_RELATIVE -1
 #define UI_SLIDER_HANDLE_SIZE_RELATIVE -1
@@ -160,6 +161,14 @@ DEFINE_WIDGET(UI_CHECKBOX) {
 	void (*callback)(UIObject, void*);
 };
 
+DEFINE_WIDGET(UI_TILESET_SEL) {
+	SpriteType tile_sprites;
+	vec2 offset;
+	vec2 begin_offset;
+	
+	int rows, cols;
+};
+
 void ui_init(void);
 void ui_reset(void);
 void ui_terminate(void);
@@ -172,6 +181,7 @@ void     ui_window_set_background(UIObject window, vec4 background);
 void     ui_window_set_title(UIObject window, const char *title);
 void     ui_window_set_border(UIObject window, vec2 border);
 void     ui_window_set_decorated(UIObject window, bool decorated);
+void     ui_window_get_rect(UIObject window, Rectangle *rect_out);
 void     ui_window_append_child(UIObject window, UIObject child);
 void     ui_window_prepend_child(UIObject window, UIObject child);
 
@@ -216,6 +226,11 @@ void     ui_checkbox_set_toggled(UIObject obj, bool toggled);
 bool     ui_checkbox_get_toggled(UIObject obj);
 void     ui_checkbox_set_callback(UIObject obj, void *userptr, void(*cbk)(UIObject obj, void *userptr));
 
+UIObject ui_tileset_sel_new(void);
+void     ui_tileset_sel_set_tileset(UIObject tilesel, SpriteType tileset);
+UIObject ui_tileset_sel_get_selected(UIObject tilesel);
+void     ui_tileset_sel_cbk(UIObject tilesel, void (*)(UIObject obj, void *userptr));
+
 UIObject ui_new_object(UIObject parent, UIObjectType object_type);
 void     ui_del_object(UIObject object);
 void     ui_draw(void);
@@ -238,6 +253,8 @@ int      ui_count_child(UIObject obj);
 void     ui_child_append(UIObject parent, UIObject child);
 void     ui_child_prepend(UIObject parent, UIObject child);
 void     ui_deparent(UIObject child);
+
+UIObjectType ui_get_type(UIObject obj);
 
 void ui_update(void);
 void ui_mouse_motion(float x, float y);

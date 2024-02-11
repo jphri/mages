@@ -333,6 +333,12 @@ ui_set_text_active(UIObject obj)
 	 	disable_text_input();
 }
 
+UIObjectType
+ui_get_type(UIObject obj)
+{
+	return UI_NODE(obj)->type;
+}
+
 UIObject
 ui_get_text_active(void)
 {

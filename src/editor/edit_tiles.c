@@ -319,7 +319,9 @@ edit_init(void)
 	ui_window_set_size(tileset_window, (vec2){ 150, 150 });
 	ui_window_set_position(tileset_window, (vec2){ 800 - 150, 600 - 150 });
 	{
-		/* tileset goes here */
+		UIObject tileset = ui_tileset_sel_new();
+
+		ui_window_append_child(tileset_window, tileset);
 	}
 
 	UIObject tileset_btn_window = ui_window_new();
