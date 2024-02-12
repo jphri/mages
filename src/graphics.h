@@ -134,6 +134,8 @@ void gfx_scene_set_tilemap(int layer, SpriteType atlas, int w, int h, int *data)
 TextureStamp get_sprite(SpriteType sprite, int sprite_x, int sprite_y);
 TextureStamp *gfx_white_texture(void);
 
+void gfx_sprite_count_rows_cols(SpriteType type, int *rows_out, int *cols_out);
+
 Rectangle gfx_window_rectangle(void);
 
 void gfx_font_size(vec2 out_size, Font font, float height, const char *fmt, ...);
