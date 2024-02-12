@@ -82,22 +82,36 @@ main(int argc, char *argv[])
 	(void)argv;
 	Uint64 prev_time;
 
-	if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0)
+	if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
+		printf("SDL_Init() failed: %s\n", SDL_GetError());
 		return -1;
+	}
 
 	GLOBAL.window = SDL_CreateWindow("hello",
 							  SDL_WINDOWPOS_UNDEFINED,
 							  SDL_WINDOWPOS_UNDEFINED,
 							  800, 600,
 							  SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+
 	GLOBAL.renderer = SDL_CreateRenderer(GLOBAL.window, -1, SDL_RENDERER_ACCELERATED);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
 	GLOBAL.glctx = SDL_GL_CreateContext(GLOBAL.window);
 	if(!GLOBAL.glctx) {
-		printf("SDL_GL_CreateContext() failed\n");
-		return 0;
+		printf("SDL_GL_CreateContext() with OpenGL ES 3.1 failed: %s\n", SDL_GetError());
+		printf("Trying OpenGL 3.3\n");
+
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+		GLOBAL.glctx = SDL_GL_CreateContext(GLOBAL.window);
+
+		if(!GLOBAL.glctx) {
+			printf("SDL_GL_CreateContext() with OpenGL 3.3 failed: %s\n", SDL_GetError());
+			return 0;
+		}
+		
 	}
 	SDL_GL_SetSwapInterval(0);
 	SDL_GL_MakeCurrent(GLOBAL.window, GLOBAL.glctx);
