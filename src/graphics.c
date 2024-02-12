@@ -1056,10 +1056,10 @@ sprite_buffer_reserve(int count_sprites)
 	long new_reserv = sprite_reserved;
 	GLuint new_buffer;
 
-	while((sprite_count + count_sprites) > new_reserv)
+	while((long)(sprite_count + count_sprites) > new_reserv)
 		new_reserv = new_reserv * 2;
 
-	if(new_reserv == sprite_reserved)
+	if(new_reserv == (long)sprite_reserved)
 		return;
 
 	new_buffer = ugl_create_buffer(GL_STREAM_DRAW, sizeof(SpriteInternal) * new_reserv, NULL);
