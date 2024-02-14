@@ -42,6 +42,7 @@ static struct {
 static float zoom = 16.0;
 static bool  ctrl_pressed = false;
 static vec2  begin_offset, move_offset, offset;
+static int current_layer = 0;
 static MouseState mouse_state;
 static vec2 mouse_position;
 
@@ -55,6 +56,7 @@ static UIObject tiles_root;
 
 static UIObject cursor_checkboxes[LAST_CURSOR_MODE];
 
+static void layer_slider_cbk(UIObject slider, void *userptr);
 static void cursor_size_cbk(UIObject obj, void *userptr);
 static void cursorchb_cbk(UIObject obj, void *userptr);
 static void tileselect_cbk(UIObject obj, void *userptr);
@@ -105,14 +107,6 @@ edit_mouse_motion(SDL_Event *event)
 }
 
 void
-edit_wheel(SDL_Event *event)
-{
-	zoom += event->wheel.y;
-	if(zoom < 1.0)
-		zoom = 1.0;
-}
-
-void
 edit_mouse_button(SDL_Event *event)
 {
 	SDL_Event fake_event;
@@ -139,6 +133,24 @@ edit_mouse_button(SDL_Event *event)
 			
 			break;
 		}
+	}
+}
+
+void
+edit_wheel(SDL_Event *event)
+{
+	if(ctrl_pressed) {
+		zoom += event->wheel.y;
+		if(zoom < 1.0)
+			zoom = 1.0;
+	} else {
+		current_layer += event->wheel.y;
+		if(current_layer < 0)
+			current_layer = 0;
+		if(current_layer > SCENE_LAYERS)
+			current_layer = SCENE_LAYERS;
+
+		printf("Current Layer: %d\n", current_layer);
 	}
 }
 
@@ -216,6 +228,7 @@ edit_init(void)
 {
 	tiles_root = ui_new_object(0, UI_ROOT);
 	context_root = ui_new_object(0, UI_ROOT);
+
 	
 	context_layout = ui_layout_new();
 	ui_layout_set_order(context_layout, UI_LAYOUT_VERTICAL);
@@ -238,9 +251,31 @@ edit_init(void)
 			ui_slider_set_callback(slider_size, NULL, cursor_size_cbk);
 
 			ui_layout_append(sublayout, slider_size);
+
 		}
 		ui_layout_append(context_layout, sublayout);
 
+		sublayout = ui_layout_new();
+		ui_layout_set_order(sublayout, UI_LAYOUT_HORIZONTAL);
+		ui_layout_set_border(sublayout, 2.5, 2.5, 2.5, 2.5);
+		{
+			UIObject label = ui_label_new();
+			ui_label_set_text(label, "Layer: ");
+			ui_label_set_alignment(label, UI_LABEL_ALIGN_RIGHT);
+			ui_label_set_color(label, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+			ui_layout_append(sublayout, label);
+
+			UIObject slider_size = ui_slider_new();
+			ui_slider_set_min_value(slider_size, 0.0);
+			ui_slider_set_max_value(slider_size, MAX_LAYERS - 1);
+			ui_slider_set_precision(slider_size, MAX_LAYERS - 1);
+			ui_slider_set_value(slider_size, current_layer);
+			ui_slider_set_callback(slider_size, NULL, layer_slider_cbk);
+
+			ui_layout_append(sublayout, slider_size);
+
+		}
+		ui_layout_append(context_layout, sublayout);
 	}
 	ui_child_append(context_root, context_layout);
 
@@ -272,6 +307,8 @@ edit_init(void)
 		}
 		ui_window_append_child(tileset_btn_window, tileset_btn);
 	}
+
+	
 
 	cursor_layout = ui_layout_new();
 	ui_layout_set_order(cursor_layout, UI_LAYOUT_HORIZONTAL);
@@ -339,7 +376,7 @@ pencil_apply(int x, int y)
 		if(xx < 0 || xx >= editor.map->w || yy < 0 || yy >= editor.map->h)
 			continue;
 
-		editor.map->tiles[xx + yy * editor.map->w + editor.current_layer * editor.map->w * editor.map->h] = editor.current_tile;
+		editor.map->tiles[xx + yy * editor.map->w + current_layer * editor.map->w * editor.map->h] = editor.current_tile;
 	}
 }
 
@@ -354,7 +391,7 @@ fill_apply(int x, int y)
 	StackElement *elem;
 	int reference_tile;
 	
-	reference_tile = editor.map->tiles[x + y * editor.map->w + editor.current_layer * editor.map->w * editor.map->h];
+	reference_tile = editor.map->tiles[x + y * editor.map->w + current_layer * editor.map->w * editor.map->h];
 	if(reference_tile == editor.current_tile)
 		return;
 
@@ -368,7 +405,7 @@ fill_apply(int x, int y)
 			arrbuf_poptop(&stack, sizeof(StackElement));
 			continue;
 		}
-		int current_tile = editor.map->tiles[elem->x + elem->y * editor.map->w + editor.current_layer * editor.map->w * editor.map->h];
+		int current_tile = editor.map->tiles[elem->x + elem->y * editor.map->w + current_layer * editor.map->w * editor.map->h];
 		
 		if(reference_tile != current_tile) {
 			arrbuf_poptop(&stack, sizeof(StackElement));
@@ -397,7 +434,7 @@ fill_apply(int x, int y)
 				.state = 0
 			}
 		};
-		editor.map->tiles[elem->x + elem->y * editor.map->w + editor.current_layer * editor.map->w * editor.map->h] = editor.current_tile;
+		editor.map->tiles[elem->x + elem->y * editor.map->w + current_layer * editor.map->w * editor.map->h] = editor.current_tile;
 		/* elem dead here */
 		arrbuf_poptop(&stack, sizeof(StackElement));
 		arrbuf_insert(&stack, sizeof(elems), elems);
@@ -422,6 +459,13 @@ cursor_size_cbk(UIObject obj, void *userptr)
 	(void)userptr;
 	cursor_mode_size = ui_slider_get_value(obj);
 	printf("cursor_mode_size: %f\n", cursor_mode_size);
+}
+
+void
+layer_slider_cbk(UIObject slider, void *ptr)
+{
+	(void)ptr;
+	current_layer = ui_slider_get_value(slider);
 }
 
 void
