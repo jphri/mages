@@ -13,7 +13,7 @@
 #include "editor.h"
 
 #define SLIDER_SIZE_PRECISION 31
-#define MAX_LAYERS 2
+#define MAX_LAYERS 64
 
 typedef enum CursorMode {
 	CURSOR_MODE_PENCIL,
@@ -48,6 +48,7 @@ static vec2 mouse_position;
 
 static UIObject cursor_layout;
 static UIObject context_root, context_layout;
+static UIObject general_root;
 static UIObject tileset_window;
 static CursorMode cursor_mode;
 static float cursor_mode_size;
@@ -213,6 +214,7 @@ edit_enter(void)
 	ui_child_append(ui_root(), tiles_root);
 	ui_window_append_child(editor.controls_ui, cursor_layout);
 	ui_window_append_child(editor.context_window, context_root);
+	ui_window_append_child(editor.general_window, general_root);
 }
 
 void
@@ -221,6 +223,7 @@ edit_exit(void)
 	ui_deparent(tiles_root);
 	ui_deparent(cursor_layout);
 	ui_deparent(context_root);
+	ui_deparent(general_root);
 }
 
 void
@@ -228,7 +231,7 @@ edit_init(void)
 {
 	tiles_root = ui_new_object(0, UI_ROOT);
 	context_root = ui_new_object(0, UI_ROOT);
-
+	general_root = ui_new_object(0, UI_ROOT);
 	
 	context_layout = ui_layout_new();
 	ui_layout_set_order(context_layout, UI_LAYOUT_VERTICAL);
@@ -249,28 +252,6 @@ edit_init(void)
 			ui_slider_set_precision(slider_size, SLIDER_SIZE_PRECISION);
 			ui_slider_set_value(slider_size, cursor_mode_size);
 			ui_slider_set_callback(slider_size, NULL, cursor_size_cbk);
-
-			ui_layout_append(sublayout, slider_size);
-
-		}
-		ui_layout_append(context_layout, sublayout);
-
-		sublayout = ui_layout_new();
-		ui_layout_set_order(sublayout, UI_LAYOUT_HORIZONTAL);
-		ui_layout_set_border(sublayout, 2.5, 2.5, 2.5, 2.5);
-		{
-			UIObject label = ui_label_new();
-			ui_label_set_text(label, "Layer: ");
-			ui_label_set_alignment(label, UI_LABEL_ALIGN_RIGHT);
-			ui_label_set_color(label, (vec4){ 1.0, 1.0, 1.0, 1.0 });
-			ui_layout_append(sublayout, label);
-
-			UIObject slider_size = ui_slider_new();
-			ui_slider_set_min_value(slider_size, 0.0);
-			ui_slider_set_max_value(slider_size, MAX_LAYERS - 1);
-			ui_slider_set_precision(slider_size, MAX_LAYERS - 1);
-			ui_slider_set_value(slider_size, current_layer);
-			ui_slider_set_callback(slider_size, NULL, layer_slider_cbk);
 
 			ui_layout_append(sublayout, slider_size);
 
@@ -308,8 +289,6 @@ edit_init(void)
 		ui_window_append_child(tileset_btn_window, tileset_btn);
 	}
 
-	
-
 	cursor_layout = ui_layout_new();
 	ui_layout_set_order(cursor_layout, UI_LAYOUT_HORIZONTAL);
 	{
@@ -326,8 +305,38 @@ edit_init(void)
 		}
 	}
 
+	UIObject general_layout = ui_layout_new();
+	ui_layout_set_order(general_layout, UI_LAYOUT_VERTICAL);
+	{
+		UIObject sublayout;
+
+		#define BEGIN_SUB \
+		sublayout = ui_layout_new(); \
+		ui_layout_set_order(sublayout, UI_LAYOUT_HORIZONTAL); \
+		ui_layout_set_border(sublayout, 2.5, 2.5, 2.5, 2.5); \
+
+		#define END_SUB ui_layout_append(general_layout, sublayout)
+		
+		BEGIN_SUB {
+			UIObject label = ui_label_new();
+			ui_label_set_text(label, "Layer: ");
+			ui_label_set_alignment(label, UI_LABEL_ALIGN_RIGHT);
+			ui_label_set_color(label, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+			ui_layout_append(sublayout, label);
+
+			UIObject slider_size = ui_slider_new();
+			ui_slider_set_min_value(slider_size, 0.0);
+			ui_slider_set_max_value(slider_size, MAX_LAYERS - 1);
+			ui_slider_set_precision(slider_size, MAX_LAYERS - 1);
+			ui_slider_set_value(slider_size, current_layer);
+			ui_slider_set_callback(slider_size, NULL, layer_slider_cbk);
+
+			ui_layout_append(sublayout, slider_size);
+		} END_SUB;
+	}
+	ui_child_append(general_root, general_layout);
+
 	(void)tileset_btn_cbk;
-	
 	ui_child_append(tiles_root, tileset_btn_window);
 }
 
@@ -336,6 +345,7 @@ edit_terminate(void)
 {
 	ui_del_object(tiles_root);
 	ui_del_object(cursor_layout);
+	ui_del_object(general_root);
 }
 
 
