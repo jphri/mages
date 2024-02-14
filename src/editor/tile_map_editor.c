@@ -38,6 +38,8 @@ static State state_vtable[] = {
 	}
 };
 
+static bool context_shown;
+
 static void open_cbk(UIObject obj, void (*userptr));
 static void cancel_cbk(UIObject btn, void *userptr);
 
@@ -49,6 +51,9 @@ static void loadbtn_load_cbk(UIObject btn, void *userptr);
 
 static UIObject save_window, save_path;
 static void save_btn_cbk(UIObject btn, void *userptr);
+
+static UIObject context_button;
+static void context_btn_cbk(UIObject btn, void *userptr);
 
 
 static void select_mode_cbk(UIObject obj, void *ptr)
@@ -328,11 +333,33 @@ GAME_STATE_LEVEL_EDIT_init(void)
 		ui_window_append_child(save_window, layout);
 	}
 
+	context_button = ui_window_new();
+	ui_window_set_decorated(context_button, false);
+	ui_window_set_size(context_button, (vec2){ 30, 10 });
+	ui_window_set_position(context_button, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 30, - 30 - 10 });
+	{
+		UIObject context_btn = ui_button_new();
+		{
+			UIObject context_lbl = ui_label_new();
+			ui_label_set_text(context_lbl, "ctx");
+			ui_label_set_color(context_lbl, (vec4){ 1.0, 1.0, 0.0, 1.0 });
+			ui_label_set_alignment(context_lbl, UI_LABEL_ALIGN_CENTER);
+			ui_button_set_label(context_btn, context_lbl);
+		}
+		ui_button_set_callback(context_btn, NULL, context_btn_cbk);
+
+		ui_window_append_child(context_button, context_btn);
+	}
+
 	editor.controls_ui = ui_window_new();
 	ui_window_set_size(editor.controls_ui, (vec2){ 90, 15 });
 	ui_window_set_position(editor.controls_ui, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 0 + 90, - 15 });
 	ui_window_set_decorated(editor.controls_ui, false);
 	
+	editor.context_window = ui_window_new();
+	ui_window_set_size(editor.context_window, (vec2){ 90, 60 });
+	ui_window_set_position(editor.context_window, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 90, - 30 - 60 });
+	ui_window_set_decorated(editor.context_window, false);
 
 	editor.map_atlas = SPRITE_TERRAIN;
 	if(editor.map == NULL)
@@ -348,6 +375,8 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	}
 
 	ui_child_append(ui_root(), editor.controls_ui);
+	ui_child_append(ui_root(), context_button);
+	//ui_child_append(ui_root(), editor.context_window);
 }
 
 void
@@ -501,7 +530,6 @@ newbtn_new_cbk(UIObject obj, void *userptr)
 	ui_deparent(new_window);
 	ui_text_input_clear(new_width);
 	ui_text_input_clear(new_height);
-	
 }
 
 void
@@ -543,4 +571,30 @@ save_btn_cbk(UIObject obj, void *userptr)
 	}
 	free(fixed_path);
 
+}
+void
+open_context_menu(void)
+{
+	ui_window_set_position(context_button, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 30, - 30 - 120 - 10 });
+	ui_child_append(ui_root(), editor.context_window);
+}
+
+void
+close_context_menu(void)
+{
+	ui_window_set_position(context_button, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 30, - 30 - 10 });
+	ui_deparent(editor.context_window);
+}
+
+void
+context_btn_cbk(UIObject obj, void *ptr)
+{
+	(void)obj;
+	(void)ptr;
+	context_shown = !context_shown;
+	if(context_shown) {
+		open_context_menu();
+	} else {
+		close_context_menu();
+	}
 }
