@@ -34,7 +34,7 @@ typedef struct {
 typedef struct {
 	Map *map;
 	EditorState editor_state;
-	int current_tile;
+	int current_tile, current_layer;
 	SpriteType map_atlas;
 
 	UIObject controls_ui;

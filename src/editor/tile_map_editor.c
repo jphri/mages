@@ -16,6 +16,8 @@
 #include "../ui.h"
 #include "editor.h"
 
+#define MAX_LAYERS 64
+
 EditorGlobal editor;
 static State state_vtable[] = {
 	[EDITOR_EDIT_MAP] = {
@@ -50,6 +52,7 @@ static UIObject load_window, load_path;
 static UIObject save_window, save_path;
 static UIObject extra_window;
 
+
 static void open_cbk(UIObject obj, void (*userptr));
 static void cancel_cbk(UIObject btn, void *userptr);
 static void newbtn_new_cbk(UIObject btn, void *userptr);
@@ -58,6 +61,8 @@ static void save_btn_cbk(UIObject btn, void *userptr);
 
 static void context_btn_cbk(UIObject btn, void *userptr);
 static void general_btn_cbk(UIObject btn, void *userptr);
+
+static void layer_slider_cbk(UIObject slider, void *userptr);
 
 static void process_open_menu(void);
 
@@ -72,6 +77,7 @@ static void select_mode_cbk(UIObject obj, void *ptr)
 void
 GAME_STATE_LEVEL_EDIT_init(void)
 {
+	editor.current_layer = 0;
 	UIObject layout = ui_layout_new();
 	ui_layout_set_order(layout, UI_LAYOUT_HORIZONTAL);
 
@@ -384,6 +390,34 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	ui_window_set_size(editor.general_window, (vec2){ 90, 60 });
 	ui_window_set_position(editor.general_window, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 90, - 30 - 60 });
 	ui_window_set_decorated(editor.general_window, false);
+	{
+		UIObject layout = ui_layout_new();
+		ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
+		{
+			UIObject sublayout = ui_layout_new();
+			ui_layout_set_order(sublayout, UI_LAYOUT_HORIZONTAL);
+			ui_layout_set_border(sublayout, 2.5, 2.5, 2.5, 2.5);
+			{
+				UIObject label = ui_label_new();
+				ui_label_set_text(label, "Layer: ");
+				ui_label_set_alignment(label, UI_LABEL_ALIGN_RIGHT);
+				ui_label_set_color(label, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+				ui_layout_append(sublayout, label);
+
+				UIObject slider_size = ui_slider_new();
+				ui_slider_set_min_value(slider_size, 0.0);
+				ui_slider_set_max_value(slider_size, MAX_LAYERS - 1);
+				ui_slider_set_precision(slider_size, MAX_LAYERS - 1);
+				ui_slider_set_value(slider_size, editor.current_layer);
+				ui_slider_set_callback(slider_size, NULL, layer_slider_cbk);
+
+				ui_layout_append(sublayout, slider_size);
+
+			}
+			ui_layout_append(layout, sublayout);
+		}
+		ui_window_append_child(editor.general_window, layout);
+	}
 
 
 	editor.map_atlas = SPRITE_TERRAIN;
@@ -648,3 +682,9 @@ process_open_menu(void)
 	}
 }
 
+void
+layer_slider_cbk(UIObject slider, void *ptr)
+{
+	(void)ptr;
+	editor.current_layer = ui_slider_get_value(slider);
+}
