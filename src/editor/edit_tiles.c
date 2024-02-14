@@ -50,6 +50,7 @@ static UIObject cursor_layout;
 static UIObject context_root, context_layout;
 static UIObject general_root;
 static UIObject tileset_window;
+static UIObject after_layer_alpha_slider;
 static CursorMode cursor_mode;
 static float cursor_mode_size;
 
@@ -182,7 +183,7 @@ edit_render(void)
 				(vec2){ x, y },
 				(vec2){ 0.5, 0.5 },
 				0.0,
-				(vec4){ 1.0, 1.0, 1.0, 1.0 }
+				(vec4){ 1.0, 1.0, 1.0, k <= current_layer ? 1.0 : ui_slider_get_value(after_layer_alpha_slider) }
 		);
 	}
 
@@ -194,6 +195,7 @@ edit_render(void)
 			(vec4){ 1.0, 1.0, 1.0, 1.0 }
 		);
 	}
+
 	for(int y = 0; y < editor.map->h + 1; y++) {
 		gfx_draw_line(
 			(vec2){ (0.0),           (y - 0.1) }, 
@@ -308,21 +310,22 @@ edit_init(void)
 	UIObject general_layout = ui_layout_new();
 	ui_layout_set_order(general_layout, UI_LAYOUT_VERTICAL);
 	{
-		UIObject sublayout;
+		UIObject sublayout, label;
 
-		#define BEGIN_SUB \
+		#define BEGIN_SUB(LABEL_STRING) \
 		sublayout = ui_layout_new(); \
 		ui_layout_set_order(sublayout, UI_LAYOUT_HORIZONTAL); \
 		ui_layout_set_border(sublayout, 2.5, 2.5, 2.5, 2.5); \
+		label = ui_label_new(); \
+		ui_label_set_text(label, LABEL_STRING); \
+		ui_label_set_alignment(label, UI_LABEL_ALIGN_RIGHT); \
+		ui_label_set_color(label, (vec4){ 1.0, 1.0, 1.0, 1.0 }); \
+		ui_layout_append(sublayout, label); \
 
 		#define END_SUB ui_layout_append(general_layout, sublayout)
 		
-		BEGIN_SUB {
-			UIObject label = ui_label_new();
-			ui_label_set_text(label, "Layer: ");
-			ui_label_set_alignment(label, UI_LABEL_ALIGN_RIGHT);
-			ui_label_set_color(label, (vec4){ 1.0, 1.0, 1.0, 1.0 });
-			ui_layout_append(sublayout, label);
+		BEGIN_SUB("Layer: ") {
+			
 
 			UIObject slider_size = ui_slider_new();
 			ui_slider_set_min_value(slider_size, 0.0);
@@ -332,6 +335,15 @@ edit_init(void)
 			ui_slider_set_callback(slider_size, NULL, layer_slider_cbk);
 
 			ui_layout_append(sublayout, slider_size);
+		} END_SUB;
+
+		BEGIN_SUB("Alpha After: ") {
+			after_layer_alpha_slider = ui_slider_new();
+			ui_slider_set_min_value(after_layer_alpha_slider, 0.0);
+			ui_slider_set_max_value(after_layer_alpha_slider, 1.0);
+			ui_slider_set_precision(after_layer_alpha_slider, 1024);
+
+			ui_layout_append(sublayout, after_layer_alpha_slider);
 		} END_SUB;
 	}
 	ui_child_append(general_root, general_layout);
