@@ -46,7 +46,8 @@ static int current_layer = 0;
 static MouseState mouse_state;
 static vec2 mouse_position;
 
-static UIObject controls_ui, context_menu, context_button, tileset_window;
+static UIObject cursor_layout;
+static UIObject context_menu, context_button, tileset_window;
 static CursorMode cursor_mode;
 static float cursor_mode_size;
 static bool context_shown;
@@ -214,41 +215,20 @@ void
 edit_enter(void)
 {
 	ui_child_append(ui_root(), tiles_root);
+	ui_window_append_child(editor.controls_ui, cursor_layout);
 }
 
 void
 edit_exit(void)
 {
 	ui_deparent(tiles_root);
+	ui_deparent(cursor_layout);
 }
 
 void
 edit_init(void)
 {
 	tiles_root = ui_new_object(0, UI_ROOT);
-
-	controls_ui = ui_window_new();
-	ui_window_set_size(controls_ui, (vec2){ 90, 15 });
-	ui_window_set_position(controls_ui, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 0 + 90, - 15 });
-	ui_window_set_decorated(controls_ui, false);
-	{
-		UIObject cursor_layout = ui_layout_new();
-		ui_layout_set_order(cursor_layout, UI_LAYOUT_HORIZONTAL);
-		{
-			for(int i = 0; i < LAST_CURSOR_MODE; i++) {
-				cursor_checkboxes[i] = ui_checkbox_new();
-				ui_checkbox_set_callback(cursor_checkboxes[i], &cursor_checkboxes[i], cursorchb_cbk);
-				ui_checkbox_set_toggled(cursor_checkboxes[i], (CursorMode)i == cursor_mode);
-				ui_layout_append(cursor_layout, cursor_checkboxes[i]);
-
-				UIObject img = ui_image_new();
-				ui_image_set_keep_aspect(img, true);
-				ui_image_set_stamp(img, &cursor_info[i].image);
-				ui_layout_append(cursor_layout, img);
-			}
-		}
-		ui_window_append_child(controls_ui, cursor_layout);
-	}
 
 	context_menu = ui_window_new();
 	ui_window_set_size(context_menu, (vec2){ 90, 60 });
@@ -353,10 +333,25 @@ edit_init(void)
 		ui_window_append_child(context_button, context_btn);
 	}
 
+	cursor_layout = ui_layout_new();
+	ui_layout_set_order(cursor_layout, UI_LAYOUT_HORIZONTAL);
+	{
+		for(int i = 0; i < LAST_CURSOR_MODE; i++) {
+			cursor_checkboxes[i] = ui_checkbox_new();
+			ui_checkbox_set_callback(cursor_checkboxes[i], &cursor_checkboxes[i], cursorchb_cbk);
+			ui_checkbox_set_toggled(cursor_checkboxes[i], (CursorMode)i == cursor_mode);
+			ui_layout_append(cursor_layout, cursor_checkboxes[i]);
+
+			UIObject img = ui_image_new();
+			ui_image_set_keep_aspect(img, true);
+			ui_image_set_stamp(img, &cursor_info[i].image);
+			ui_layout_append(cursor_layout, img);
+		}
+	}
+
 	(void)tileset_btn_cbk;
 	
 	ui_child_append(tiles_root, tileset_btn_window);
-	ui_child_append(tiles_root, controls_ui);
 	ui_child_append(tiles_root, context_button);
 }
 
@@ -364,6 +359,7 @@ void
 edit_terminate(void)
 {
 	ui_del_object(tiles_root);
+	ui_del_object(cursor_layout);
 }
 
 

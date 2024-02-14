@@ -328,6 +328,12 @@ GAME_STATE_LEVEL_EDIT_init(void)
 		ui_window_append_child(save_window, layout);
 	}
 
+	editor.controls_ui = ui_window_new();
+	ui_window_set_size(editor.controls_ui, (vec2){ 90, 15 });
+	ui_window_set_position(editor.controls_ui, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 0 + 90, - 15 });
+	ui_window_set_decorated(editor.controls_ui, false);
+	
+
 	editor.map_atlas = SPRITE_TERRAIN;
 	if(editor.map == NULL)
 		editor.map = map_alloc(16, 16);
@@ -340,6 +346,8 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	if(state_vtable[editor.editor_state].enter) {
 		state_vtable[editor.editor_state].enter();
 	}
+
+	ui_child_append(ui_root(), editor.controls_ui);
 }
 
 void
