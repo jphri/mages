@@ -36,6 +36,10 @@ typedef struct {
 	EditorState editor_state;
 	int current_tile;
 	SpriteType map_atlas;
+
+	UIObject controls_ui;
+	UIObject context_window;
+	UIObject general_window;
 } EditorGlobal;
 
 int export_map(const char *map_file);

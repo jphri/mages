@@ -38,18 +38,28 @@ static State state_vtable[] = {
 	}
 };
 
-static void open_cbk(UIObject obj, void (*userptr));
-static void cancel_cbk(UIObject btn, void *userptr);
+enum {
+	CONTEXT_MENU = 0x01,
+	GENERAL_MENU = 0x02
+};
+
+static int menu_shown;
 
 static UIObject new_window, new_width, new_height;
-static void newbtn_new_cbk(UIObject btn, void *userptr);
-
 static UIObject load_window, load_path;
-static void loadbtn_load_cbk(UIObject btn, void *userptr);
-
 static UIObject save_window, save_path;
+static UIObject extra_window;
+
+static void open_cbk(UIObject obj, void (*userptr));
+static void cancel_cbk(UIObject btn, void *userptr);
+static void newbtn_new_cbk(UIObject btn, void *userptr);
+static void loadbtn_load_cbk(UIObject btn, void *userptr);
 static void save_btn_cbk(UIObject btn, void *userptr);
 
+static void context_btn_cbk(UIObject btn, void *userptr);
+static void general_btn_cbk(UIObject btn, void *userptr);
+
+static void process_open_menu(void);
 
 static void select_mode_cbk(UIObject obj, void *ptr)
 {
@@ -328,6 +338,54 @@ GAME_STATE_LEVEL_EDIT_init(void)
 		ui_window_append_child(save_window, layout);
 	}
 
+	extra_window = ui_window_new();
+	ui_window_set_decorated(extra_window, false);
+	ui_window_set_size(extra_window, (vec2){ 60, 10 });
+	ui_window_set_position(extra_window, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 60, - 30 - 10 });
+	{
+		UIObject layout = ui_layout_new();
+		{
+			UIObject context_btn = ui_button_new();
+			{
+				UIObject context_lbl = ui_label_new();
+				ui_label_set_text(context_lbl, "ctx");
+				ui_label_set_color(context_lbl, (vec4){ 1.0, 1.0, 0.0, 1.0 });
+				ui_label_set_alignment(context_lbl, UI_LABEL_ALIGN_CENTER);
+				ui_button_set_label(context_btn, context_lbl);
+			}
+			ui_button_set_callback(context_btn, NULL, context_btn_cbk);
+			ui_layout_append(layout, context_btn);
+
+			UIObject general_btn = ui_button_new();
+			{
+				UIObject context_lbl = ui_label_new();
+				ui_label_set_text(context_lbl, "gen");
+				ui_label_set_color(context_lbl, (vec4){ 1.0, 1.0, 0.0, 1.0 });
+				ui_label_set_alignment(context_lbl, UI_LABEL_ALIGN_CENTER);
+				ui_button_set_label(general_btn, context_lbl);
+			}
+			ui_button_set_callback(general_btn, NULL, general_btn_cbk);
+			ui_layout_append(layout, general_btn);
+		}
+		ui_window_append_child(extra_window, layout);
+	}
+
+	editor.controls_ui = ui_window_new();
+	ui_window_set_size(editor.controls_ui, (vec2){ 90, 15 });
+	ui_window_set_position(editor.controls_ui, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 0 + 90, - 15 });
+	ui_window_set_decorated(editor.controls_ui, false);
+	
+	editor.context_window = ui_window_new();
+	ui_window_set_size(editor.context_window, (vec2){ 90, 60 });
+	ui_window_set_position(editor.context_window, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 90, - 30 - 60 });
+	ui_window_set_decorated(editor.context_window, false);
+
+	editor.general_window = ui_window_new();
+	ui_window_set_size(editor.general_window, (vec2){ 90, 60 });
+	ui_window_set_position(editor.general_window, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 90, - 30 - 60 });
+	ui_window_set_decorated(editor.general_window, false);
+
+
 	editor.map_atlas = SPRITE_TERRAIN;
 	if(editor.map == NULL)
 		editor.map = map_alloc(16, 16);
@@ -340,6 +398,10 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	if(state_vtable[editor.editor_state].enter) {
 		state_vtable[editor.editor_state].enter();
 	}
+
+	ui_child_append(ui_root(), editor.controls_ui);
+	ui_child_append(ui_root(), extra_window);
+	//ui_child_append(ui_root(), editor.context_window);
 }
 
 void
@@ -493,7 +555,6 @@ newbtn_new_cbk(UIObject obj, void *userptr)
 	ui_deparent(new_window);
 	ui_text_input_clear(new_width);
 	ui_text_input_clear(new_height);
-	
 }
 
 void
@@ -536,3 +597,54 @@ save_btn_cbk(UIObject obj, void *userptr)
 	free(fixed_path);
 
 }
+
+void
+context_btn_cbk(UIObject obj, void *ptr)
+{
+	(void)obj;
+	(void)ptr;
+	if(menu_shown == CONTEXT_MENU) {
+		menu_shown = 0;
+	} else {
+		menu_shown = CONTEXT_MENU;
+	}
+	process_open_menu();
+}
+
+void
+general_btn_cbk(UIObject obj, void *ptr)
+{
+	(void)obj;
+	(void)ptr;
+	if(menu_shown == GENERAL_MENU) {
+		menu_shown = 0;
+	} else {
+		menu_shown = GENERAL_MENU;
+	}
+	process_open_menu();
+}
+
+void
+process_open_menu(void)
+{
+	if(menu_shown) {
+		ui_window_set_position(extra_window, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 60, - 30 - 120 - 10 });
+	} else {
+		ui_window_set_position(extra_window, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 60, - 30 - 10 });
+	}
+
+	ui_deparent(editor.context_window);
+	ui_deparent(editor.general_window);
+	
+	switch(menu_shown) {
+	case CONTEXT_MENU:
+		ui_child_append(ui_root(), editor.context_window);
+		break;
+	case GENERAL_MENU:
+		ui_child_append(ui_root(), editor.general_window);
+		break;
+	default:
+		break;
+	}
+}
+
