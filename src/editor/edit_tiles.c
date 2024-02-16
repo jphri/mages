@@ -580,11 +580,24 @@ fill_preview(int x, int y)
 	int tile = editor.current_tile - 1;
 	TextureStamp stamp = get_sprite(SPRITE_TERRAIN, tile % 16, tile / 16);
 
+	Rectangle screen_rect = gfx_window_rectangle();
+	/* grow to tile size, so we can use this as a rect-rect intersection in physics */
+	screen_rect.half_size[0] += zoom;
+	screen_rect.half_size[1] += zoom;
+	
 	while((elem = arrbuf_peektop(&fill_preview_stack, sizeof(StackElement)))) {
 		if(elem->x < 0 || elem->x >= editor.map->w || elem->y < 0 || elem->y >= editor.map->h) {
 			arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));
 			continue;
 		}
+		vec2 pixel_pos;
+		gfx_world_to_pixel((vec2){ elem->x + 0.5, elem->y + 0.5 }, pixel_pos);
+		/* see? */
+		if(!rect_contains_point(&screen_rect, pixel_pos)) {
+			arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));
+			continue;
+		}
+		
 		int current_tile = map_info[elem->x + elem->y * editor.map->w + current_layer * editor.map->w * editor.map->h];
 		
 		if(reference_tile != current_tile) {

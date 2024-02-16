@@ -542,6 +542,13 @@ gfx_pixel_to_world(vec2 pixel, vec2 world_out)
 }
 
 void
+gfx_world_to_pixel(vec2 world, vec2 pixel_out)
+{
+	pixel_out[0] = world[0] * view_matrix[0][0] + view_matrix[3][0];
+	pixel_out[1] = world[1] * view_matrix[1][1] + view_matrix[3][1];
+}
+
+void
 init_shaders(void)
 {
 	#define SHADER_PROGRAM(symbol, ...) \
