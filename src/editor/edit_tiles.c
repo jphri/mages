@@ -21,15 +21,27 @@ typedef enum CursorMode {
 	LAST_CURSOR_MODE
 } CursorMode;
 
+typedef struct {
+	void (*apply)(int x, int y);
+	void (*preview)(void);
+} Cursor;
+
 typedef void (*CursorApply)(int x, int y);
 
-static void apply_cursor(int x, int y);
 static void pencil_apply(int x, int y);
 static void fill_apply(int x, int y);
 
-static CursorApply cursors[] = {
-	[CURSOR_MODE_PENCIL] = pencil_apply,
-	[CURSOR_MODE_FILL] = fill_apply
+static void pencil_preview(void);
+
+static Cursor cursors[] = {
+	[CURSOR_MODE_PENCIL] = { 
+		pencil_apply,
+		pencil_preview,
+	},
+	[CURSOR_MODE_FILL] = { 
+		fill_apply,
+		NULL,
+	}
 };
 
 static struct {
@@ -62,9 +74,11 @@ static void layer_slider_cbk(UIObject slider, void *userptr);
 static void cursor_size_cbk(UIObject obj, void *userptr);
 static void cursorchb_cbk(UIObject obj, void *userptr);
 static void tileselect_cbk(UIObject obj, void *userptr);
-static void draw_cursor(void);
 
 static void tileset_btn_cbk(UIObject obj, void *ptr);
+
+static void draw_preview(void);
+static void apply_cursor(int x, int y);
 
 void
 edit_keyboard(SDL_Event *event)
@@ -205,7 +219,7 @@ edit_render(void)
 		);
 	}
 	if(!ui_is_active()) {
-		draw_cursor();
+		draw_preview();
 	}
 	gfx_draw_end();
 }
@@ -362,7 +376,7 @@ edit_terminate(void)
 
 
 void
-draw_cursor(void)
+pencil_preview(void)
 {
 	vec2 v;
 
@@ -379,10 +393,19 @@ draw_cursor(void)
 }
 
 void
+draw_preview(void)
+{
+	if(cursors[cursor_mode].preview) {
+		cursors[cursor_mode].preview();
+	}
+}
+
+void
 apply_cursor(int x, int y)
 {
-	if(cursors[cursor_mode])
-		cursors[cursor_mode](x, y);
+	if(cursors[cursor_mode].apply) {
+		cursors[cursor_mode].apply(x, y);
+	}
 }
 
 void
