@@ -394,7 +394,7 @@ pencil_preview(int x, int y)
 		return;
 	
 	int tile = editor.current_tile - 1;
-	stamp = get_sprite(SPRITE_TERRAIN, tile % 16, tile % 16);
+	stamp = get_sprite(SPRITE_TERRAIN, tile % 16, tile / 16);
 
 	gfx_draw_texture_rect(
 			&stamp,
