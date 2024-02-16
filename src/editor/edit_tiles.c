@@ -71,6 +71,9 @@ static UIObject tiles_root;
 
 static UIObject cursor_checkboxes[LAST_CURSOR_MODE];
 
+static ArrayBuffer fill_preview_stack;
+static ArrayBuffer fill_layer_helper;
+
 static void layer_slider_cbk(UIObject slider, void *userptr);
 static void cursor_size_cbk(UIObject obj, void *userptr);
 static void cursorchb_cbk(UIObject obj, void *userptr);
@@ -177,7 +180,6 @@ edit_render(void)
 	TextureStamp stamp;
 	gfx_set_camera(offset, (vec2){ zoom, zoom });
 
-
 	gfx_draw_begin(NULL);
 
 	for(int k = 0; k < SCENE_LAYERS; k++)
@@ -246,6 +248,9 @@ edit_exit(void)
 void
 edit_init(void)
 {
+	arrbuf_init(&fill_layer_helper);
+	arrbuf_init(&fill_preview_stack);
+
 	tiles_root = ui_new_object(0, UI_ROOT);
 	context_root = ui_new_object(0, UI_ROOT);
 	general_root = ui_new_object(0, UI_ROOT);
@@ -373,6 +378,9 @@ edit_terminate(void)
 	ui_del_object(tiles_root);
 	ui_del_object(cursor_layout);
 	ui_del_object(general_root);
+
+	arrbuf_free(&fill_layer_helper);
+	arrbuf_free(&fill_preview_stack);
 }
 
 
@@ -550,11 +558,13 @@ fill_preview(int x, int y)
 		int x, y;
 		int state;
 	} StackElement;
-	ArrayBuffer stack;
 	StackElement *elem;
 	int reference_tile;
 
-	int *map_info = malloc(editor.map->w * editor.map->h * sizeof(editor.map->tiles[0]));
+	arrbuf_clear(&fill_layer_helper);
+	arrbuf_clear(&fill_preview_stack);
+
+	int *map_info = arrbuf_newptr(&fill_layer_helper, editor.map->w * editor.map->h * sizeof(editor.map->tiles[0]));
 	memcpy(map_info, &editor.map->tiles[current_layer * editor.map->w * editor.map->h], editor.map->w * editor.map->h * sizeof(editor.map->tiles[0]));
 
 	if(x < 0 || y < 0 || x >= editor.map->w || y >= editor.map->h)
@@ -564,22 +574,21 @@ fill_preview(int x, int y)
 	if(reference_tile == editor.current_tile)
 		return;
 
-	arrbuf_init(&stack);
-	arrbuf_insert(&stack, sizeof(StackElement), &(StackElement) {
+	arrbuf_insert(&fill_preview_stack, sizeof(StackElement), &(StackElement) {
 		.x = x, .y = y, .state = 0
 	});
 	int tile = editor.current_tile - 1;
 	TextureStamp stamp = get_sprite(SPRITE_TERRAIN, tile % 16, tile / 16);
 
-	while((elem = arrbuf_peektop(&stack, sizeof(StackElement)))) {
+	while((elem = arrbuf_peektop(&fill_preview_stack, sizeof(StackElement)))) {
 		if(elem->x < 0 || elem->x >= editor.map->w || elem->y < 0 || elem->y >= editor.map->h) {
-			arrbuf_poptop(&stack, sizeof(StackElement));
+			arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));
 			continue;
 		}
 		int current_tile = map_info[elem->x + elem->y * editor.map->w + current_layer * editor.map->w * editor.map->h];
 		
 		if(reference_tile != current_tile) {
-			arrbuf_poptop(&stack, sizeof(StackElement));
+			arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));
 			continue;
 		}
 
@@ -609,8 +618,7 @@ fill_preview(int x, int y)
 		gfx_draw_texture_rect(&stamp, (vec2){ elem->x + 0.5, elem->y + 0.5 }, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 0.5 });
 
 		/* elem dead here */
-		arrbuf_poptop(&stack, sizeof(StackElement));
-		arrbuf_insert(&stack, sizeof(elems), elems);
+		arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));
+		arrbuf_insert(&fill_preview_stack, sizeof(elems), elems);
 	}
-	arrbuf_free(&stack);
 }
