@@ -176,6 +176,8 @@ static void parser_font_size(struct CharData *, Font font, vec2 char_offset, voi
 static void parser_font_render(struct CharData *, Font font, vec2 char_offset, void *parser);
 
 static void sprite_buffer_reserve(int count_sprites);
+static void sprite_buffer_lock(void);
+static void sprite_buffer_unlock(bool invalidate);
 static void sprite_insert(int count_sprites, SpriteInternal *spr_buf);
 
 static bool enabled_camera;
@@ -222,6 +224,8 @@ static GraphicsTileMap *current_tmap;
 static GLuint sprite_buffer, sprite_vao, sprite_count, 
 			  sprite_reserved = 1; /* for initialization, this will be overrided at gfx_init() */
 static mat4 ident_mat;
+
+static SpriteInternal *sprite_data;
 
 static int clip_id;
 static Rectangle clip_stack[1024];
@@ -479,6 +483,7 @@ gfx_draw_end(void)
 {
 	if(!current_tmap && sprite_count == 0)
 		return;
+	
 
 	for(int i = 0; i < LAST_TEXTURE_ATLAS; i++) {
 		glActiveTexture(GL_TEXTURE0 + i);
@@ -489,8 +494,12 @@ gfx_draw_end(void)
 	glBindBufferBase(GL_UNIFORM_BUFFER, 0, matrix_buffer);
 	if(current_tmap)
 		draw_tmap(current_tmap);
+	
+	sprite_buffer_lock();
 
 	intrend_draw_instanced(&sprite_program, sprite_vao, GL_TRIANGLES, 6, sprite_count);
+
+	sprite_buffer_unlock(true);
 
 	glBindBufferBase(GL_UNIFORM_BUFFER, 0, 0);
 	glBindBufferBase(GL_UNIFORM_BUFFER, 1, 0);
@@ -1069,6 +1078,8 @@ sprite_buffer_reserve(int count_sprites)
 	if(new_reserv == (long)sprite_reserved)
 		return;
 
+	sprite_buffer_lock();
+
 	new_buffer = ugl_create_buffer(GL_STREAM_DRAW, sizeof(SpriteInternal) * new_reserv, NULL);
 	if(sprite_count > 0) {
 		glBindBuffer(GL_COPY_READ_BUFFER, sprite_buffer);
@@ -1093,15 +1104,40 @@ sprite_buffer_reserve(int count_sprites)
 		{ .name = VATTRIB_INST_COLOR,            .size = 4, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, color),       .divisor = 1, .buffer = sprite_buffer },
 		{ .name = VATTRIB_INST_CLIP,             .size = 4, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, clip_region), .divisor = 1, .buffer = sprite_buffer },
 	});
+
+	sprite_buffer_unlock(false);
+}
+
+static void
+sprite_buffer_lock(void)
+{
+	if(glIsBuffer(sprite_buffer)) {
+		glBindBuffer(GL_ARRAY_BUFFER, sprite_buffer);
+		glUnmapBuffer(GL_ARRAY_BUFFER);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+	}
+}
+
+static void
+sprite_buffer_unlock(bool invalidate)
+{
+	if(glIsBuffer(sprite_buffer)) {
+		int flags = GL_MAP_WRITE_BIT;
+		if(invalidate)
+			flags |= GL_MAP_INVALIDATE_BUFFER_BIT;
+		
+		glBindBuffer(GL_ARRAY_BUFFER, sprite_buffer);
+		sprite_data = glMapBufferRange(GL_ARRAY_BUFFER, 0, sprite_reserved * sizeof(SpriteInternal), flags);
+		if(!sprite_data)
+			die("sprite_data == null\n");
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+	}
 }
 
 static void
 sprite_insert(int count_sprites, SpriteInternal *spr)
 {
 	sprite_buffer_reserve(count_sprites);
-	glBindBuffer(GL_ARRAY_BUFFER, sprite_buffer);
-	glBufferSubData(GL_ARRAY_BUFFER, sprite_count * sizeof(spr[0]), count_sprites * sizeof(spr[0]), spr);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
+	memcpy(&sprite_data[sprite_count], spr, count_sprites * sizeof(SpriteInternal));
 	sprite_count += count_sprites;
 }
