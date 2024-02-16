@@ -21,15 +21,28 @@ typedef enum CursorMode {
 	LAST_CURSOR_MODE
 } CursorMode;
 
+typedef struct {
+	void (*apply)(int x, int y);
+	void (*preview)(int x, int y);
+} Cursor;
+
 typedef void (*CursorApply)(int x, int y);
 
-static void apply_cursor(int x, int y);
 static void pencil_apply(int x, int y);
 static void fill_apply(int x, int y);
 
-static CursorApply cursors[] = {
-	[CURSOR_MODE_PENCIL] = pencil_apply,
-	[CURSOR_MODE_FILL] = fill_apply
+static void pencil_preview(int x, int y);
+static void fill_preview(int x, int y);
+
+static Cursor cursors[] = {
+	[CURSOR_MODE_PENCIL] = { 
+		pencil_apply,
+		pencil_preview,
+	},
+	[CURSOR_MODE_FILL] = { 
+		fill_apply,
+		fill_preview,
+	}
 };
 
 static struct {
@@ -58,13 +71,18 @@ static UIObject tiles_root;
 
 static UIObject cursor_checkboxes[LAST_CURSOR_MODE];
 
+static ArrayBuffer fill_preview_stack;
+static ArrayBuffer fill_layer_helper;
+
 static void layer_slider_cbk(UIObject slider, void *userptr);
 static void cursor_size_cbk(UIObject obj, void *userptr);
 static void cursorchb_cbk(UIObject obj, void *userptr);
 static void tileselect_cbk(UIObject obj, void *userptr);
-static void draw_cursor(void);
 
 static void tileset_btn_cbk(UIObject obj, void *ptr);
+
+static void draw_preview(void);
+static void apply_cursor(int x, int y);
 
 void
 edit_keyboard(SDL_Event *event)
@@ -162,7 +180,6 @@ edit_render(void)
 	TextureStamp stamp;
 	gfx_set_camera(offset, (vec2){ zoom, zoom });
 
-
 	gfx_draw_begin(NULL);
 
 	for(int k = 0; k < SCENE_LAYERS; k++)
@@ -205,7 +222,7 @@ edit_render(void)
 		);
 	}
 	if(!ui_is_active()) {
-		draw_cursor();
+		draw_preview();
 	}
 	gfx_draw_end();
 }
@@ -231,6 +248,9 @@ edit_exit(void)
 void
 edit_init(void)
 {
+	arrbuf_init(&fill_layer_helper);
+	arrbuf_init(&fill_preview_stack);
+
 	tiles_root = ui_new_object(0, UI_ROOT);
 	context_root = ui_new_object(0, UI_ROOT);
 	general_root = ui_new_object(0, UI_ROOT);
@@ -358,31 +378,49 @@ edit_terminate(void)
 	ui_del_object(tiles_root);
 	ui_del_object(cursor_layout);
 	ui_del_object(general_root);
+
+	arrbuf_free(&fill_layer_helper);
+	arrbuf_free(&fill_preview_stack);
 }
 
 
 void
-draw_cursor(void)
+pencil_preview(int x, int y)
 {
-	vec2 v;
-
-	vec2_sub(v, mouse_position, offset);
-	vec2_sub(v, v, (vec2){ 0.5, 0.5 });
-	vec2_div(v, v, (vec2){ zoom, zoom });
-	vec2_floor(v, v);
-	vec2_add(v, v, (vec2){ 0.5, 0.5 });
+	vec2 v = { x + 0.5, y + 0.5 };
+	TextureStamp stamp;
 
 	if(v[0] < 0 || v[0] >= editor.map->w || v[1] < 0 || v[1] >= editor.map->h) 
 		return;
+	
+	int tile = editor.current_tile - 1;
+	stamp = get_sprite(SPRITE_TERRAIN, tile % 16, tile / 16);
 
-	gfx_draw_rect(v, (vec2){ 0.5 , 0.5 }, 0.05, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+	gfx_draw_texture_rect(
+			&stamp,
+			v,
+			(vec2){ 0.5, 0.5 },
+			0.0,
+			(vec4){ 1.0, 1.0, 1.0, 0.75 }
+	);
+}
+
+void
+draw_preview(void)
+{
+	int x = ((mouse_position[0] - offset[0] - 0.5) / zoom);
+	int y = ((mouse_position[1] - offset[1] - 0.5) / zoom);
+	if(cursors[cursor_mode].preview) {
+		cursors[cursor_mode].preview(x, y);
+	}
 }
 
 void
 apply_cursor(int x, int y)
 {
-	if(cursors[cursor_mode])
-		cursors[cursor_mode](x, y);
+	if(cursors[cursor_mode].apply) {
+		cursors[cursor_mode].apply(x, y);
+	}
 }
 
 void
@@ -511,4 +549,89 @@ tileselect_cbk(UIObject obj, void *userptr)
 	(void)userptr;
 
 	editor.current_tile = ui_tileset_sel_get_selected(obj);
+}
+
+void
+fill_preview(int x, int y)
+{
+	typedef struct {
+		int x, y;
+		int state;
+	} StackElement;
+	StackElement *elem;
+	int reference_tile;
+
+	arrbuf_clear(&fill_layer_helper);
+	arrbuf_clear(&fill_preview_stack);
+
+	int *map_info = arrbuf_newptr(&fill_layer_helper, editor.map->w * editor.map->h * sizeof(editor.map->tiles[0]));
+	memcpy(map_info, &editor.map->tiles[current_layer * editor.map->w * editor.map->h], editor.map->w * editor.map->h * sizeof(editor.map->tiles[0]));
+
+	if(x < 0 || y < 0 || x >= editor.map->w || y >= editor.map->h)
+		return;
+
+	reference_tile = map_info[x + y * editor.map->w + current_layer * editor.map->w * editor.map->h];
+	if(reference_tile == editor.current_tile)
+		return;
+
+	arrbuf_insert(&fill_preview_stack, sizeof(StackElement), &(StackElement) {
+		.x = x, .y = y, .state = 0
+	});
+	int tile = editor.current_tile - 1;
+	TextureStamp stamp = get_sprite(SPRITE_TERRAIN, tile % 16, tile / 16);
+
+	Rectangle screen_rect = gfx_window_rectangle();
+	/* grow to tile size, so we can use this as a rect-rect intersection in physics */
+	screen_rect.half_size[0] += zoom;
+	screen_rect.half_size[1] += zoom;
+	
+	while((elem = arrbuf_peektop(&fill_preview_stack, sizeof(StackElement)))) {
+		if(elem->x < 0 || elem->x >= editor.map->w || elem->y < 0 || elem->y >= editor.map->h) {
+			arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));
+			continue;
+		}
+		vec2 pixel_pos;
+		gfx_world_to_pixel((vec2){ elem->x + 0.5, elem->y + 0.5 }, pixel_pos);
+		/* see? */
+		if(!rect_contains_point(&screen_rect, pixel_pos)) {
+			arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));
+			continue;
+		}
+		
+		int current_tile = map_info[elem->x + elem->y * editor.map->w + current_layer * editor.map->w * editor.map->h];
+		
+		if(reference_tile != current_tile) {
+			arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));
+			continue;
+		}
+
+		StackElement elems[] = {
+			{
+				.x = elem->x - 1,
+				.y = elem->y,
+				.state = 0
+			},
+			{
+				.x = elem->x + 1,
+				.y = elem->y,
+				.state = 0
+			},
+			{
+				.x = elem->x,
+				.y = elem->y - 1,
+				.state = 0
+			},
+			{
+				.x = elem->x,
+				.y = elem->y + 1,
+				.state = 0
+			}
+		};
+		map_info[elem->x + elem->y * editor.map->w + current_layer * editor.map->w * editor.map->h] = editor.current_tile;
+		gfx_draw_texture_rect(&stamp, (vec2){ elem->x + 0.5, elem->y + 0.5 }, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 0.5 });
+
+		/* elem dead here */
+		arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));
+		arrbuf_insert(&fill_preview_stack, sizeof(elems), elems);
+	}
 }

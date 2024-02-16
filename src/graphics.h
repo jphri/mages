@@ -100,6 +100,7 @@ void gfx_render_present(void);
 
 void gfx_set_camera(vec2 position, vec2 scale);
 void gfx_pixel_to_world(vec2 pixel, vec2 world_out);
+void gfx_world_to_pixel(vec2 world, vec2 pixel_out);
 
 void gfx_draw_begin(GraphicsTileMap *tmap);
 void gfx_push_clip(vec2 position, vec2 half_size);
