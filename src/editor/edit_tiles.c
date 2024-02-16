@@ -23,7 +23,7 @@ typedef enum CursorMode {
 
 typedef struct {
 	void (*apply)(int x, int y);
-	void (*preview)(void);
+	void (*preview)(int x, int y);
 } Cursor;
 
 typedef void (*CursorApply)(int x, int y);
@@ -31,7 +31,8 @@ typedef void (*CursorApply)(int x, int y);
 static void pencil_apply(int x, int y);
 static void fill_apply(int x, int y);
 
-static void pencil_preview(void);
+static void pencil_preview(int x, int y);
+static void fill_preview(int x, int y);
 
 static Cursor cursors[] = {
 	[CURSOR_MODE_PENCIL] = { 
@@ -40,7 +41,7 @@ static Cursor cursors[] = {
 	},
 	[CURSOR_MODE_FILL] = { 
 		fill_apply,
-		NULL,
+		fill_preview,
 	}
 };
 
@@ -376,27 +377,33 @@ edit_terminate(void)
 
 
 void
-pencil_preview(void)
+pencil_preview(int x, int y)
 {
-	vec2 v;
-
-	vec2_sub(v, mouse_position, offset);
-	vec2_sub(v, v, (vec2){ 0.5, 0.5 });
-	vec2_div(v, v, (vec2){ zoom, zoom });
-	vec2_floor(v, v);
-	vec2_add(v, v, (vec2){ 0.5, 0.5 });
+	vec2 v = { x + 0.5, y + 0.5 };
+	TextureStamp stamp;
 
 	if(v[0] < 0 || v[0] >= editor.map->w || v[1] < 0 || v[1] >= editor.map->h) 
 		return;
+	
+	int tile = editor.current_tile - 1;
+	stamp = get_sprite(SPRITE_TERRAIN, tile % 16, tile % 16);
 
-	gfx_draw_rect(v, (vec2){ 0.5 , 0.5 }, 0.05, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+	gfx_draw_texture_rect(
+			&stamp,
+			v,
+			(vec2){ 0.5, 0.5 },
+			0.0,
+			(vec4){ 1.0, 1.0, 1.0, 0.75 }
+	);
 }
 
 void
 draw_preview(void)
 {
+	int x = ((mouse_position[0] - offset[0] - 0.5) / zoom);
+	int y = ((mouse_position[1] - offset[1] - 0.5) / zoom);
 	if(cursors[cursor_mode].preview) {
-		cursors[cursor_mode].preview();
+		cursors[cursor_mode].preview(x, y);
 	}
 }
 
@@ -534,4 +541,76 @@ tileselect_cbk(UIObject obj, void *userptr)
 	(void)userptr;
 
 	editor.current_tile = ui_tileset_sel_get_selected(obj);
+}
+
+void
+fill_preview(int x, int y)
+{
+	typedef struct {
+		int x, y;
+		int state;
+	} StackElement;
+	ArrayBuffer stack;
+	StackElement *elem;
+	int reference_tile;
+
+	int *map_info = malloc(editor.map->w * editor.map->h * sizeof(editor.map->tiles[0]));
+	memcpy(map_info, &editor.map->tiles[current_layer * editor.map->w * editor.map->h], editor.map->w * editor.map->h * sizeof(editor.map->tiles[0]));
+
+	if(x < 0 || y < 0 || x >= editor.map->w || y >= editor.map->h)
+		return;
+
+	reference_tile = map_info[x + y * editor.map->w + current_layer * editor.map->w * editor.map->h];
+	if(reference_tile == editor.current_tile)
+		return;
+
+	arrbuf_init(&stack);
+	arrbuf_insert(&stack, sizeof(StackElement), &(StackElement) {
+		.x = x, .y = y, .state = 0
+	});
+	int tile = editor.current_tile - 1;
+	TextureStamp stamp = get_sprite(SPRITE_TERRAIN, tile % 16, tile / 16);
+
+	while((elem = arrbuf_peektop(&stack, sizeof(StackElement)))) {
+		if(elem->x < 0 || elem->x >= editor.map->w || elem->y < 0 || elem->y >= editor.map->h) {
+			arrbuf_poptop(&stack, sizeof(StackElement));
+			continue;
+		}
+		int current_tile = map_info[elem->x + elem->y * editor.map->w + current_layer * editor.map->w * editor.map->h];
+		
+		if(reference_tile != current_tile) {
+			arrbuf_poptop(&stack, sizeof(StackElement));
+			continue;
+		}
+
+		StackElement elems[] = {
+			{
+				.x = elem->x - 1,
+				.y = elem->y,
+				.state = 0
+			},
+			{
+				.x = elem->x + 1,
+				.y = elem->y,
+				.state = 0
+			},
+			{
+				.x = elem->x,
+				.y = elem->y - 1,
+				.state = 0
+			},
+			{
+				.x = elem->x,
+				.y = elem->y + 1,
+				.state = 0
+			}
+		};
+		map_info[elem->x + elem->y * editor.map->w + current_layer * editor.map->w * editor.map->h] = editor.current_tile;
+		gfx_draw_texture_rect(&stamp, (vec2){ elem->x + 0.5, elem->y + 0.5 }, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 0.5 });
+
+		/* elem dead here */
+		arrbuf_poptop(&stack, sizeof(StackElement));
+		arrbuf_insert(&stack, sizeof(elems), elems);
+	}
+	arrbuf_free(&stack);
 }
