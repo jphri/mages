@@ -229,6 +229,8 @@ static SpriteInternal *sprite_data;
 
 static int clip_id;
 static Rectangle clip_stack[1024];
+static int draw_count;
+static int sprites_rendered;
 
 static inline void get_global_clip(vec4 out_clip)
 {
@@ -498,6 +500,7 @@ gfx_draw_end(void)
 	sprite_buffer_lock();
 
 	intrend_draw_instanced(&sprite_program, sprite_vao, GL_TRIANGLES, 6, sprite_count);
+	draw_count++;
 
 	sprite_buffer_unlock(true);
 
@@ -509,6 +512,7 @@ gfx_draw_end(void)
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
+	sprites_rendered += sprite_count;
 	sprite_count = 0;
 	glDisable(GL_BLEND);
 }
@@ -698,6 +702,7 @@ void
 draw_tmap(GraphicsTileMap *tmap) 
 {
 	intrend_draw_instanced(&tile_map_program, tmap->vao, GL_TRIANGLES, 6, tmap->count_tiles);
+	draw_count++;
 }
 
 int
@@ -1140,4 +1145,23 @@ sprite_insert(int count_sprites, SpriteInternal *spr)
 	sprite_buffer_reserve(count_sprites);
 	memcpy(&sprite_data[sprite_count], spr, count_sprites * sizeof(SpriteInternal));
 	sprite_count += count_sprites;
+}
+
+int
+gfx_debug_draw_count(void)
+{
+	return draw_count;
+}
+
+int
+gfx_debug_sprites_rendered(void)
+{
+	return sprites_rendered;
+}
+
+void
+gfx_debug_reset(void)
+{
+	draw_count = 0;
+	sprites_rendered = 0;
 }

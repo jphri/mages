@@ -219,9 +219,11 @@ main(int argc, char *argv[])
 		if(fps_time > 1.0) {
 			double rend_time = rendering_time / (double)SDL_GetPerformanceFrequency();
 				   rend_time /= fps;
-			printf("FPS: %d | Avg rend time: %f ms (%0.2f estimated FPS)\n", fps, rend_time * 1000, 1.0 / rend_time);
+			printf("FPS: %d | Avg rend time: %f ms (%0.2f estimated FPS) | sprites rendered: %d | draw count: %d | sprites per draw call: %0.2f \n", fps, rend_time * 1000, 1.0 / rend_time, gfx_debug_sprites_rendered(), gfx_debug_draw_count(), (double)gfx_debug_sprites_rendered() / gfx_debug_draw_count());
 			fps_time = 0;
 			fps = 0;
+
+			gfx_debug_reset();
 
 			rendering_time = 0;
 		}

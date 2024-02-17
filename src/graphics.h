@@ -142,4 +142,8 @@ Rectangle gfx_window_rectangle(void);
 void gfx_font_size(vec2 out_size, Font font, float height, const char *fmt, ...);
 void gfx_font_size_view(vec2 out_size, Font font, float height, StrView view);
 
+int  gfx_debug_draw_count(void);
+int  gfx_debug_sprites_rendered(void);
+void gfx_debug_reset(void);
+
 #endif
