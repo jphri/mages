@@ -483,9 +483,8 @@ gfx_draw_begin(GraphicsTileMap *tmap)
 void
 gfx_draw_end(void)
 {
-	if(!current_tmap && sprite_count == 0)
+	if((!current_tmap || current_tmap->count_tiles == 0) && sprite_count == 0)
 		return;
-	
 
 	for(int i = 0; i < LAST_TEXTURE_ATLAS; i++) {
 		glActiveTexture(GL_TEXTURE0 + i);
@@ -499,8 +498,10 @@ gfx_draw_end(void)
 	
 	sprite_buffer_lock();
 
-	intrend_draw_instanced(&sprite_program, sprite_vao, GL_TRIANGLES, 6, sprite_count);
-	draw_count++;
+	if(sprite_count > 0) {
+		intrend_draw_instanced(&sprite_program, sprite_vao, GL_TRIANGLES, 6, sprite_count);
+		draw_count++;
+	}
 
 	sprite_buffer_unlock(true);
 
