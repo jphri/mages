@@ -80,7 +80,7 @@ map_load(const char *file)
 
 error_load:
 	if(map)
-		free(map);
+		map_free(map);
 	return NULL;
 }
 
