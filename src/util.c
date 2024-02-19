@@ -377,7 +377,6 @@ strview_float(StrView str, float *result)
 		if(!isdigit(*s))
 			return 0;
 		fract_part += (float)(*s - '0') * f;
-		s++;
 	}
 
 	*result += fract_part;
