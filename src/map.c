@@ -68,6 +68,26 @@ map_load(const char *file)
 
 			data->next = map->collision;
 			map->collision = data;
+		} else if(strview_cmp(word, "mark") == 0) {
+			MarkData *data = malloc(sizeof(*data));
+			
+			if(!(data->name = strview_str(strview_token(&tokenview, " "))))
+				goto error_load;
+
+			if(!strview_float(strview_token(&tokenview, " "), &data->rect.position[0]))
+				goto error_load;
+
+			if(!strview_float(strview_token(&tokenview, " "), &data->rect.position[1]))
+				goto error_load;
+
+			if(!strview_float(strview_token(&tokenview, " "), &data->rect.half_size[0]))
+				goto error_load;
+
+			if(!strview_float(strview_token(&tokenview, " "), &data->rect.half_size[1]))
+				goto error_load;
+
+			data->next = map->mark;
+			map->mark = data;
 		} else {
 			char *s = strview_str(word);
 			printf("unknown command %s\n", s);
@@ -80,7 +100,8 @@ map_load(const char *file)
 
 error_load:
 	if(map)
-		free(map);
+		map_free(map);
+	fbuf_close(&fp);
 	return NULL;
 }
 
@@ -88,6 +109,11 @@ void
 map_free(Map *map)
 {
 	for(CollisionData *c = map->collision, *next; c; c = next) {
+		next = c->next;
+		free(c);
+	}
+	for(MarkData *c = map->mark, *next; c; c = next) {
+		free((void*)c->name);
 		next = c->next;
 		free(c);
 	}
@@ -146,3 +172,14 @@ map_set_phx_scene(Map *map)
 	}
 }
 
+MarkData *
+map_find_mark(Map *m, const char *id)
+{
+	MarkData *mm = m->mark;
+	while(mm) {
+		if(strcmp(mm->name, id) == 0)
+			return mm;
+		mm = mm->next;
+	}
+	return NULL;
+}
