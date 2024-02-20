@@ -34,7 +34,11 @@ static State state_vtable[] = {
 		.wheel        = collision_wheel,
 		.keyboard     = collision_keyboard,
 		.mouse_button = collision_mouse_button,
-		.mouse_motion = collision_mouse_motion
+		.mouse_motion = collision_mouse_motion,
+		.enter = collision_enter,
+		.exit = collision_exit,
+		.init = collision_init,
+		.terminate = collision_terminate,
 	}
 };
 

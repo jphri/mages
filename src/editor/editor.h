@@ -62,6 +62,10 @@ void collision_mouse_motion(SDL_Event *event);
 void collision_mouse_button(SDL_Event *event);
 void collision_keyboard(SDL_Event *event);
 void collision_wheel(SDL_Event *event);
+void collision_init(void);
+void collision_terminate(void);
+void collision_enter(void);
+void collision_exit(void);
 
 extern EditorGlobal editor;
 

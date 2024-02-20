@@ -11,12 +11,86 @@
 #include "../map.h"
 #include "editor.h"
 
+#define MAX_LAYERS 64
+
+static void layer_slider_cbk(UIObject obj, void *userptr);
+
 static float zoom = 16.0;
 static bool  ctrl_pressed = false;
 static vec2  begin_offset, move_offset, offset;
 static int current_layer = 0;
 static MouseState mouse_state;
 static CollisionData current_collision;
+
+static UIObject general_root;
+static UIObject after_layer_alpha_slider;
+
+void
+collision_init(void)
+{
+	general_root = ui_new_object(0, UI_ROOT);
+
+	{
+		UIObject general_layout = ui_layout_new();
+		ui_layout_set_order(general_layout, UI_LAYOUT_VERTICAL);
+		{
+			UIObject sublayout, label;
+
+#define BEGIN_SUB(LABEL_STRING) \
+			sublayout = ui_layout_new(); \
+			ui_layout_set_order(sublayout, UI_LAYOUT_HORIZONTAL); \
+			ui_layout_set_border(sublayout, 2.5, 2.5, 2.5, 2.5); \
+			label = ui_label_new(); \
+			ui_label_set_text(label, LABEL_STRING); \
+			ui_label_set_alignment(label, UI_LABEL_ALIGN_RIGHT); \
+			ui_label_set_color(label, (vec4){ 1.0, 1.0, 1.0, 1.0 }); \
+			ui_layout_append(sublayout, label); \
+
+#define END_SUB ui_layout_append(general_layout, sublayout)
+
+			BEGIN_SUB("Layer: ") {
+
+
+				UIObject slider_size = ui_slider_new();
+				ui_slider_set_min_value(slider_size, 0.0);
+				ui_slider_set_max_value(slider_size, MAX_LAYERS - 1);
+				ui_slider_set_precision(slider_size, MAX_LAYERS - 1);
+				ui_slider_set_value(slider_size, current_layer);
+				ui_slider_set_callback(slider_size, NULL, layer_slider_cbk);
+
+				ui_layout_append(sublayout, slider_size);
+			} END_SUB;
+
+			BEGIN_SUB("Alpha After: ") {
+				after_layer_alpha_slider = ui_slider_new();
+				ui_slider_set_min_value(after_layer_alpha_slider, 0.0);
+				ui_slider_set_max_value(after_layer_alpha_slider, 1.0);
+				ui_slider_set_precision(after_layer_alpha_slider, 1024);
+
+				ui_layout_append(sublayout, after_layer_alpha_slider);
+			} END_SUB;
+		}
+		ui_child_append(general_root, general_layout);
+	}
+}
+
+void
+collision_terminate(void)
+{
+	ui_del_object(general_root);
+}
+
+void
+collision_enter(void)
+{
+	ui_window_append_child(editor.general_window, general_root);
+}
+
+void
+collision_exit(void)
+{
+	ui_deparent(general_root);
+}
 
 void
 collision_keyboard(SDL_Event *event)
@@ -180,7 +254,7 @@ collision_render(void)
 		int spr_y = spr / 16;
 
 		stamp = get_sprite(SPRITE_TERRAIN, spr_x, spr_y);
-		gfx_draw_texture_rect(&stamp, (vec2){ x, y }, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+		gfx_draw_texture_rect(&stamp, (vec2){ x, y }, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 1.0, 1.0, 1.0, k > current_layer ? ui_slider_get_value(after_layer_alpha_slider) : 1.0 });
 	}
 
 	for(CollisionData *c = editor.map->collision; c; c = c->next) {
@@ -191,4 +265,11 @@ collision_render(void)
 		gfx_draw_rect(current_collision.position, current_collision.half_size, 0.15, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 	}
 	gfx_draw_end();
+}
+
+void
+layer_slider_cbk(UIObject slider, void *userptr)
+{
+	(void)userptr;
+	current_layer = ui_slider_get_value(slider);
 }
