@@ -31,6 +31,7 @@ static void cursor_end(int x, int y);
 static void cursor_draw(void);
 
 static void layer_slider_cbk(UIObject obj, void *userptr);
+static void cursor_cbk(UIObject obj, void *userptr);
 
 static void rect_begin(int x, int y);
 static void rect_drag(int x, int y);
@@ -46,6 +47,12 @@ static Cursor cursor[] = {
 	}
 };
 
+static struct {
+	TextureStamp image;
+} cursor_info[] = {
+	[CURSOR_RECTANGLE] = { .image = { .texture = TEXTURE_UI, .position = { 3 * 8.0 / 256.0, 0.0 / 256.0 }, .size = { 8.0 / 256.0, 8.0 / 256.0 } } },
+};
+
 static float zoom = 16.0;
 static bool  ctrl_pressed = false;
 static vec2  begin_offset, move_offset, offset;
@@ -56,6 +63,9 @@ static CursorMode current_cursor;
 
 static UIObject general_root;
 static UIObject after_layer_alpha_slider;
+static UIObject cursors_ui;
+
+static UIObject cursor_checkboxes[LAST_CURSOR_MODE];
 
 void
 collision_init(void)
@@ -102,24 +112,46 @@ collision_init(void)
 		}
 		ui_child_append(general_root, general_layout);
 	}
+
+	#undef BEGIN_SUB
+	#undef END_SUB
+
+	cursors_ui = ui_layout_new();
+	ui_layout_set_order(cursors_ui, UI_LAYOUT_HORIZONTAL);
+	{
+		for(int i = 0; i < LAST_CURSOR_MODE; i++) {
+			cursor_checkboxes[i] = ui_checkbox_new();
+			ui_checkbox_set_callback(cursor_checkboxes[i], &cursor_checkboxes[i], cursor_cbk);
+			ui_checkbox_set_toggled(cursor_checkboxes[i], (CursorMode)i == current_cursor);
+			ui_layout_append(cursors_ui, cursor_checkboxes[i]);
+
+			UIObject img = ui_image_new();
+			ui_image_set_keep_aspect(img, true);
+			ui_image_set_stamp(img, &cursor_info[i].image);
+			ui_layout_append(cursors_ui, img);
+		}
+	}
 }
 
 void
 collision_terminate(void)
 {
 	ui_del_object(general_root);
+	ui_del_object(cursors_ui);
 }
 
 void
 collision_enter(void)
 {
 	ui_window_append_child(editor.general_window, general_root);
+	ui_window_append_child(editor.controls_ui, cursors_ui);
 }
 
 void
 collision_exit(void)
 {
 	ui_deparent(general_root);
+	ui_deparent(cursors_ui);
 }
 
 void
@@ -301,6 +333,17 @@ layer_slider_cbk(UIObject slider, void *userptr)
 {
 	(void)userptr;
 	current_layer = ui_slider_get_value(slider);
+}
+
+void 
+cursor_cbk(UIObject obj, void *userptr)
+{
+	(void)obj;
+	UIObject *self = userptr;
+	current_cursor = self - cursor_checkboxes;
+	for(int i = 0; i < LAST_CURSOR_MODE; i++) {
+		ui_checkbox_set_toggled(cursor_checkboxes[i], &cursor_checkboxes[i] == self);
+	}
 }
 
 void
