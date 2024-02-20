@@ -15,6 +15,7 @@
 
 typedef enum CursorMode {
 	CURSOR_RECTANGLE,
+	CURSOR_FILL,
 	LAST_CURSOR_MODE
 } CursorMode;
 
@@ -38,12 +39,21 @@ static void rect_drag(int x, int y);
 static void rect_end(int x, int y);
 static void rect_draw(void);
 
+static void fill_end(int x, int y);
+
+static int *fill_find_elements_from(int x, int y);
+static void fill_find_rect(int x, int y, int *tileset);
+static void fill_new_rect(int x, int y, int w, int h);
+
 static Cursor cursor[] = {
 	[CURSOR_RECTANGLE] = {
 		.begin = rect_begin,
 		.drag = rect_drag,
 		.end = rect_end,
 		.draw = rect_draw
+	},
+	[CURSOR_FILL] = {
+		.end = fill_end
 	}
 };
 
@@ -51,6 +61,7 @@ static struct {
 	TextureStamp image;
 } cursor_info[] = {
 	[CURSOR_RECTANGLE] = { .image = { .texture = TEXTURE_UI, .position = { 3 * 8.0 / 256.0, 0.0 / 256.0 }, .size = { 8.0 / 256.0, 8.0 / 256.0 } } },
+	[CURSOR_FILL] = { .image = { .texture = TEXTURE_UI, .position = { 1 * 8.0 / 256.0, 2 * 8.0 / 256.0 }, .size = { 8.0 / 256.0, 8.0 / 256.0 } } },
 };
 
 static float zoom = 16.0;
@@ -61,6 +72,9 @@ static MouseState mouse_state;
 static CollisionData current_collision;
 static CursorMode current_cursor;
 
+static ArrayBuffer fill_preview_stack;
+static ArrayBuffer fill_layer_helper;
+
 static UIObject general_root;
 static UIObject after_layer_alpha_slider;
 static UIObject cursors_ui;
@@ -70,8 +84,10 @@ static UIObject cursor_checkboxes[LAST_CURSOR_MODE];
 void
 collision_init(void)
 {
-	general_root = ui_new_object(0, UI_ROOT);
+	arrbuf_init(&fill_preview_stack);
+	arrbuf_init(&fill_layer_helper);
 
+	general_root = ui_new_object(0, UI_ROOT);
 	{
 		UIObject general_layout = ui_layout_new();
 		ui_layout_set_order(general_layout, UI_LAYOUT_VERTICAL);
@@ -400,4 +416,137 @@ void
 rect_draw(void)
 {
 	gfx_draw_rect(current_collision.position, current_collision.half_size, 0.15, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+}
+
+void
+fill_end(int x, int y)
+{
+	vec2 v;
+	gfx_pixel_to_world((vec2){ x, y }, v);
+	printf("%f %f\n", v[0], v[1]);
+
+	int *tileset = fill_find_elements_from(v[0], v[1]);
+	if(!tileset)
+		return;
+
+	for(int y = 0; y < editor.map->h; y++)
+	for(int x = 0; x < editor.map->w; x++) {
+		if(tileset[x + y * editor.map->w] < 0)
+			fill_find_rect(x, y, tileset);
+	}
+}
+
+int *
+fill_find_elements_from(int x, int y)
+{
+	typedef struct {
+		int x, y;
+		int state;
+	} StackElement;
+	StackElement *elem;
+	int reference_tile;
+
+	arrbuf_clear(&fill_layer_helper);
+	arrbuf_clear(&fill_preview_stack);
+
+	int *map_info = arrbuf_newptr(&fill_layer_helper, editor.map->w * editor.map->h * sizeof(editor.map->tiles[0]));
+	memcpy(map_info, &editor.map->tiles[current_layer * editor.map->w * editor.map->h], editor.map->w * editor.map->h * sizeof(editor.map->tiles[0]));
+
+	if(x < 0 || y < 0 || x >= editor.map->w || y >= editor.map->h)
+		return NULL;
+
+	reference_tile = map_info[x + y * editor.map->w + current_layer * editor.map->w * editor.map->h];
+
+	arrbuf_insert(&fill_preview_stack, sizeof(StackElement), &(StackElement) {
+		.x = x, .y = y, .state = 0
+	});
+
+	while((elem = arrbuf_peektop(&fill_preview_stack, sizeof(StackElement)))) {
+		if(elem->x < 0 || elem->x >= editor.map->w || elem->y < 0 || elem->y >= editor.map->h) {
+			arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));
+			continue;
+		}
+		int current_tile = map_info[elem->x + elem->y * editor.map->w + current_layer * editor.map->w * editor.map->h];
+		
+		if(reference_tile != current_tile) {
+			arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));
+			continue;
+		}
+
+		StackElement elems[] = {
+			{
+				.x = elem->x - 1,
+				.y = elem->y,
+				.state = 0
+			},
+			{
+				.x = elem->x + 1,
+				.y = elem->y,
+				.state = 0
+			},
+			{
+				.x = elem->x,
+				.y = elem->y - 1,
+				.state = 0
+			},
+			{
+				.x = elem->x,
+				.y = elem->y + 1,
+				.state = 0
+			}
+		};
+		map_info[elem->x + elem->y * editor.map->w + current_layer * editor.map->w * editor.map->h] = -1;
+
+		/* elem dead here */
+		arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));
+		arrbuf_insert(&fill_preview_stack, sizeof(elems), elems);
+	}
+
+	return map_info;
+}
+
+void
+fill_find_rect(int x, int y, int *tileset)
+{
+	int x_end, y_end;
+
+	/* first find where x ends */
+	for(x_end = x; x_end < editor.map->w; x_end++) {
+		if(tileset[x_end + y * editor.map->w] >= 0) {
+			break;
+		}	
+	}
+
+	/* now, find y where the size does not fit x_end */
+	for(y_end = y + 1; y_end < editor.map->h; y_end++) {
+		for(int xx = x; xx < x_end; xx++) {
+			if(tileset[xx + y_end * editor.map->w] >= 0) {
+				goto produce_rect;
+			}
+		}
+	}
+
+produce_rect:
+	if(x_end - x == 0 || y_end - y == 0)
+		return;
+
+	for(int yy = y; yy < y_end; yy++)
+	for(int xx = x; xx < x_end; xx++) {
+		tileset[xx + yy * editor.map->w] = 0;
+	}
+	
+	fill_new_rect(x, y, (x_end - x), (y_end - y));
+}
+
+void
+fill_new_rect(int x, int y, int w, int h)
+{
+	CollisionData *coll = malloc(sizeof(CollisionData));
+	coll->half_size[0] = (float)w / 2;
+	coll->half_size[1] = (float)h / 2;
+	coll->position[0] = x + coll->half_size[0];
+	coll->position[1] = y + coll->half_size[1];
+
+	coll->next = editor.map->collision;
+	editor.map->collision = coll;
 }
