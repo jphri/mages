@@ -455,7 +455,7 @@ fill_find_elements_from(int x, int y)
 	if(x < 0 || y < 0 || x >= editor.map->w || y >= editor.map->h)
 		return NULL;
 
-	reference_tile = map_info[x + y * editor.map->w + current_layer * editor.map->w * editor.map->h];
+	reference_tile = map_info[x + y * editor.map->w];
 
 	arrbuf_insert(&fill_preview_stack, sizeof(StackElement), &(StackElement) {
 		.x = x, .y = y, .state = 0
@@ -466,7 +466,7 @@ fill_find_elements_from(int x, int y)
 			arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));
 			continue;
 		}
-		int current_tile = map_info[elem->x + elem->y * editor.map->w + current_layer * editor.map->w * editor.map->h];
+		int current_tile = map_info[elem->x + elem->y * editor.map->w];
 		
 		if(reference_tile != current_tile) {
 			arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));
@@ -495,7 +495,7 @@ fill_find_elements_from(int x, int y)
 				.state = 0
 			}
 		};
-		map_info[elem->x + elem->y * editor.map->w + current_layer * editor.map->w * editor.map->h] = -1;
+		map_info[elem->x + elem->y * editor.map->w] = -1;
 
 		/* elem dead here */
 		arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));

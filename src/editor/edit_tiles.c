@@ -570,7 +570,7 @@ fill_preview(int x, int y)
 	if(x < 0 || y < 0 || x >= editor.map->w || y >= editor.map->h)
 		return;
 
-	reference_tile = map_info[x + y * editor.map->w + current_layer * editor.map->w * editor.map->h];
+	reference_tile = map_info[x + y * editor.map->w];
 	if(reference_tile == editor.current_tile)
 		return;
 
@@ -598,7 +598,7 @@ fill_preview(int x, int y)
 			continue;
 		}
 		
-		int current_tile = map_info[elem->x + elem->y * editor.map->w + current_layer * editor.map->w * editor.map->h];
+		int current_tile = map_info[elem->x + elem->y * editor.map->w];
 		
 		if(reference_tile != current_tile) {
 			arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));
@@ -627,7 +627,7 @@ fill_preview(int x, int y)
 				.state = 0
 			}
 		};
-		map_info[elem->x + elem->y * editor.map->w + current_layer * editor.map->w * editor.map->h] = editor.current_tile;
+		map_info[elem->x + elem->y * editor.map->w] = editor.current_tile;
 		gfx_draw_texture_rect(&stamp, (vec2){ elem->x + 0.5, elem->y + 0.5 }, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 0.5 });
 
 		/* elem dead here */
