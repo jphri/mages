@@ -191,8 +191,9 @@ collision_keyboard(SDL_Event *event)
 }
 
 void
-collision_mouse_motion(SDL_Event *event)
+collision_mouse_motion(SDL_Event *event, vec2 v_out)
 {
+	gfx_pixel_to_world((vec2){ event->button.x, event->button.y }, v_out);
 	switch(mouse_state) {
 	case MOUSE_MOVING:
 		offset[0] = begin_offset[0] + event->motion.x - move_offset[0];
@@ -207,7 +208,7 @@ collision_mouse_motion(SDL_Event *event)
 }
 
 void
-collision_mouse_button(SDL_Event *event)
+collision_mouse_button(SDL_Event *event, vec2 v_out)
 {
 	vec2 pos;
 	if(event->type == SDL_MOUSEBUTTONUP) {
@@ -216,6 +217,7 @@ collision_mouse_button(SDL_Event *event)
 		}
 		mouse_state = MOUSE_NOTHING;
 	}
+	gfx_pixel_to_world((vec2){ event->button.x, event->button.y }, v_out);
 	
 	if(event->type == SDL_MOUSEBUTTONDOWN && mouse_state == MOUSE_NOTHING) {
 		switch(event->button.button) {
