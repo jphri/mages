@@ -105,11 +105,14 @@ edit_keyboard(SDL_Event *event)
 }
 
 void
-edit_mouse_motion(SDL_Event *event)
+edit_mouse_motion(SDL_Event *event, vec2 v_out)
 {
 	int x, y;
 	mouse_position[0] = event->motion.x;
 	mouse_position[1] = event->motion.y;
+
+	v_out[0] = ((event->motion.x - offset[0] - 0.5) / zoom);
+	v_out[1] = ((event->motion.y - offset[1] - 0.5) / zoom);
 
 	switch(mouse_state) {
 	case MOUSE_MOVING:
@@ -127,7 +130,7 @@ edit_mouse_motion(SDL_Event *event)
 }
 
 void
-edit_mouse_button(SDL_Event *event)
+edit_mouse_button(SDL_Event *event, vec2 v_out)
 {
 	SDL_Event fake_event;
 	if(event->type == SDL_MOUSEBUTTONUP) {
@@ -143,7 +146,7 @@ edit_mouse_button(SDL_Event *event)
 			fake_event.motion.x = mouse_position[0];
 			fake_event.motion.y = mouse_position[1];
 			mouse_state = MOUSE_DRAWING; 
-			edit_mouse_motion(&fake_event);
+			edit_mouse_motion(&fake_event, v_out);
 			break;
 		case SDL_BUTTON_RIGHT: 
 			move_offset[0] = event->button.x; 

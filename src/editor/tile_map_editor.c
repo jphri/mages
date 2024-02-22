@@ -53,6 +53,9 @@ static UIObject new_window, new_width, new_height;
 static UIObject load_window, load_path;
 static UIObject save_window, save_path;
 static UIObject extra_window;
+static UIObject cursor_position;
+
+static ArrayBuffer cursor_pos_str;
 
 static void open_cbk(UIObject obj, void (*userptr));
 static void cancel_cbk(UIObject btn, void *userptr);
@@ -64,6 +67,7 @@ static void context_btn_cbk(UIObject btn, void *userptr);
 static void general_btn_cbk(UIObject btn, void *userptr);
 
 static void process_open_menu(void);
+static void update_cursor_pos(vec2 v);
 
 static void select_mode_cbk(UIObject obj, void *ptr)
 {
@@ -76,6 +80,8 @@ static void select_mode_cbk(UIObject obj, void *ptr)
 void
 GAME_STATE_LEVEL_EDIT_init(void)
 {
+	arrbuf_init(&cursor_pos_str);
+
 	UIObject layout = ui_layout_new();
 	ui_layout_set_order(layout, UI_LAYOUT_HORIZONTAL);
 
@@ -105,8 +111,20 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	ui_window_set_border(window, (vec2){ 2, 2 });
 	ui_window_set_decorated(window, false);
 	ui_window_append_child(window, layout);
-	
 	ui_child_append(ui_root(), window);
+
+	UIObject cursor_position_window = ui_window_new();
+	ui_window_set_size(cursor_position_window, (vec2){ 50, 15 });
+	ui_window_set_position(cursor_position_window, UI_ORIGIN_TOP_LEFT, (vec2){ 50, 60 + 15 });
+	ui_window_set_decorated(cursor_position_window, false);
+	{
+		cursor_position = ui_label_new();
+		ui_label_set_color(cursor_position, (vec4){ 1.0, 1.0, 0.0, 1.0 });
+		ui_label_set_text(cursor_position, "0, 0");
+		ui_label_set_alignment(cursor_position, UI_LABEL_ALIGN_CENTER);
+		ui_window_append_child(cursor_position_window, cursor_position);
+	}
+	ui_child_append(ui_root(), cursor_position_window);
 
 	UIObject file_buttons_window = ui_window_new();
 	ui_window_set_decorated(file_buttons_window, false);
@@ -418,10 +436,13 @@ GAME_STATE_LEVEL_EDIT_render(void)
 void
 GAME_STATE_LEVEL_EDIT_mouse_button(SDL_Event *event)
 {
+	vec2 v;
+
 	if(ui_is_active())
 		return;
-	if(state_vtable[editor.editor_state].mouse_button)
-		state_vtable[editor.editor_state].mouse_button(event);
+
+	state_vtable[editor.editor_state].mouse_button(event, v);
+	update_cursor_pos(v);
 }
 
 void
@@ -436,10 +457,12 @@ GAME_STATE_LEVEL_EDIT_mouse_wheel(SDL_Event *event)
 void
 GAME_STATE_LEVEL_EDIT_mouse_move(SDL_Event *event) 
 {
+	vec2 v;
+
 	if(ui_is_active())
 		return;
-	if(state_vtable[editor.editor_state].mouse_motion)
-		state_vtable[editor.editor_state].mouse_motion(event);
+	state_vtable[editor.editor_state].mouse_motion(event, v);
+	update_cursor_pos(v);
 }
 
 void
@@ -469,6 +492,7 @@ GAME_STATE_LEVEL_EDIT_end(void)
 		if(state_vtable[i].terminate)
 			state_vtable[i].terminate();
 	}
+	arrbuf_free(&cursor_pos_str);
 }
 
 int
@@ -652,3 +676,11 @@ process_open_menu(void)
 	}
 }
 
+void
+update_cursor_pos(vec2 v)
+{
+	arrbuf_clear(&cursor_pos_str);
+	arrbuf_printf(&cursor_pos_str, "%0.2f,%0.2f\n", v[0], v[1]);
+
+	ui_label_set_text(cursor_position, cursor_pos_str.data);
+}
