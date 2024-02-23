@@ -271,18 +271,6 @@ collision_render(void)
 {
 	TextureStamp stamp;
 
-	//gfx_debug_begin();
-	//for(CollisionData *c = editor.map->collision; c; c = c->next) {
-	//	vec2_dup(pos, c->position);
-	//	gfx_debug_quad(pos, c->half_size);
-	//}
-
-	//if(mouse_state == MOUSE_DRAWING) {
-	//	gfx_debug_set_color((vec4){ 1.0, 1.0, 1.0, 1.0 });
-	//	gfx_debug_quad(current_collision.position, current_collision.half_size);
-	//}
-	//gfx_debug_end();
-
 	gfx_draw_begin(NULL);
 	for(int k = 0; k < SCENE_LAYERS; k++)
 	for(int i = 0; i < editor.map->w * editor.map->h; i++) {
