@@ -72,7 +72,7 @@ static MouseState mouse_state;
 static CollisionData current_collision;
 static CursorMode current_cursor;
 
-static ArrayBuffer fill_preview_stack;
+static ArrayBuffer fill_stack;
 static ArrayBuffer fill_layer_helper;
 
 static UIObject general_root;
@@ -84,7 +84,7 @@ static UIObject cursor_checkboxes[LAST_CURSOR_MODE];
 void
 collision_init(void)
 {
-	arrbuf_init(&fill_preview_stack);
+	arrbuf_init(&fill_stack);
 	arrbuf_init(&fill_layer_helper);
 
 	general_root = ui_new_object(0, UI_ROOT);
@@ -449,7 +449,7 @@ fill_find_elements_from(int x, int y)
 	int reference_tile;
 
 	arrbuf_clear(&fill_layer_helper);
-	arrbuf_clear(&fill_preview_stack);
+	arrbuf_clear(&fill_stack);
 
 	int *map_info = arrbuf_newptr(&fill_layer_helper, editor.map->w * editor.map->h * sizeof(editor.map->tiles[0]));
 	memcpy(map_info, &editor.map->tiles[current_layer * editor.map->w * editor.map->h], editor.map->w * editor.map->h * sizeof(editor.map->tiles[0]));
@@ -459,19 +459,19 @@ fill_find_elements_from(int x, int y)
 
 	reference_tile = map_info[x + y * editor.map->w];
 
-	arrbuf_insert(&fill_preview_stack, sizeof(StackElement), &(StackElement) {
+	arrbuf_insert(&fill_stack, sizeof(StackElement), &(StackElement) {
 		.x = x, .y = y, .state = 0
 	});
 
-	while((elem = arrbuf_peektop(&fill_preview_stack, sizeof(StackElement)))) {
+	while((elem = arrbuf_peektop(&fill_stack, sizeof(StackElement)))) {
 		if(elem->x < 0 || elem->x >= editor.map->w || elem->y < 0 || elem->y >= editor.map->h) {
-			arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));
+			arrbuf_poptop(&fill_stack, sizeof(StackElement));
 			continue;
 		}
 		int current_tile = map_info[elem->x + elem->y * editor.map->w];
 		
 		if(reference_tile != current_tile) {
-			arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));
+			arrbuf_poptop(&fill_stack, sizeof(StackElement));
 			continue;
 		}
 
@@ -500,8 +500,8 @@ fill_find_elements_from(int x, int y)
 		map_info[elem->x + elem->y * editor.map->w] = -1;
 
 		/* elem dead here */
-		arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));
-		arrbuf_insert(&fill_preview_stack, sizeof(elems), elems);
+		arrbuf_poptop(&fill_stack, sizeof(StackElement));
+		arrbuf_insert(&fill_stack, sizeof(elems), elems);
 	}
 
 	return map_info;
