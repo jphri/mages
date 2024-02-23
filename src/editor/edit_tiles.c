@@ -89,12 +89,6 @@ edit_keyboard(SDL_Event *event)
 	if(event->type == SDL_KEYDOWN) {
 		switch(event->key.keysym.sym) {
 		case SDLK_LCTRL: ctrl_pressed = true; break;
-		case SDLK_s:
-			if(ctrl_pressed) {
-				export_map("exported_map.map");
-				printf("Map exported to exported_map.map\n");
-			}
-			break;
 		}
 	} else {
 		switch(event->key.keysym.sym) {
