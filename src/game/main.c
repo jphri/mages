@@ -18,74 +18,44 @@
 #include "../audio.h"
 
 static Map *map;
-//static UIObject label;
 
 static char *text_test = "Hello";
 static SceneTextID text;
-static UIObject window;
 static float time = 0;
 
 static void pre_solve(Contact *contact);
-static void btn_callback(UIObject obj, void *userdata)
-{
-	(void)userdata;
-	(void)obj;
-
-	printf("Hello, world!\n");
-}
-
-static void slider_cbk(UIObject obj, void *userdata)
-{
-	(void)userdata;
-	(void)obj;
-
-	printf("Value: %f\n", ui_slider_get_value(obj));
-}
+static void edit_cbk(UIObject obj, void *userptr);
 
 void
 GAME_STATE_LEVEL_init(void)
 {
-	UIObject button_label = ui_label_new();
-	ui_label_set_alignment(button_label, UI_LABEL_ALIGN_LEFT);
-	ui_label_set_text(button_label, "Click Me!");
-	
-	UIObject button = ui_button_new();
-	ui_button_set_callback(button, NULL, btn_callback);
-	ui_button_set_label(button, button_label);
+	UIObject file_buttons_window = ui_window_new();
+	ui_window_set_decorated(file_buttons_window, false);
+	ui_window_set_size(file_buttons_window, (vec2){ 40, 40 });
+	ui_window_set_position(file_buttons_window, UI_ORIGIN_TOP_RIGHT, (vec2){ -40, 40 });
+	{
+		UIObject layout = ui_layout_new();
+		ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
+		{
+			UIObject btn;
 
-	UIObject slider = ui_slider_new();
-	ui_slider_set_max_value(slider, 10);
-	ui_slider_set_value(slider, 5);
-	ui_slider_set_callback(slider, NULL, slider_cbk);
+			#define CREATE_BUTTON(name, userptr, cbk) \
+			btn = ui_button_new(); \
+			ui_button_set_callback(btn, userptr, cbk); \
+			{\
+				UIObject lbl = ui_label_new(); \
+				ui_label_set_text(lbl, name); \
+				ui_label_set_color(lbl, (vec4){ 1.0, 1.0, 0.0, 1.0 }); \
+				ui_button_set_label(btn, lbl); \
+			} \
+			ui_layout_append(layout, btn)
+			
+			CREATE_BUTTON("Edit", NULL, edit_cbk);
+		}
 
-	UIObject label = ui_label_new();
-	ui_label_set_text(label, "World");
-	ui_label_set_alignment(label, UI_LABEL_ALIGN_RIGHT);
-
-	UIObject stuff_layout = ui_layout_new();
-	ui_layout_set_order(stuff_layout, UI_LAYOUT_VERTICAL);
-	ui_layout_set_border(stuff_layout, 0., 0., 0., 0.);
-	ui_layout_append(stuff_layout, label);
-	ui_layout_append(stuff_layout, button);
-	ui_layout_append(stuff_layout, slider);
-
-	UIObject text_input = ui_text_input_new();
-
-	UIObject layout = ui_layout_new();
-	ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
-	ui_layout_set_border(layout, 0., 0., 0., 0.);
-	ui_layout_append(layout, stuff_layout);
-	ui_layout_append(layout, text_input);
-
-	window = ui_window_new();
-	ui_window_set_size(window, (vec2){ 100, 150 });	
-	ui_window_set_position(window, UI_ORIGIN_ABSOLUTE, (vec2){ 100 + 570, 150 + 60 });
-	ui_window_set_title(window, "Hello");
-	ui_window_set_border(window, (vec2){ 2.0, 2.0 });
-	ui_window_set_decorated(window, false);
-	ui_window_append_child(window,  layout);
-
-	ui_child_append(ui_root(), window);
+		ui_window_append_child(file_buttons_window, layout);
+	}
+	ui_child_append(ui_root(), file_buttons_window);
 
 	map = editor.map;
 	map_set_gfx_scene(map);
@@ -143,8 +113,7 @@ void GAME_STATE_LEVEL_mouse_button(SDL_Event *event) { (void)event; }
 void 
 GAME_STATE_LEVEL_keyboard(SDL_Event *event) 
 { 
-	if(event->type == SDL_KEYDOWN && event->key.keysym.scancode == SDL_SCANCODE_K)
-		gstate_set(GAME_STATE_LEVEL_EDIT);
+	(void)event;
 }
 
 void GAME_STATE_LEVEL_mouse_wheel(SDL_Event *event) { (void)event; } 
@@ -170,4 +139,12 @@ pre_solve(Contact *contact)
 
 	if(gobj_type(id2) == GAME_OBJECT_TYPE_ENTITY)
 		process_entity_collision(gobj_id(id2), contact->body1, contact);
+}
+
+void 
+edit_cbk(UIObject obj, void *userptr)
+{
+	(void)obj;
+	(void)userptr;
+	gstate_set(GAME_STATE_LEVEL_EDIT);
 }

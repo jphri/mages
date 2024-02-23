@@ -4,6 +4,7 @@
 #include <glad/gles2.h>
 
 #include <SDL.h>
+#include <wchar.h>
 
 #include "../game_state.h"
 #include "../global.h"
@@ -57,7 +58,11 @@ static UIObject cursor_position;
 
 static ArrayBuffer cursor_pos_str;
 
+static vec2 camera_offset;
+static float camera_zoom = 16.0;
+
 static void open_cbk(UIObject obj, void (*userptr));
+static void play_cbk(UIObject obj, void (*userptr));
 static void cancel_cbk(UIObject btn, void *userptr);
 static void newbtn_new_cbk(UIObject btn, void *userptr);
 static void loadbtn_load_cbk(UIObject btn, void *userptr);
@@ -134,37 +139,23 @@ GAME_STATE_LEVEL_EDIT_init(void)
 		UIObject layout = ui_layout_new();
 		ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
 		{
-			UIObject save_btn = ui_button_new();
-			ui_button_set_callback(save_btn, &save_window, open_cbk);
-			
-			{
-				UIObject save_label = ui_label_new();
-				ui_label_set_text(save_label, "Save");
-				ui_label_set_color(save_label, (vec4){ 1.0, 1.0, 0.0, 1.0 });
-				ui_button_set_label(save_btn, save_label);
-			}
-			ui_layout_append(layout, save_btn);
+			UIObject btn;
 
-			UIObject load_btn = ui_button_new();
-			ui_button_set_callback(load_btn, &load_window, open_cbk);
+			#define CREATE_BUTTON(name, userptr, cbk) \
+			btn = ui_button_new(); \
+			ui_button_set_callback(btn, userptr, cbk); \
+			{\
+				UIObject lbl = ui_label_new(); \
+				ui_label_set_text(lbl, name); \
+				ui_label_set_color(lbl, (vec4){ 1.0, 1.0, 0.0, 1.0 }); \
+				ui_button_set_label(btn, lbl); \
+			} \
+			ui_layout_append(layout, btn)
 			
-			{
-				UIObject load_label = ui_label_new();
-				ui_label_set_text(load_label, "Load");
-				ui_label_set_color(load_label, (vec4){ 1.0, 1.0, 0.0, 1.0 });
-				ui_button_set_label(load_btn, load_label);
-			}
-			ui_layout_append(layout, load_btn);
-
-			UIObject new_btn = ui_button_new();
-			ui_button_set_callback(new_btn, &new_window, open_cbk);
-			{
-				UIObject label = ui_label_new();
-				ui_label_set_text(label, "New");
-				ui_label_set_color(label, (vec4){ 1.0, 1.0, 0.0, 1.0 });
-				ui_button_set_label(new_btn, label);
-			}
-			ui_layout_append(layout, new_btn);
+			CREATE_BUTTON("Save", &save_window, open_cbk);
+			CREATE_BUTTON("Load", &load_window, open_cbk);
+			CREATE_BUTTON("New", &new_window, open_cbk);
+			CREATE_BUTTON("Play", NULL, play_cbk);
 		}
 
 		ui_window_append_child(file_buttons_window, layout);
@@ -423,7 +414,8 @@ GAME_STATE_LEVEL_EDIT_init(void)
 
 	ui_child_append(ui_root(), editor.controls_ui);
 	ui_child_append(ui_root(), extra_window);
-	//ui_child_append(ui_root(), editor.context_window);
+	
+	gfx_set_camera(camera_offset, (vec2){ camera_zoom, camera_zoom });
 }
 
 void
@@ -436,12 +428,12 @@ GAME_STATE_LEVEL_EDIT_render(void)
 void
 GAME_STATE_LEVEL_EDIT_mouse_button(SDL_Event *event)
 {
-	vec2 v;
-
 	if(ui_is_active())
 		return;
+	vec2 v;
+	gfx_pixel_to_world((vec2){ event->button.x, event->button.y }, v);
 
-	state_vtable[editor.editor_state].mouse_button(event, v);
+	state_vtable[editor.editor_state].mouse_button(event);
 	update_cursor_pos(v);
 }
 
@@ -457,11 +449,12 @@ GAME_STATE_LEVEL_EDIT_mouse_wheel(SDL_Event *event)
 void
 GAME_STATE_LEVEL_EDIT_mouse_move(SDL_Event *event) 
 {
-	vec2 v;
-
 	if(ui_is_active())
 		return;
-	state_vtable[editor.editor_state].mouse_motion(event, v);
+	vec2 v;
+	gfx_pixel_to_world((vec2){ event->motion.x, event->motion.y }, v);
+
+	state_vtable[editor.editor_state].mouse_motion(event);
 	update_cursor_pos(v);
 }
 
@@ -473,9 +466,6 @@ GAME_STATE_LEVEL_EDIT_keyboard(SDL_Event *event)
 
 	if(state_vtable[editor.editor_state].keyboard)
 		state_vtable[editor.editor_state].keyboard(event);
-	
-	if(event->type == SDL_KEYDOWN && event->key.keysym.scancode == SDL_SCANCODE_K)
-		gstate_set(GAME_STATE_LEVEL);
 }
 
 
@@ -493,6 +483,7 @@ GAME_STATE_LEVEL_EDIT_end(void)
 			state_vtable[i].terminate();
 	}
 	arrbuf_free(&cursor_pos_str);
+	ui_reset();
 }
 
 int
@@ -683,4 +674,34 @@ update_cursor_pos(vec2 v)
 	arrbuf_printf(&cursor_pos_str, "%0.2f,%0.2f\n", v[0], v[1]);
 
 	ui_label_set_text(cursor_position, cursor_pos_str.data);
+}
+
+void
+editor_move_camera(vec2 delta)
+{
+	vec2_sub(camera_offset, camera_offset, delta);
+	gfx_set_camera(camera_offset, (vec2){ camera_zoom, camera_zoom });
+}
+
+void
+editor_delta_zoom(float delta)
+{
+	camera_zoom += delta;
+	if(camera_zoom < 1.0)
+		camera_zoom = 1.0;
+	gfx_set_camera(camera_offset, (vec2){ camera_zoom, camera_zoom });
+}
+
+float
+editor_get_zoom(void)
+{
+	return camera_zoom;
+}
+
+void 
+play_cbk(UIObject obj, void (*userptr))
+{
+	(void)obj;
+	(void)userptr;
+	gstate_set(GAME_STATE_LEVEL);
 }

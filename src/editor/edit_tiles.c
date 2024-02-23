@@ -52,7 +52,6 @@ static struct {
 	[CURSOR_MODE_FILL]   = { .image = { .texture = TEXTURE_UI, .position = { 8.0 / 256.0, 16.0 / 256.0 }, .size = { 8.0 / 256.0, 8.0 / 256.0 } } },
 };
 
-static float zoom = 16.0;
 static bool  ctrl_pressed = false;
 static vec2  begin_offset, move_offset, offset;
 static int current_layer = 0;
@@ -90,12 +89,6 @@ edit_keyboard(SDL_Event *event)
 	if(event->type == SDL_KEYDOWN) {
 		switch(event->key.keysym.sym) {
 		case SDLK_LCTRL: ctrl_pressed = true; break;
-		case SDLK_s:
-			if(ctrl_pressed) {
-				export_map("exported_map.map");
-				printf("Map exported to exported_map.map\n");
-			}
-			break;
 		}
 	} else {
 		switch(event->key.keysym.sym) {
@@ -105,24 +98,19 @@ edit_keyboard(SDL_Event *event)
 }
 
 void
-edit_mouse_motion(SDL_Event *event, vec2 v_out)
+edit_mouse_motion(SDL_Event *event)
 {
-	int x, y;
-	mouse_position[0] = event->motion.x;
-	mouse_position[1] = event->motion.y;
-
-	v_out[0] = ((event->motion.x - offset[0] - 0.5) / zoom);
-	v_out[1] = ((event->motion.y - offset[1] - 0.5) / zoom);
-
+	vec2 v;
+	gfx_pixel_to_world((vec2){ event->button.x, event->button.y }, mouse_position);
 	switch(mouse_state) {
 	case MOUSE_MOVING:
-		offset[0] = begin_offset[0] + event->motion.x - move_offset[0];
-		offset[1] = begin_offset[1] + event->motion.y - move_offset[1];
+		vec2_sub(v, move_offset, (vec2){ event->motion.x, event->motion.y });
+		editor_move_camera(v);
+		move_offset[0] = event->button.x; 
+		move_offset[1] = event->button.y; 
 		break;
 	case MOUSE_DRAWING:
-		x = ((event->motion.x - offset[0] - 0.5) / zoom);
-		y = ((event->motion.y - offset[1] - 0.5) / zoom);
-		apply_cursor(x, y);
+		apply_cursor(mouse_position[0], mouse_position[1]);
 		break;
 	default:
 		do {} while(0);
@@ -130,30 +118,28 @@ edit_mouse_motion(SDL_Event *event, vec2 v_out)
 }
 
 void
-edit_mouse_button(SDL_Event *event, vec2 v_out)
+edit_mouse_button(SDL_Event *event)
 {
 	SDL_Event fake_event;
 	if(event->type == SDL_MOUSEBUTTONUP) {
 		mouse_state = MOUSE_NOTHING;
 	}
-	mouse_position[0] = event->motion.x;
-	mouse_position[1] = event->motion.y;
-	
+	gfx_pixel_to_world((vec2){ event->button.x, event->button.y }, mouse_position);
+
 	if(event->type == SDL_MOUSEBUTTONDOWN && mouse_state == MOUSE_NOTHING) {
 		switch(event->button.button) {
 		case SDL_BUTTON_LEFT: 
 			fake_event.type = SDL_MOUSEMOTION;
-			fake_event.motion.x = mouse_position[0];
-			fake_event.motion.y = mouse_position[1];
+			fake_event.motion.x = event->button.x;
+			fake_event.motion.y = event->button.y;
 			mouse_state = MOUSE_DRAWING; 
-			edit_mouse_motion(&fake_event, v_out);
+			edit_mouse_motion(&fake_event);
 			break;
 		case SDL_BUTTON_RIGHT: 
 			move_offset[0] = event->button.x; 
 			move_offset[1] = event->button.y; 
 			vec2_dup(begin_offset, offset);
 			mouse_state = MOUSE_MOVING; 
-			
 			break;
 		}
 	}
@@ -163,9 +149,7 @@ void
 edit_wheel(SDL_Event *event)
 {
 	if(ctrl_pressed) {
-		zoom += event->wheel.y;
-		if(zoom < 1.0)
-			zoom = 1.0;
+		editor_delta_zoom(event->wheel.y);
 	} else {
 		current_layer += event->wheel.y;
 		if(current_layer < 0)
@@ -181,10 +165,8 @@ void
 edit_render(void)
 {
 	TextureStamp stamp;
-	gfx_set_camera(offset, (vec2){ zoom, zoom });
 
 	gfx_draw_begin(NULL);
-
 	for(int k = 0; k < SCENE_LAYERS; k++)
 	for(int i = 0; i < editor.map->w * editor.map->h; i++) {
 		float x = (     (i % editor.map->w) + 0.5);
@@ -411,10 +393,8 @@ pencil_preview(int x, int y)
 void
 draw_preview(void)
 {
-	int x = ((mouse_position[0] - offset[0] - 0.5) / zoom);
-	int y = ((mouse_position[1] - offset[1] - 0.5) / zoom);
 	if(cursors[cursor_mode].preview) {
-		cursors[cursor_mode].preview(x, y);
+		cursors[cursor_mode].preview(mouse_position[0], mouse_position[1]);
 	}
 }
 
@@ -585,8 +565,8 @@ fill_preview(int x, int y)
 
 	Rectangle screen_rect = gfx_window_rectangle();
 	/* grow to tile size, so we can use this as a rect-rect intersection in physics */
-	screen_rect.half_size[0] += zoom;
-	screen_rect.half_size[1] += zoom;
+	screen_rect.half_size[0] += editor_get_zoom();
+	screen_rect.half_size[1] += editor_get_zoom();
 	
 	while((elem = arrbuf_peektop(&fill_preview_stack, sizeof(StackElement)))) {
 		if(elem->x < 0 || elem->x >= editor.map->w || elem->y < 0 || elem->y >= editor.map->h) {
@@ -638,3 +618,4 @@ fill_preview(int x, int y)
 		arrbuf_insert(&fill_preview_stack, sizeof(elems), elems);
 	}
 }
+

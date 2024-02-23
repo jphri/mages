@@ -64,7 +64,6 @@ static struct {
 	[CURSOR_FILL] = { .image = { .texture = TEXTURE_UI, .position = { 1 * 8.0 / 256.0, 2 * 8.0 / 256.0 }, .size = { 8.0 / 256.0, 8.0 / 256.0 } } },
 };
 
-static float zoom = 16.0;
 static bool  ctrl_pressed = false;
 static vec2  begin_offset, move_offset, offset;
 static int current_layer = 0;
@@ -72,7 +71,7 @@ static MouseState mouse_state;
 static CollisionData current_collision;
 static CursorMode current_cursor;
 
-static ArrayBuffer fill_preview_stack;
+static ArrayBuffer fill_stack;
 static ArrayBuffer fill_layer_helper;
 
 static UIObject general_root;
@@ -84,7 +83,7 @@ static UIObject cursor_checkboxes[LAST_CURSOR_MODE];
 void
 collision_init(void)
 {
-	arrbuf_init(&fill_preview_stack);
+	arrbuf_init(&fill_stack);
 	arrbuf_init(&fill_layer_helper);
 
 	general_root = ui_new_object(0, UI_ROOT);
@@ -176,12 +175,6 @@ collision_keyboard(SDL_Event *event)
 	if(event->type == SDL_KEYDOWN) {
 		switch(event->key.keysym.sym) {
 		case SDLK_LCTRL: ctrl_pressed = true; break;
-		case SDLK_s:
-			if(ctrl_pressed) {
-				export_map("exported_map.map");
-				printf("Map exported to exported_map.map\n");
-			}
-			break;
 		}
 	} else {
 		switch(event->key.keysym.sym) {
@@ -191,13 +184,16 @@ collision_keyboard(SDL_Event *event)
 }
 
 void
-collision_mouse_motion(SDL_Event *event, vec2 v_out)
+collision_mouse_motion(SDL_Event *event)
 {
-	gfx_pixel_to_world((vec2){ event->button.x, event->button.y }, v_out);
+	vec2 v;
+
 	switch(mouse_state) {
 	case MOUSE_MOVING:
-		offset[0] = begin_offset[0] + event->motion.x - move_offset[0];
-		offset[1] = begin_offset[1] + event->motion.y - move_offset[1];
+		vec2_sub(v, move_offset, (vec2){ event->motion.x, event->motion.y });
+		editor_move_camera(v);
+		move_offset[0] = event->button.x; 
+		move_offset[1] = event->button.y; 
 		break;
 	case MOUSE_DRAWING:
 		cursor_drag(event->motion.x, event->motion.y);
@@ -208,7 +204,7 @@ collision_mouse_motion(SDL_Event *event, vec2 v_out)
 }
 
 void
-collision_mouse_button(SDL_Event *event, vec2 v_out)
+collision_mouse_button(SDL_Event *event)
 {
 	vec2 pos;
 	if(event->type == SDL_MOUSEBUTTONUP) {
@@ -217,7 +213,6 @@ collision_mouse_button(SDL_Event *event, vec2 v_out)
 		}
 		mouse_state = MOUSE_NOTHING;
 	}
-	gfx_pixel_to_world((vec2){ event->button.x, event->button.y }, v_out);
 	
 	if(event->type == SDL_MOUSEBUTTONDOWN && mouse_state == MOUSE_NOTHING) {
 		switch(event->button.button) {
@@ -259,9 +254,7 @@ void
 collision_wheel(SDL_Event *event)
 {
 	if(ctrl_pressed) {
-		zoom += event->wheel.y;
-		if(zoom < 1.0)
-			zoom = 1.0;
+		editor_delta_zoom(event->wheel.y);
 	} else {
 		current_layer += event->wheel.y;
 		if(current_layer < 0)
@@ -277,19 +270,6 @@ void
 collision_render(void)
 {
 	TextureStamp stamp;
-	gfx_set_camera(offset, (vec2){ zoom, zoom });
-
-	//gfx_debug_begin();
-	//for(CollisionData *c = editor.map->collision; c; c = c->next) {
-	//	vec2_dup(pos, c->position);
-	//	gfx_debug_quad(pos, c->half_size);
-	//}
-
-	//if(mouse_state == MOUSE_DRAWING) {
-	//	gfx_debug_set_color((vec4){ 1.0, 1.0, 1.0, 1.0 });
-	//	gfx_debug_quad(current_collision.position, current_collision.half_size);
-	//}
-	//gfx_debug_end();
 
 	gfx_draw_begin(NULL);
 	for(int k = 0; k < SCENE_LAYERS; k++)
@@ -449,7 +429,7 @@ fill_find_elements_from(int x, int y)
 	int reference_tile;
 
 	arrbuf_clear(&fill_layer_helper);
-	arrbuf_clear(&fill_preview_stack);
+	arrbuf_clear(&fill_stack);
 
 	int *map_info = arrbuf_newptr(&fill_layer_helper, editor.map->w * editor.map->h * sizeof(editor.map->tiles[0]));
 	memcpy(map_info, &editor.map->tiles[current_layer * editor.map->w * editor.map->h], editor.map->w * editor.map->h * sizeof(editor.map->tiles[0]));
@@ -459,19 +439,19 @@ fill_find_elements_from(int x, int y)
 
 	reference_tile = map_info[x + y * editor.map->w];
 
-	arrbuf_insert(&fill_preview_stack, sizeof(StackElement), &(StackElement) {
+	arrbuf_insert(&fill_stack, sizeof(StackElement), &(StackElement) {
 		.x = x, .y = y, .state = 0
 	});
 
-	while((elem = arrbuf_peektop(&fill_preview_stack, sizeof(StackElement)))) {
+	while((elem = arrbuf_peektop(&fill_stack, sizeof(StackElement)))) {
 		if(elem->x < 0 || elem->x >= editor.map->w || elem->y < 0 || elem->y >= editor.map->h) {
-			arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));
+			arrbuf_poptop(&fill_stack, sizeof(StackElement));
 			continue;
 		}
 		int current_tile = map_info[elem->x + elem->y * editor.map->w];
 		
 		if(reference_tile != current_tile) {
-			arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));
+			arrbuf_poptop(&fill_stack, sizeof(StackElement));
 			continue;
 		}
 
@@ -500,8 +480,8 @@ fill_find_elements_from(int x, int y)
 		map_info[elem->x + elem->y * editor.map->w] = -1;
 
 		/* elem dead here */
-		arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));
-		arrbuf_insert(&fill_preview_stack, sizeof(elems), elems);
+		arrbuf_poptop(&fill_stack, sizeof(StackElement));
+		arrbuf_insert(&fill_stack, sizeof(elems), elems);
 	}
 
 	return map_info;
