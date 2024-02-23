@@ -122,10 +122,13 @@ ui_init(void)
 void
 ui_reset(void)
 {
-	if(root) {
-		ui_del_object(root);
-		ui_cleanup();
+	for(UIObject obj = objalloc_begin(&objects);
+			obj;
+			obj = objalloc_next(&objects, obj))
+	{
+		ui_del_object(obj);
 	}
+	ui_cleanup();
 
 	arrbuf_clear(&should_reparent);
 	root = ui_new_object(0, UI_ROOT);
