@@ -107,12 +107,8 @@ edit_keyboard(SDL_Event *event)
 void
 edit_mouse_motion(SDL_Event *event, vec2 v_out)
 {
-	int x, y;
-	mouse_position[0] = event->motion.x;
-	mouse_position[1] = event->motion.y;
-
-	v_out[0] = ((event->motion.x - offset[0] - 0.5) / zoom);
-	v_out[1] = ((event->motion.y - offset[1] - 0.5) / zoom);
+	gfx_pixel_to_world((vec2){ event->button.x, event->button.y }, v_out);
+	gfx_pixel_to_world((vec2){ event->button.x, event->button.y }, mouse_position);
 
 	switch(mouse_state) {
 	case MOUSE_MOVING:
@@ -120,9 +116,7 @@ edit_mouse_motion(SDL_Event *event, vec2 v_out)
 		offset[1] = begin_offset[1] + event->motion.y - move_offset[1];
 		break;
 	case MOUSE_DRAWING:
-		x = ((event->motion.x - offset[0] - 0.5) / zoom);
-		y = ((event->motion.y - offset[1] - 0.5) / zoom);
-		apply_cursor(x, y);
+		apply_cursor(mouse_position[0], mouse_position[1]);
 		break;
 	default:
 		do {} while(0);
@@ -136,15 +130,15 @@ edit_mouse_button(SDL_Event *event, vec2 v_out)
 	if(event->type == SDL_MOUSEBUTTONUP) {
 		mouse_state = MOUSE_NOTHING;
 	}
-	mouse_position[0] = event->motion.x;
-	mouse_position[1] = event->motion.y;
-	
+	gfx_pixel_to_world((vec2){ event->button.x, event->button.y }, mouse_position);
+	gfx_pixel_to_world((vec2){ event->button.x, event->button.y }, v_out);
+
 	if(event->type == SDL_MOUSEBUTTONDOWN && mouse_state == MOUSE_NOTHING) {
 		switch(event->button.button) {
 		case SDL_BUTTON_LEFT: 
 			fake_event.type = SDL_MOUSEMOTION;
-			fake_event.motion.x = mouse_position[0];
-			fake_event.motion.y = mouse_position[1];
+			fake_event.motion.x = event->button.x;
+			fake_event.motion.y = event->button.y;
 			mouse_state = MOUSE_DRAWING; 
 			edit_mouse_motion(&fake_event, v_out);
 			break;
@@ -153,7 +147,6 @@ edit_mouse_button(SDL_Event *event, vec2 v_out)
 			move_offset[1] = event->button.y; 
 			vec2_dup(begin_offset, offset);
 			mouse_state = MOUSE_MOVING; 
-			
 			break;
 		}
 	}
@@ -181,8 +174,8 @@ void
 edit_render(void)
 {
 	TextureStamp stamp;
-	gfx_set_camera(offset, (vec2){ zoom, zoom });
 
+	gfx_set_camera(offset, (vec2){ zoom, zoom });
 	gfx_draw_begin(NULL);
 
 	for(int k = 0; k < SCENE_LAYERS; k++)
@@ -411,10 +404,8 @@ pencil_preview(int x, int y)
 void
 draw_preview(void)
 {
-	int x = ((mouse_position[0] - offset[0] - 0.5) / zoom);
-	int y = ((mouse_position[1] - offset[1] - 0.5) / zoom);
 	if(cursors[cursor_mode].preview) {
-		cursors[cursor_mode].preview(x, y);
+		cursors[cursor_mode].preview(mouse_position[0], mouse_position[1]);
 	}
 }
 
