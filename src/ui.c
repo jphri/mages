@@ -129,6 +129,7 @@ ui_reset(void)
 void
 ui_terminate(void)
 {
+	arrbuf_free(&should_reparent);
 	objalloc_end(&objects);
 }
 
