@@ -103,6 +103,8 @@ static inline void remove_child(UIObject parent, UIObject child)
 	UI_NODE(parent)->child_count --;
 }
 
+static void cleancbk(ObjectAllocator *obj, ObjectID id);
+
 static UIObject hot, active, text_active;
 static UIObject root;
 static vec2 mouse_pos;
@@ -112,6 +114,7 @@ ui_init(void)
 {
 	arrbuf_init(&should_reparent);
 	objalloc_init_allocator(&objects, sizeof(UIObjectNode), cache_aligned_allocator());
+	objects.clean_cbk = cleancbk;
 	
 	ui_reset();
 }
@@ -119,8 +122,12 @@ ui_init(void)
 void
 ui_reset(void)
 {
+	if(root) {
+		ui_del_object(root);
+		ui_cleanup();
+	}
+
 	arrbuf_clear(&should_reparent);
-	objalloc_reset(&objects);
 	root = ui_new_object(0, UI_ROOT);
 	hot = 0;
 	active = 0;
@@ -129,6 +136,9 @@ ui_reset(void)
 void
 ui_terminate(void)
 {
+	ui_reset();
+	ui_cleanup();
+
 	arrbuf_free(&should_reparent);
 	objalloc_end(&objects);
 }
@@ -440,4 +450,14 @@ void
 ui_deparent(UIObject obj)
 {
 	ui_child_append(0, obj);
+}
+
+static void
+cleancbk(ObjectAllocator *obj, ObjectID id)
+{
+	(void)obj;
+	Rectangle rect = gfx_window_rectangle();
+	ui_call_event(id, &(UIEvent) {
+		.event_type = UI_DELETE
+	}, &rect);
 }
