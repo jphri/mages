@@ -500,6 +500,7 @@ GAME_STATE_LEVEL_EDIT_end(void)
 			state_vtable[i].terminate();
 	}
 	arrbuf_free(&cursor_pos_str);
+	ui_reset();
 }
 
 int
