@@ -27,9 +27,11 @@ ifeq ($(SANITIZE),yes)
 	CFLAGS += -fsanitize=address
 	CFLAGS += -fsanitize=bounds
 	CFLAGS += -fsanitize=undefined
+	CFLAGS += -fno-omit-frame-pointer
 	LDFLAGS += -fsanitize=address
 	LDFLAGS += -fsanitize=bounds
 	LDFLAGS += -fsanitize=undefined
+	LDFLAGS += -fno-omit-frame-pointer
 endif
 
 DELETE = rm -f
