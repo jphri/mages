@@ -151,6 +151,8 @@ collision_init(void)
 void
 collision_terminate(void)
 {
+	arrbuf_free(&fill_stack);
+	arrbuf_free(&fill_layer_helper);
 	ui_del_object(general_root);
 	ui_del_object(cursors_ui);
 }
