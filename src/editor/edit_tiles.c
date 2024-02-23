@@ -493,7 +493,6 @@ cursor_size_cbk(UIObject obj, void *userptr)
 {
 	(void)userptr;
 	cursor_mode_size = ui_slider_get_value(obj);
-	printf("cursor_mode_size: %f\n", cursor_mode_size);
 }
 
 void
