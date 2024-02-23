@@ -236,13 +236,13 @@ fbuf_data_size(FileBuffer *buffer)
 int
 fbuf_read_line(FileBuffer *buffer, int delim)
 {
-	char c;
+	int c;
 	arrbuf_clear(&buffer->data_buffer);
 	while((c = fgetc(buffer->file_handle)) != EOF) {
 		if(c == delim) {
 			break;
 		}
-		arrbuf_insert(&buffer->data_buffer, sizeof(c), &c);
+		arrbuf_insert(&buffer->data_buffer, sizeof(char), &(char){ c });
 	}
 	if(buffer->data_buffer.size > 0)
 		return buffer->data_buffer.size;
