@@ -64,7 +64,6 @@ static struct {
 	[CURSOR_FILL] = { .image = { .texture = TEXTURE_UI, .position = { 1 * 8.0 / 256.0, 2 * 8.0 / 256.0 }, .size = { 8.0 / 256.0, 8.0 / 256.0 } } },
 };
 
-static float zoom = 16.0;
 static bool  ctrl_pressed = false;
 static vec2  begin_offset, move_offset, offset;
 static int current_layer = 0;
@@ -191,13 +190,16 @@ collision_keyboard(SDL_Event *event)
 }
 
 void
-collision_mouse_motion(SDL_Event *event, vec2 v_out)
+collision_mouse_motion(SDL_Event *event)
 {
-	gfx_pixel_to_world((vec2){ event->button.x, event->button.y }, v_out);
+	vec2 v;
+
 	switch(mouse_state) {
 	case MOUSE_MOVING:
-		offset[0] = begin_offset[0] + event->motion.x - move_offset[0];
-		offset[1] = begin_offset[1] + event->motion.y - move_offset[1];
+		vec2_sub(v, move_offset, (vec2){ event->motion.x, event->motion.y });
+		editor_move_camera(v);
+		move_offset[0] = event->button.x; 
+		move_offset[1] = event->button.y; 
 		break;
 	case MOUSE_DRAWING:
 		cursor_drag(event->motion.x, event->motion.y);
@@ -208,7 +210,7 @@ collision_mouse_motion(SDL_Event *event, vec2 v_out)
 }
 
 void
-collision_mouse_button(SDL_Event *event, vec2 v_out)
+collision_mouse_button(SDL_Event *event)
 {
 	vec2 pos;
 	if(event->type == SDL_MOUSEBUTTONUP) {
@@ -217,7 +219,6 @@ collision_mouse_button(SDL_Event *event, vec2 v_out)
 		}
 		mouse_state = MOUSE_NOTHING;
 	}
-	gfx_pixel_to_world((vec2){ event->button.x, event->button.y }, v_out);
 	
 	if(event->type == SDL_MOUSEBUTTONDOWN && mouse_state == MOUSE_NOTHING) {
 		switch(event->button.button) {
@@ -259,9 +260,7 @@ void
 collision_wheel(SDL_Event *event)
 {
 	if(ctrl_pressed) {
-		zoom += event->wheel.y;
-		if(zoom < 1.0)
-			zoom = 1.0;
+		editor_delta_zoom(event->wheel.y);
 	} else {
 		current_layer += event->wheel.y;
 		if(current_layer < 0)
@@ -277,7 +276,6 @@ void
 collision_render(void)
 {
 	TextureStamp stamp;
-	gfx_set_camera(offset, (vec2){ zoom, zoom });
 
 	//gfx_debug_begin();
 	//for(CollisionData *c = editor.map->collision; c; c = c->next) {

@@ -4,6 +4,7 @@
 #include <glad/gles2.h>
 
 #include <SDL.h>
+#include <wchar.h>
 
 #include "../game_state.h"
 #include "../global.h"
@@ -56,6 +57,9 @@ static UIObject extra_window;
 static UIObject cursor_position;
 
 static ArrayBuffer cursor_pos_str;
+
+static vec2 camera_offset;
+static float camera_zoom = 16.0;
 
 static void open_cbk(UIObject obj, void (*userptr));
 static void cancel_cbk(UIObject btn, void *userptr);
@@ -424,6 +428,8 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	ui_child_append(ui_root(), editor.controls_ui);
 	ui_child_append(ui_root(), extra_window);
 	//ui_child_append(ui_root(), editor.context_window);
+	
+	gfx_set_camera(camera_offset, (vec2){ camera_zoom, camera_zoom });
 }
 
 void
@@ -436,12 +442,12 @@ GAME_STATE_LEVEL_EDIT_render(void)
 void
 GAME_STATE_LEVEL_EDIT_mouse_button(SDL_Event *event)
 {
-	vec2 v;
-
 	if(ui_is_active())
 		return;
+	vec2 v;
+	gfx_pixel_to_world((vec2){ event->button.x, event->button.y }, v);
 
-	state_vtable[editor.editor_state].mouse_button(event, v);
+	state_vtable[editor.editor_state].mouse_button(event);
 	update_cursor_pos(v);
 }
 
@@ -457,11 +463,12 @@ GAME_STATE_LEVEL_EDIT_mouse_wheel(SDL_Event *event)
 void
 GAME_STATE_LEVEL_EDIT_mouse_move(SDL_Event *event) 
 {
-	vec2 v;
-
 	if(ui_is_active())
 		return;
-	state_vtable[editor.editor_state].mouse_motion(event, v);
+	vec2 v;
+	gfx_pixel_to_world((vec2){ event->motion.x, event->motion.y }, v);
+
+	state_vtable[editor.editor_state].mouse_motion(event);
 	update_cursor_pos(v);
 }
 
@@ -684,3 +691,26 @@ update_cursor_pos(vec2 v)
 
 	ui_label_set_text(cursor_position, cursor_pos_str.data);
 }
+
+void
+editor_move_camera(vec2 delta)
+{
+	vec2_sub(camera_offset, camera_offset, delta);
+	gfx_set_camera(camera_offset, (vec2){ camera_zoom, camera_zoom });
+}
+
+void
+editor_delta_zoom(float delta)
+{
+	camera_zoom += delta;
+	if(camera_zoom < 1.0)
+		camera_zoom = 1.0;
+	gfx_set_camera(camera_offset, (vec2){ camera_zoom, camera_zoom });
+}
+
+float
+editor_get_zoom(void)
+{
+	return camera_zoom;
+}
+
