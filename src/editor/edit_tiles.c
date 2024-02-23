@@ -150,14 +150,6 @@ edit_wheel(SDL_Event *event)
 {
 	if(ctrl_pressed) {
 		editor_delta_zoom(event->wheel.y);
-	} else {
-		current_layer += event->wheel.y;
-		if(current_layer < 0)
-			current_layer = 0;
-		if(current_layer > SCENE_LAYERS)
-			current_layer = SCENE_LAYERS;
-
-		printf("Current Layer: %d\n", current_layer);
 	}
 }
 
@@ -501,7 +493,6 @@ cursor_size_cbk(UIObject obj, void *userptr)
 {
 	(void)userptr;
 	cursor_mode_size = ui_slider_get_value(obj);
-	printf("cursor_mode_size: %f\n", cursor_mode_size);
 }
 
 void

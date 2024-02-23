@@ -61,7 +61,8 @@ typedef struct {
 		UI_MOUSE_BUTTON,
 		UI_DRAW,
 		UI_TEXT_ENTRY,
-		UI_KEYBOARD
+		UI_KEYBOARD,
+		UI_DELETE
 	} event_type;
 
 	union {

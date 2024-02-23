@@ -330,14 +330,20 @@ gfx_init(void)
 void
 gfx_end(void)
 {
-	glDeleteProgram(sprite_program.program);
-	glDeleteBuffers(2, (GLuint[]) {
+	glDeleteBuffers(3, (GLuint[]) {
 		sprite_buffer_gpu,
 		sprite_buffer,
+		sprite_colrow_inv_buffer,
+		matrix_buffer
 	});
 
 	for(int i = 0; i < LAST_TEXTURE_ATLAS; i++)
 		end_texture_atlas(&texture_atlas[i]);
+	
+	glDeleteProgram(sprite_program.program);
+	glDeleteProgram(post_clean.program);
+	glDeleteProgram(tile_map_program.program);
+	glDeleteProgram(debug_program.program);
 }
 
 void 
@@ -1094,6 +1100,7 @@ sprite_buffer_reserve(int count_sprites)
 		glBindBuffer(GL_COPY_READ_BUFFER, 0);
 		glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
 	}
+	glDeleteBuffers(1, &sprite_buffer);
 
 	sprite_reserved = new_reserv;
 	sprite_buffer = new_buffer;

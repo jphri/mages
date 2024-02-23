@@ -151,6 +151,8 @@ collision_init(void)
 void
 collision_terminate(void)
 {
+	arrbuf_free(&fill_stack);
+	arrbuf_free(&fill_layer_helper);
 	ui_del_object(general_root);
 	ui_del_object(cursors_ui);
 }
@@ -255,14 +257,6 @@ collision_wheel(SDL_Event *event)
 {
 	if(ctrl_pressed) {
 		editor_delta_zoom(event->wheel.y);
-	} else {
-		current_layer += event->wheel.y;
-		if(current_layer < 0)
-			current_layer = 0;
-		if(current_layer > SCENE_LAYERS)
-			current_layer = SCENE_LAYERS;
-
-		printf("Current Layer: %d\n", current_layer);
 	}
 }
 
@@ -386,12 +380,6 @@ rect_end(int x, int y)
 	*data = current_collision;
 	data->next = editor.map->collision;
 	editor.map->collision = data;
-
-	printf("new collision at %f %f %f %f\n",
-			data->position[0],
-			data->position[1],
-			data->half_size[0],
-			data->half_size[1]);
 }
 
 void

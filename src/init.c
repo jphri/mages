@@ -230,6 +230,8 @@ main(int argc, char *argv[])
 	}
 
 end_loop:
+	state_vtable[current_state].end();
+
 	ui_terminate();
 	phx_end();
 	ent_end();
