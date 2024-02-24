@@ -19,6 +19,7 @@
 #include "map.h"
 #include "audio.h"
 #include "util.h"
+#include "events.h"
 
 typedef struct {
 	void (*init)(void);
@@ -118,6 +119,7 @@ main(int argc, char *argv[])
 	gladLoadGLES2(load_proc);
 	printf("OpenGL Version: %s\n", glGetString(GL_VERSION));
 
+	event_init();
 	gfx_init();
 	gfx_scene_setup();
 	phx_init();
@@ -132,6 +134,7 @@ main(int argc, char *argv[])
 		SDL_Event event;
 		int w, h;
 
+		event_cleanup();
 		ui_cleanup();
 		while(SDL_PollEvent(&event)) {
 			switch(event.type) {
@@ -237,6 +240,7 @@ end_loop:
 	ent_end();
 	gfx_end();
 	audio_end();
+	event_terminate();
 
 	SDL_DestroyRenderer(GLOBAL.renderer);
 	SDL_DestroyWindow(GLOBAL.window);
