@@ -16,6 +16,9 @@
 #include "../ui.h"
 #include "../util.h"
 #include "../audio.h"
+#include "../events.h"
+
+static void event_receiver(Event event, const void *data);
 
 static Map *map;
 
@@ -25,6 +28,8 @@ static float time = 0;
 
 static void pre_solve(Contact *contact);
 static void edit_cbk(UIObject obj, void *userptr);
+
+static SubscriberID level_subscriber;
 
 void
 GAME_STATE_LEVEL_init(void)
@@ -60,8 +65,11 @@ GAME_STATE_LEVEL_init(void)
 	map = editor.map;
 	map_set_gfx_scene(map);
 	map_set_phx_scene(map);
-	
-	GLOBAL.player_id = ent_player_new((vec2){ 15.0, 15.0 });
+
+	level_subscriber = event_create_subscriber(event_receiver);
+	event_subscribe(level_subscriber, EVENT_PLAYER_SPAWN);
+
+	ent_player_new((vec2){ 15.0, 15.0 });
 	ent_dummy_new((vec2){ 25, 15 });
 	
 	text = gfx_scene_new_obj(0, SCENE_OBJECT_TEXT);
@@ -71,6 +79,7 @@ GAME_STATE_LEVEL_init(void)
 	gfx_scene_text(text)->text_ptr = (RelPtr){ .base_pointer = (void**)&text_test, .offset = 0 };
 
 	phx_set_pre_solve(pre_solve);
+
 }
 
 void
@@ -105,6 +114,8 @@ GAME_STATE_LEVEL_end(void)
 	ui_reset();
 	gfx_scene_reset();
 	audio_bgm_pause();
+
+	event_delete_subscriber(level_subscriber);
 }
 
 void GAME_STATE_LEVEL_mouse_move(SDL_Event *event) { (void)event; }
@@ -147,4 +158,18 @@ edit_cbk(UIObject obj, void *userptr)
 	(void)obj;
 	(void)userptr;
 	gstate_set(GAME_STATE_LEVEL_EDIT);
+}
+
+void
+event_receiver(Event event, const void *data)
+{
+	const EVENT(EVENT_PLAYER_SPAWN) ev;
+	
+	switch(event) {
+	case EVENT_PLAYER_SPAWN:
+		ev = data;
+		GLOBAL.player_id = ev->player_id;
+	default:
+		break;
+	}
 }

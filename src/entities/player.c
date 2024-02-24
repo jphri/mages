@@ -8,6 +8,7 @@
 #include "../entity.h"
 #include "../id.h"
 #include "../audio.h"
+#include "../events.h"
 
 #define self ENT_DATA(ENTITY_PLAYER, self_id)
 #define self_sprite gfx_scene_animspr(self->sprite)
@@ -50,6 +51,8 @@ ent_player_new(vec2 position)
 
 	MOB_COMPONENT.health = 10;
 	MOB_COMPONENT.health_max = 10;
+
+	EVENT_EMIT(EVENT_PLAYER_SPAWN, .player_id = self_id);
 
 	return self_id;
 }
