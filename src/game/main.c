@@ -22,10 +22,6 @@ static void event_receiver(Event event, const void *data);
 
 static Map *map;
 
-static char *text_test = "Hello";
-static SceneTextID text;
-static float time = 0;
-
 static void pre_solve(Contact *contact);
 static void edit_cbk(UIObject obj, void *userptr);
 
@@ -62,33 +58,21 @@ GAME_STATE_LEVEL_init(void)
 	}
 	ui_child_append(ui_root(), file_buttons_window);
 
-	map = editor.map;
-	map_set_gfx_scene(map);
-	map_set_phx_scene(map);
-
 	level_subscriber = event_create_subscriber(event_receiver);
 	event_subscribe(level_subscriber, EVENT_PLAYER_SPAWN);
 
-	ent_player_new((vec2){ 15.0, 15.0 });
-	ent_dummy_new((vec2){ 25, 15 });
-	
-	text = gfx_scene_new_obj(0, SCENE_OBJECT_TEXT);
-	vec4_dup(gfx_scene_text(text)->color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
-	vec2_dup(gfx_scene_text(text)->position, (vec2){ 0.0, 0.0 });
-	vec2_dup(gfx_scene_text(text)->char_size, (vec2){ 0.05, 0.05 });
-	gfx_scene_text(text)->text_ptr = (RelPtr){ .base_pointer = (void**)&text_test, .offset = 0 };
+	map = editor.map;
+	map_set_gfx_scene(map);
+	map_set_phx_scene(map);
+	map_set_ent_scene(map);
 
 	phx_set_pre_solve(pre_solve);
-
 }
 
 void
 GAME_STATE_LEVEL_update(float delta)
 {
-	time += delta;
-	const float f = fabs(sinf(time)) * 0.25;
-
-	vec2_dup(gfx_scene_text(text)->char_size, (vec2){ f, f });
+	(void)delta;
 }
 
 void
