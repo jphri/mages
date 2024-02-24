@@ -2,11 +2,23 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#include "entity.h"
 #include "vecmath.h"
 #include "physics.h"
 #include "graphics.h"
 #include "util.h"
 #include "map.h"
+
+typedef void (*ThingFunc)(Thing *c);
+
+static void thing_player(Thing *c);
+static void thing_dummy(Thing *c);
+
+static ThingFunc thing_pc[LAST_THING] = {
+	[THING_PLAYER] = thing_player,
+	[THING_DUMMY]  = thing_dummy
+};
+
 
 Map *
 map_alloc(int w, int h)
@@ -17,6 +29,7 @@ map_alloc(int w, int h)
 	map->h = h;
 	map->tiles = (int*)(map + 1);
 	map->collision = NULL;
+	map->things = NULL;
 	return map;
 }
 
@@ -68,6 +81,20 @@ map_load(const char *file)
 
 			data->next = map->collision;
 			map->collision = data;
+		} else if(strview_cmp(word, "thing") == 0) {
+			Thing *data = malloc(sizeof(*data));
+			
+			if(!strview_int(strview_token(&tokenview, " "), &data->type))
+				goto error_load;
+
+			if(!strview_float(strview_token(&tokenview, " "), &data->position[0]))
+				goto error_load;
+
+			if(!strview_float(strview_token(&tokenview, " "), &data->position[1]))
+				goto error_load;
+
+			data->next = map->things;
+			map->things = data;
 		} else {
 			char *s = strview_str(word);
 			printf("unknown command %s\n", s);
@@ -81,6 +108,7 @@ map_load(const char *file)
 error_load:
 	if(map)
 		map_free(map);
+	fbuf_close(&fp);
 	return NULL;
 }
 
@@ -88,6 +116,10 @@ void
 map_free(Map *map)
 {
 	for(CollisionData *c = map->collision, *next; c; c = next) {
+		next = c->next;
+		free(c);
+	}
+	for(Thing *c = map->things, *next; c; c = next) {
 		next = c->next;
 		free(c);
 	}
@@ -146,3 +178,22 @@ map_set_phx_scene(Map *map)
 	}
 }
 
+void 
+map_set_ent_scene(Map *map)
+{
+	for(Thing *c = map->things; c; c = c->next)
+		if(thing_pc[c->type])
+			thing_pc[c->type](c);
+}
+
+void
+thing_player(Thing *c)
+{
+	ent_player_new(c->position);
+}
+
+void
+thing_dummy(Thing *c)
+{
+	ent_dummy_new(c->position);
+}
