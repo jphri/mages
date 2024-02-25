@@ -23,6 +23,7 @@ struct Thing {
 	vec2 position;
 
 	Thing *next;
+	Thing *prev;
 };
 
 typedef struct {

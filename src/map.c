@@ -94,6 +94,10 @@ map_load(const char *file)
 				goto error_load;
 
 			data->next = map->things;
+			data->prev = NULL;
+			if(map->things)
+				map->things->prev = data;
+			
 			map->things = data;
 		} else {
 			char *s = strview_str(word);

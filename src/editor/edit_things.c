@@ -167,6 +167,7 @@ thing_mouse_motion(SDL_Event *event)
 void
 thing_mouse_button(SDL_Event *event)
 {
+	Thing *thing;
 	if(event->type == SDL_MOUSEBUTTONUP) {
 		mouse_state = MOUSE_NOTHING;
 	}
@@ -178,6 +179,17 @@ thing_mouse_button(SDL_Event *event)
 			vec2_dup(move_offset, mouse_position);
 			select_thing(mouse_position);
 			mouse_state = MOUSE_DRAWING;
+			break;
+		case SDL_BUTTON_MIDDLE:
+			thing = malloc(sizeof(*thing));
+			thing->type = THING_NULL;
+			vec2_dup(thing->position, mouse_position);
+			thing->prev = NULL;
+			thing->next = editor.map->things;
+			if(editor.map->things)
+				editor.map->things->prev = thing;
+
+			editor.map->things = thing;
 			break;
 		case SDL_BUTTON_RIGHT:
 			move_offset[0] = event->button.x;
