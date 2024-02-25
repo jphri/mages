@@ -12,11 +12,15 @@
 #include "../ui.h"
 #include "editor.h"
 
+static void render_thing(Thing *thing);
+static void select_thing(vec2 position);
+
 static MouseState mouse_state;
 static vec2 move_offset, mouse_position;
 static bool ctrl_pressed;
 
-static void render_thing(Thing *thing);
+
+static Thing *selected_thing;
 
 void
 thing_init(void)
@@ -99,6 +103,11 @@ thing_mouse_motion(SDL_Event *event)
 		move_offset[1] = event->button.y;
 		break;
 	case MOUSE_DRAWING:
+		vec2_sub(v, move_offset, mouse_position);
+		if(selected_thing) {
+			vec2_sub(selected_thing->position, selected_thing->position, v);
+		}
+		vec2_dup(move_offset, mouse_position);
 		break;
 	default:
 		do {} while(0);
@@ -116,6 +125,9 @@ thing_mouse_button(SDL_Event *event)
 	if(event->type == SDL_MOUSEBUTTONDOWN && mouse_state == MOUSE_NOTHING) {
 		switch(event->button.button) {
 		case SDL_BUTTON_LEFT:
+			vec2_dup(move_offset, mouse_position);
+			select_thing(mouse_position);
+			mouse_state = MOUSE_DRAWING;
 			break;
 		case SDL_BUTTON_RIGHT:
 			move_offset[0] = event->button.x;
@@ -138,4 +150,23 @@ void
 render_thing(Thing *c)
 {
 	gfx_draw_texture_rect(gfx_white_texture(), c->position, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 1.0, 0.0, 0.0, 1.0 });
+}
+
+void
+select_thing(vec2 v)
+{
+	selected_thing = NULL;
+	for(Thing *c = editor.map->things; c; c = c->next) {
+		Rectangle r = {
+			.position = { c->position[0], c->position[1] },
+			.half_size = { 1.0, 1.0 }
+		};
+		printf("%f %f %f %f\n", c->position[0], c->position[1], v[0], v[1]);
+		if(rect_contains_point(&r, v)) {
+			selected_thing = c;
+			printf("Found something!\n");
+			return;
+		}
+	}
+	printf("Found nothing :\\\n");
 }
