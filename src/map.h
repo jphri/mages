@@ -4,6 +4,7 @@
 #include "vecmath.h"
 
 enum {
+	THING_NULL,
 	THING_PLAYER,
 	THING_DUMMY,
 	LAST_THING
