@@ -12,6 +12,12 @@
 #include "../ui.h"
 #include "editor.h"
 
+typedef void (*ThingRender)(Thing *thing);
+
+static void thing_null_render(Thing *thing);
+static void thing_player_render(Thing *thing);
+static void thing_dummy_render(Thing *thing);
+
 static void render_thing(Thing *thing);
 static void select_thing(vec2 position);
 static void update_thing_context(void);
@@ -26,6 +32,12 @@ static Thing *selected_thing;
 static UIObject thing_context, thing_type_name;
 
 static StrView type_string[LAST_THING];
+
+static ThingRender renders[] = {
+	[THING_NULL] = thing_null_render,
+	[THING_PLAYER] = thing_player_render,
+	[THING_DUMMY] = thing_dummy_render
+};
 
 void
 thing_init(void)
@@ -185,12 +197,40 @@ thing_wheel(SDL_Event *event)
 void
 render_thing(Thing *c)
 {
-	vec4 colors[] = {
-		{ 1.0, 0.0, 0.0, 1.0 },
-		{ 0.0, 1.0, 0.0, 1.0 }
-	};
+	if(renders[c->type])
+		renders[c->type](c);
+}
 
-	gfx_draw_texture_rect(gfx_white_texture(), c->position, (vec2){ 1.0, 1.0 }, 0.0, colors[c == selected_thing]);
+void
+thing_null_render(Thing *c)
+{
+	gfx_draw_texture_rect(gfx_white_texture(), c->position, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 1.0, 0.0, 0.0, 1.0 });
+
+	if(c == selected_thing) {
+		gfx_draw_texture_rect(gfx_white_texture(), c->position, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
+	}
+}
+
+void
+thing_player_render(Thing *c)
+{
+	TextureStamp stamp = get_sprite(SPRITE_ENTITIES, 0, 0);
+	gfx_draw_texture_rect(&stamp, c->position, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+
+	if(c == selected_thing) {
+		gfx_draw_texture_rect(gfx_white_texture(), c->position, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
+	}
+}
+
+void
+thing_dummy_render(Thing *c)
+{
+	TextureStamp stamp = get_sprite(SPRITE_ENTITIES, 0, 2);
+	gfx_draw_texture_rect(&stamp, c->position, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+
+	if(c == selected_thing) {
+		gfx_draw_texture_rect(gfx_white_texture(), c->position, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
+	}
 }
 
 void
