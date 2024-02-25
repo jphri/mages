@@ -121,6 +121,7 @@ StrView to_strview(const char *str);
 StrView to_strview_buffer(const void *buffer, size_t size);
 StrView strview_token(StrView *str, const char *delim);
 int     strview_cmp(StrView str, const char *str2);
+int     strview_cmpstr(StrView str, StrView str2);
 char   *strview_str(StrView view);
 void    strview_str_mem(StrView view, char *data, size_t size);
 

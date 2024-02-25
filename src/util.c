@@ -323,6 +323,19 @@ strview_cmp(StrView str, const char *str2)
 }
 
 int
+strview_cmpstr(StrView str, StrView str2)
+{
+	size_t len1 = (unsigned char*)str.end - (unsigned char *)str.begin;
+	size_t len2 = (unsigned char*)str2.end - (unsigned char *)str2.begin;
+
+	if(len1 != len2)
+		return len1 - len2;
+	else
+		return memcmp(str.begin, str2.begin, len1);
+}
+
+
+int
 strview_int(StrView str, int *result)
 {
 	const unsigned char *s = str.begin;
