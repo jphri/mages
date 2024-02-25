@@ -16,6 +16,7 @@ typedef enum {
 typedef enum {
 	EDITOR_EDIT_MAP,
 	EDITOR_EDIT_COLLISION,
+	EDITOR_EDIT_THINGS,
 	LAST_EDITOR_STATE
 } EditorState;
 
@@ -55,6 +56,17 @@ void edit_enter(void);
 void edit_exit(void);
 void edit_init(void);
 void edit_terminate(void);
+
+void thing_render(void);
+void thing_keyboard(SDL_Event *event);
+void thing_mouse_motion(SDL_Event *event);
+void thing_mouse_button(SDL_Event *event);
+void thing_keyboard(SDL_Event *event);
+void thing_wheel(SDL_Event *event);
+void thing_enter(void);
+void thing_exit(void);
+void thing_init(void);
+void thing_terminate(void);
 
 void collision_render(void);
 void collision_keyboard(SDL_Event *event);
