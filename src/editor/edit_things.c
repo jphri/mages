@@ -16,7 +16,9 @@ static MouseState mouse_state;
 static vec2 move_offset, mouse_position;
 static bool ctrl_pressed;
 
-void 
+static void render_thing(Thing *thing);
+
+void
 thing_init(void)
 {
 }
@@ -31,7 +33,7 @@ thing_enter(void)
 {
 }
 
-void 
+void
 thing_exit(void)
 {
 }
@@ -62,6 +64,11 @@ void thing_render(void)
 				(vec4){ 1.0, 1.0, 1.0, 1.0 }
 		);
 	}
+
+	for(Thing *c = editor.map->things; c; c = c->next) {
+		render_thing(c);
+	}
+
 	gfx_draw_end();
 }
 
@@ -88,8 +95,8 @@ thing_mouse_motion(SDL_Event *event)
 	case MOUSE_MOVING:
 		vec2_sub(v, move_offset, (vec2){ event->motion.x, event->motion.y });
 		editor_move_camera(v);
-		move_offset[0] = event->button.x; 
-		move_offset[1] = event->button.y; 
+		move_offset[0] = event->button.x;
+		move_offset[1] = event->button.y;
 		break;
 	case MOUSE_DRAWING:
 		break;
@@ -98,7 +105,7 @@ thing_mouse_motion(SDL_Event *event)
 	}
 }
 
-void 
+void
 thing_mouse_button(SDL_Event *event)
 {
 	if(event->type == SDL_MOUSEBUTTONUP) {
@@ -108,21 +115,27 @@ thing_mouse_button(SDL_Event *event)
 
 	if(event->type == SDL_MOUSEBUTTONDOWN && mouse_state == MOUSE_NOTHING) {
 		switch(event->button.button) {
-		case SDL_BUTTON_LEFT: 
+		case SDL_BUTTON_LEFT:
 			break;
-		case SDL_BUTTON_RIGHT: 
-			move_offset[0] = event->button.x; 
-			move_offset[1] = event->button.y; 
-			mouse_state = MOUSE_MOVING; 
+		case SDL_BUTTON_RIGHT:
+			move_offset[0] = event->button.x;
+			move_offset[1] = event->button.y;
+			mouse_state = MOUSE_MOVING;
 			break;
 		}
 	}
 }
 
-void 
+void
 thing_wheel(SDL_Event *event)
 {
 	if(ctrl_pressed) {
 		editor_delta_zoom(event->wheel.y);
 	}
+}
+
+void
+render_thing(Thing *c)
+{
+	gfx_draw_texture_rect(gfx_white_texture(), c->position, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 1.0, 0.0, 0.0, 1.0 });
 }
