@@ -132,6 +132,15 @@ thing_keyboard(SDL_Event *event)
 	if(event->type == SDL_KEYDOWN) {
 		switch(event->key.keysym.sym) {
 		case SDLK_LCTRL: ctrl_pressed = true; break;
+		case SDLK_DELETE:
+			if(selected_thing) {
+				if(selected_thing->prev) selected_thing->prev->next = selected_thing->next;
+				if(selected_thing->next) selected_thing->next->prev = selected_thing->prev;
+				if(selected_thing == editor.map->things)
+					editor.map->things = selected_thing->next;
+				selected_thing = NULL;
+			}
+			break;
 		}
 	} else {
 		switch(event->key.keysym.sym) {
