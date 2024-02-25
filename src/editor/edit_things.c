@@ -14,32 +14,65 @@
 
 static void render_thing(Thing *thing);
 static void select_thing(vec2 position);
+static void update_thing_context(void);
 
 static MouseState mouse_state;
 static vec2 move_offset, mouse_position;
 static bool ctrl_pressed;
 
-
 static Thing *selected_thing;
+static UIObject thing_context, thing_type_name;
+
+static StrView type_string[LAST_THING];
 
 void
 thing_init(void)
 {
+	type_string[THING_NULL]   = to_strview("");
+	type_string[THING_PLAYER] = to_strview("THING_PLAYER");
+	type_string[THING_DUMMY]  = to_strview("THING_DUMMY");
+
+	thing_context = ui_new_object(UI_ROOT, 0);
+	UIObject layout = ui_layout_new();
+	ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
+	{
+		UIObject sublayout, label;
+
+		#define BEGIN_LAYOUT(NAME) \
+		sublayout = ui_layout_new(); \
+		ui_layout_set_order(layout, UI_LAYOUT_HORIZONTAL); \
+		label = ui_label_new(); \
+		ui_label_set_text(label, NAME); \
+		ui_label_set_alignment(label, UI_LABEL_ALIGN_RIGHT); \
+		ui_layout_append(sublayout, label);
+
+		#define END_LAYOUT \
+		ui_layout_append(layout, sublayout);
+
+		BEGIN_LAYOUT("Thing Type: "); {
+			thing_type_name = ui_text_input_new();
+			ui_layout_append(sublayout, thing_type_name);
+		} END_LAYOUT;
+	}
+	ui_child_append(thing_context, layout);
 }
 
 void
 thing_terminate(void)
 {
+	ui_del_object(thing_context);
 }
 
 void
 thing_enter(void)
 {
+	update_thing_context();
 }
 
 void
 thing_exit(void)
 {
+	ui_deparent(thing_context);
 }
 
 void thing_render(void)
@@ -149,7 +182,12 @@ thing_wheel(SDL_Event *event)
 void
 render_thing(Thing *c)
 {
-	gfx_draw_texture_rect(gfx_white_texture(), c->position, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 1.0, 0.0, 0.0, 1.0 });
+	vec4 colors[] = {
+		{ 1.0, 0.0, 0.0, 1.0 },
+		{ 0.0, 1.0, 0.0, 1.0 }
+	};
+
+	gfx_draw_texture_rect(gfx_white_texture(), c->position, (vec2){ 1.0, 1.0 }, 0.0, colors[c == selected_thing]);
 }
 
 void
@@ -161,12 +199,21 @@ select_thing(vec2 v)
 			.position = { c->position[0], c->position[1] },
 			.half_size = { 1.0, 1.0 }
 		};
-		printf("%f %f %f %f\n", c->position[0], c->position[1], v[0], v[1]);
 		if(rect_contains_point(&r, v)) {
 			selected_thing = c;
-			printf("Found something!\n");
-			return;
+			break;
 		}
 	}
-	printf("Found nothing :\\\n");
+	update_thing_context();
+}
+
+void
+update_thing_context(void)
+{
+	if(selected_thing) {
+		ui_text_input_set_text(thing_type_name, type_string[selected_thing->type]);
+		ui_window_append_child(editor.context_window, thing_context);
+	} else {
+		ui_deparent(thing_context);
+	}
 }
