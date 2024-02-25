@@ -49,12 +49,14 @@ thing_init(void)
 	thing_context = ui_new_object(UI_ROOT, 0);
 	UIObject layout = ui_layout_new();
 	ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
+	ui_layout_set_border(layout, 2.0, 2.0, 2.0, 2.0);
+	ui_layout_set_fixed_size(layout, 15.0); \
 	{
 		UIObject sublayout, label;
 
 		#define BEGIN_LAYOUT(NAME) \
 		sublayout = ui_layout_new(); \
-		ui_layout_set_order(layout, UI_LAYOUT_HORIZONTAL); \
+		ui_layout_set_order(sublayout, UI_LAYOUT_HORIZONTAL); \
 		label = ui_label_new(); \
 		ui_label_set_text(label, NAME); \
 		ui_label_set_alignment(label, UI_LABEL_ALIGN_RIGHT); \
