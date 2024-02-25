@@ -30,6 +30,8 @@ static SubscriberID level_subscriber;
 void
 GAME_STATE_LEVEL_init(void)
 {
+	GLOBAL.player_id = 0;
+
 	UIObject file_buttons_window = ui_window_new();
 	ui_window_set_decorated(file_buttons_window, false);
 	ui_window_set_size(file_buttons_window, (vec2){ 40, 40 });
