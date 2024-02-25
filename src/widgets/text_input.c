@@ -34,6 +34,14 @@ ui_text_input_clear(UIObject obj)
 	
 }
 
+void
+ui_text_input_set_text(UIObject obj, StrView str)
+{
+	ui_text_input_clear(obj);
+	arrbuf_insert(&WIDGET(UI_TEXT_INPUT, obj)->text_buffer, str.end - str.begin, str.begin);
+	WIDGET(UI_TEXT_INPUT, obj)->carot = 0;
+}
+
 void 
 ui_text_input_set_filter(UIObject obj, int (*filter)(int codepoint))
 {
