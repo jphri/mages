@@ -16,6 +16,8 @@ static void render_thing(Thing *thing);
 static void select_thing(vec2 position);
 static void update_thing_context(void);
 
+static void thing_type_name_cbk(UIObject obj, void *userptr);
+
 static MouseState mouse_state;
 static vec2 move_offset, mouse_position;
 static bool ctrl_pressed;
@@ -51,6 +53,7 @@ thing_init(void)
 
 		BEGIN_LAYOUT("Thing Type: "); {
 			thing_type_name = ui_text_input_new();
+			ui_text_input_set_cbk(thing_type_name, NULL, thing_type_name_cbk);
 			ui_layout_append(sublayout, thing_type_name);
 		} END_LAYOUT;
 	}
@@ -215,5 +218,20 @@ update_thing_context(void)
 		ui_window_append_child(editor.context_window, thing_context);
 	} else {
 		ui_deparent(thing_context);
+	}
+}
+
+void
+thing_type_name_cbk(UIObject obj, void *userptr)
+{
+	(void)userptr;
+	selected_thing->type = THING_NULL;
+	StrView v = ui_text_input_get_str(obj);
+	
+	for(int i = 0; i < LAST_THING; i++) {
+		if(strview_cmpstr(v, type_string[i]) == 0) {
+			selected_thing->type = i;
+			return;
+		}
 	}
 }
