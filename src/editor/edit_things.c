@@ -222,6 +222,8 @@ render_thing(Thing *c)
 {
 	if(renders[c->type])
 		renders[c->type](c);
+	else
+		thing_null_render(c);
 }
 
 void
