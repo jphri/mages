@@ -586,6 +586,8 @@ newbtn_new_cbk(UIObject obj, void *userptr)
 	ui_deparent(new_window);
 	ui_text_input_clear(new_width);
 	ui_text_input_clear(new_height);
+
+	editor_change_state(editor.editor_state);
 }
 
 void
@@ -610,6 +612,8 @@ loadbtn_load_cbk(UIObject obj, void *userptr)
 	free(fixed_path);
 	ui_deparent(load_window);
 	ui_text_input_clear(load_path);
+	
+	editor_change_state(editor.editor_state);
 }
 
 void
@@ -626,7 +630,6 @@ save_btn_cbk(UIObject obj, void *userptr)
 		ui_text_input_clear(save_path);
 	}
 	free(fixed_path);
-
 }
 
 void

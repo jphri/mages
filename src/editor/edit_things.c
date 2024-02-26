@@ -89,6 +89,7 @@ thing_enter(void)
 void
 thing_exit(void)
 {
+	selected_thing = NULL;
 	ui_deparent(thing_context);
 }
 
