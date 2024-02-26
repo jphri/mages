@@ -40,6 +40,17 @@ static State state_vtable[] = {
 		.exit = collision_exit,
 		.init = collision_init,
 		.terminate = collision_terminate,
+	},
+	[EDITOR_EDIT_THINGS] = {
+		.render = thing_render,
+		.wheel = thing_wheel,
+		.keyboard = thing_keyboard,
+		.mouse_button = thing_mouse_button,
+		.mouse_motion = thing_mouse_motion,
+		.enter = thing_enter,
+		.exit = thing_exit,
+		.init = thing_init,
+		.terminate = thing_terminate,
 	}
 };
 
@@ -107,6 +118,7 @@ GAME_STATE_LEVEL_EDIT_init(void)
 
 	BUTTON_MODE(EDITOR_EDIT_MAP, 2 * 8, 0 * 8);
 	BUTTON_MODE(EDITOR_EDIT_COLLISION, 3 * 8, 0 * 8);
+	BUTTON_MODE(EDITOR_EDIT_THINGS, 5 * 8, 0 * 8);
 
 	#undef BUTTON_MODE
 
@@ -574,6 +586,8 @@ newbtn_new_cbk(UIObject obj, void *userptr)
 	ui_deparent(new_window);
 	ui_text_input_clear(new_width);
 	ui_text_input_clear(new_height);
+
+	editor_change_state(editor.editor_state);
 }
 
 void
@@ -598,6 +612,8 @@ loadbtn_load_cbk(UIObject obj, void *userptr)
 	free(fixed_path);
 	ui_deparent(load_window);
 	ui_text_input_clear(load_path);
+	
+	editor_change_state(editor.editor_state);
 }
 
 void
@@ -614,7 +630,6 @@ save_btn_cbk(UIObject obj, void *userptr)
 		ui_text_input_clear(save_path);
 	}
 	free(fixed_path);
-
 }
 
 void

@@ -168,6 +168,9 @@ DEFINE_WIDGET(UI_TEXT_INPUT) {
 	float offset;
 
 	int (*filter)(int codepoint);
+
+	void *userptr;
+	void (*cbk)(UIObject, void*);
 };
 
 DEFINE_WIDGET(UI_IMAGE) {
@@ -244,6 +247,8 @@ UIObject ui_text_input_new(void);
 void     ui_text_input_set_filter(UIObject obj, int (*filter)(int codepoint));
 void     ui_text_input_clear(UIObject obj);
 StrView  ui_text_input_get_str(UIObject obj);
+void     ui_text_input_set_text(UIObject obj, StrView str);
+void     ui_text_input_set_cbk(UIObject obj, void *userptr, void (*cbk)(UIObject, void *));
 
 UIObject ui_image_new(void);
 void     ui_image_set_stamp(UIObject image, TextureStamp *stamp);

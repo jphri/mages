@@ -26,12 +26,26 @@ ui_text_input_get_str(UIObject obj)
 }
 
 void
+ui_text_input_set_cbk(UIObject obj, void *userptr, void (*cbk)(UIObject, void*))
+{
+	WIDGET(UI_TEXT_INPUT, obj)->cbk = cbk;
+	WIDGET(UI_TEXT_INPUT, obj)->userptr = userptr;
+}
+
+void
 ui_text_input_clear(UIObject obj)
 {
 	arrbuf_clear(&WIDGET(UI_TEXT_INPUT, obj)->text_buffer);
 	WIDGET(UI_TEXT_INPUT, obj)->carot = 0;
 	WIDGET(UI_TEXT_INPUT, obj)->offset = 0;
-	
+}
+
+void
+ui_text_input_set_text(UIObject obj, StrView str)
+{
+	ui_text_input_clear(obj);
+	arrbuf_insert(&WIDGET(UI_TEXT_INPUT, obj)->text_buffer, str.end - str.begin, str.begin);
+	WIDGET(UI_TEXT_INPUT, obj)->carot = 0;
 }
 
 void 
@@ -72,6 +86,9 @@ UI_TEXT_INPUT_event(UIObject obj, UIEvent *event, Rectangle *rect)
 
 			arrbuf_insert_at(&WIDGET(UI_TEXT_INPUT, obj)->text_buffer, event->data.text.text_size, event->data.text.text, WIDGET(UI_TEXT_INPUT, obj)->carot);
 			WIDGET(UI_TEXT_INPUT, obj)->carot += event->data.text.text_size;
+
+			if(WIDGET(UI_TEXT_INPUT, obj)->cbk)
+				WIDGET(UI_TEXT_INPUT, obj)->cbk(obj, WIDGET(UI_TEXT_INPUT, obj)->userptr);
 		}
 		break;
 	case UI_KEYBOARD:
@@ -150,7 +167,10 @@ keyboard_event(UIObject obj, UIEvent *event)
 
 		arrbuf_remove(buffer, delta, remove_pos);
 		WIDGET(UI_TEXT_INPUT, obj)->carot -= delta;
-		
+
+		if(WIDGET(UI_TEXT_INPUT, obj)->cbk)
+			WIDGET(UI_TEXT_INPUT, obj)->cbk(obj, WIDGET(UI_TEXT_INPUT, obj)->userptr);
+
 		break;
 	default:
 		break;
