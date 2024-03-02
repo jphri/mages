@@ -79,6 +79,8 @@ void collision_terminate(void);
 void collision_enter(void);
 void collision_exit(void);
 
+void common_draw_map(int current_layer, float alpha_after_layer);
+
 extern EditorGlobal editor;
 
 void editor_change_state(EditorState state);

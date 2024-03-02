@@ -156,30 +156,8 @@ edit_wheel(SDL_Event *event)
 void
 edit_render(void)
 {
-	TextureStamp stamp;
-
 	gfx_draw_begin(NULL);
-	for(int k = 0; k < SCENE_LAYERS; k++)
-	for(int i = 0; i < editor.map->w * editor.map->h; i++) {
-		float x = (     (i % editor.map->w) + 0.5);
-		float y = ((int)(i / editor.map->w) + 0.5);
-
-		int spr = editor.map->tiles[i + k * editor.map->w * editor.map->h] - 1;
-		if(spr < 0)
-			continue;
-		int spr_x = spr % 16;
-		int spr_y = spr / 16;
-
-		stamp = get_sprite(SPRITE_TERRAIN, spr_x, spr_y);
-
-		gfx_draw_texture_rect(
-				&stamp,
-				(vec2){ x, y },
-				(vec2){ 0.5, 0.5 },
-				0.0,
-				(vec4){ 1.0, 1.0, 1.0, k <= current_layer ? 1.0 : ui_slider_get_value(after_layer_alpha_slider) }
-		);
-	}
+	common_draw_map(current_layer, ui_slider_get_value(after_layer_alpha_slider));
 
 	for(int x = 0; x < editor.map->w + 1; x++) {
 		gfx_draw_line(
