@@ -343,13 +343,16 @@ void
 pencil_preview(int x, int y)
 {
 	vec2 v = { x + 0.5, y + 0.5 };
+	int rows, cols;
 	TextureStamp stamp;
 
 	if(v[0] < 0 || v[0] >= editor.map->w || v[1] < 0 || v[1] >= editor.map->h) 
 		return;
+
+	gfx_sprite_count_rows_cols(SPRITE_TERRAIN, &rows, &cols);
 	
 	int tile = editor.current_tile - 1;
-	stamp = get_sprite(SPRITE_TERRAIN, tile % 16, tile / 16);
+	stamp = get_sprite(SPRITE_TERRAIN, tile % cols, tile / cols);
 
 	gfx_draw_texture_rect(
 			&stamp,
@@ -513,6 +516,9 @@ fill_preview(int x, int y)
 	StackElement *elem;
 	int reference_tile;
 
+	int rows, cols;
+	gfx_sprite_count_rows_cols(SPRITE_TERRAIN, &rows, &cols);
+
 	arrbuf_clear(&fill_layer_helper);
 	arrbuf_clear(&fill_preview_stack);
 
@@ -530,7 +536,7 @@ fill_preview(int x, int y)
 		.x = x, .y = y, .state = 0
 	});
 	int tile = editor.current_tile - 1;
-	TextureStamp stamp = get_sprite(SPRITE_TERRAIN, tile % 16, tile / 16);
+	TextureStamp stamp = get_sprite(SPRITE_TERRAIN, tile % cols, tile / cols);
 
 	Rectangle screen_rect = gfx_window_rectangle();
 	/* grow to tile size, so we can use this as a rect-rect intersection in physics */
