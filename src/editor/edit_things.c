@@ -95,30 +95,8 @@ thing_exit(void)
 
 void thing_render(void)
 {
-	TextureStamp stamp;
-
 	gfx_draw_begin(NULL);
-	for(int k = 0; k < SCENE_LAYERS; k++)
-	for(int i = 0; i < editor.map->w * editor.map->h; i++) {
-		float x = (     (i % editor.map->w) + 0.5);
-		float y = ((int)(i / editor.map->w) + 0.5);
-
-		int spr = editor.map->tiles[i + k * editor.map->w * editor.map->h] - 1;
-		if(spr < 0)
-			continue;
-		int spr_x = spr % 16;
-		int spr_y = spr / 16;
-
-		stamp = get_sprite(SPRITE_TERRAIN, spr_x, spr_y);
-
-		gfx_draw_texture_rect(
-				&stamp,
-				(vec2){ x, y },
-				(vec2){ 0.5, 0.5 },
-				0.0,
-				(vec4){ 1.0, 1.0, 1.0, 1.0 }
-		);
-	}
+	common_draw_map(SCENE_LAYERS, 1.0);
 
 	for(Thing *c = editor.map->things; c; c = c->next) {
 		render_thing(c);

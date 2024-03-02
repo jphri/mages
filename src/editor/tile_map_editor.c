@@ -720,3 +720,34 @@ play_cbk(UIObject obj, void (*userptr))
 	(void)userptr;
 	gstate_set(GAME_STATE_LEVEL);
 }
+
+void
+common_draw_map(int current_layer, float after_layer_alpha)
+{
+	TextureStamp stamp;
+	int rows, cols;
+
+	gfx_sprite_count_rows_cols(SPRITE_TERRAIN, &rows, &cols);
+
+	for(int k = 0; k < SCENE_LAYERS; k++)
+	for(int i = 0; i < editor.map->w * editor.map->h; i++) {
+		float x = (     (i % editor.map->w) + 0.5);
+		float y = ((int)(i / editor.map->w) + 0.5);
+
+		int spr = editor.map->tiles[i + k * editor.map->w * editor.map->h] - 1;
+		if(spr < 0)
+			continue;
+		int spr_x = spr % cols;
+		int spr_y = spr / cols;
+
+		stamp = get_sprite(SPRITE_TERRAIN, spr_x, spr_y);
+
+		gfx_draw_texture_rect(
+				&stamp,
+				(vec2){ x, y },
+				(vec2){ 0.5, 0.5 },
+				0.0,
+				(vec4){ 1.0, 1.0, 1.0, k <= current_layer ? 1.0 : after_layer_alpha }
+		);
+	}
+}
