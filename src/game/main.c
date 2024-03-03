@@ -27,6 +27,8 @@ static void edit_cbk(UIObject obj, void *userptr);
 
 static SubscriberID level_subscriber;
 
+static vec2 camera_position;
+
 void
 GAME_STATE_LEVEL_init(void)
 {
@@ -74,22 +76,31 @@ GAME_STATE_LEVEL_init(void)
 void
 GAME_STATE_LEVEL_update(float delta)
 {
-	(void)delta;
+	vec2 offset, delta_pos;
+	float dist2;
+	Rectangle window_rect = gfx_window_rectangle();
+
+	#define PLAYER ENT_DATA(ENTITY_PLAYER, GLOBAL.player_id)
+	#define PLAYER_BODY phx_data(PLAYER->body.body)
+	if(GLOBAL.player_id) {
+		vec2_add_scaled(offset, (vec2){ 0.0, 0.0 }, PLAYER_BODY->position, -32.0);
+		vec2_add(offset, offset, window_rect.position);
+
+		vec2_sub(delta_pos, offset, camera_position);
+		dist2 = sqrtf(delta_pos[0] * delta_pos[0] + delta_pos[1] * delta_pos[1]) * 2;
+		vec2_normalize(delta_pos, delta_pos);
+
+		vec2_add_scaled(camera_position, camera_position, delta_pos, dist2 * delta);
+
+		gfx_set_camera(camera_position, (vec2){ 32.0, 32.0 });
+	}
+	#undef PLAYER
+	#undef PLAYER_BODY
 }
 
 void
 GAME_STATE_LEVEL_render(void)
 {
-	vec2 offset;
-	#define PLAYER ENT_DATA(ENTITY_PLAYER, GLOBAL.player_id)
-	#define PLAYER_BODY phx_data(PLAYER->body.body)
-	if(GLOBAL.player_id) {
-		vec2_add_scaled(offset, (vec2){ 0.0, 0.0 }, PLAYER_BODY->position, -32);
-		vec2_add(offset, offset, (vec2){ 400, 300 });
-		gfx_set_camera(offset, (vec2){ 32.0, 32.0 });
-	}
-	#undef PLAYER
-	#undef PLAYER_BODY
 }
 
 void

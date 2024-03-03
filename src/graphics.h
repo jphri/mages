@@ -9,6 +9,7 @@
 
 #define TILE_SIZE    16
 #define SCENE_LAYERS 64
+#define ENTITY_SCALE 0.5
 
 typedef enum {
 	SPRITE_ENTITIES,

@@ -26,7 +26,7 @@ ent_dummy_new(vec2 position)
 
 	self->sprite = gfx_scene_new_obj(0, SCENE_OBJECT_SPRITE);
 	vec2_dup(self_body->position, position);
-	vec2_dup(self_body->half_size, (vec2){ 1, 1 });
+	vec2_dup(self_body->half_size, (vec2){ 1 * ENTITY_SCALE, 1 * ENTITY_SCALE });
 	vec2_dup(self_body->velocity, (vec2){ 0.0, 0.0 });
 	self_body->is_static = false;
 	self_body->collision_layer = PHX_LAYER_ENTITIES_BIT;
@@ -38,7 +38,7 @@ ent_dummy_new(vec2 position)
 
 	self_sprite->type = SPRITE_ENTITIES;
 	vec2_dup(self_sprite->position, position);
-	vec2_dup(self_sprite->half_size, (vec2){ 1, 1 });
+	vec2_dup(self_sprite->half_size, (vec2){ 1 * ENTITY_SCALE, 1 * ENTITY_SCALE });
 	vec4_dup(self_sprite->color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 	self_sprite->rotation = 0.0;
 	self_sprite->sprite_x = 0; 

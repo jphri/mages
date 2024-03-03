@@ -114,7 +114,7 @@ main(int argc, char *argv[])
 		}
 		
 	}
-	SDL_GL_SetSwapInterval(0);
+	SDL_GL_SetSwapInterval(1);
 	SDL_GL_MakeCurrent(GLOBAL.window, GLOBAL.glctx);
 	gladLoadGLES2(load_proc);
 	printf("OpenGL Version: %s\n", glGetString(GL_VERSION));

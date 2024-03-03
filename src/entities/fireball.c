@@ -65,8 +65,8 @@ ent_fireball_new(EntityID caster, vec2 position, vec2 vel)
 	vec2_dup(SELF_BODY->position, position);
 	vec2_dup(SELF_BODY->velocity, vel);
 	BODY_COMPONENT.pre_solve = collision_callback;
-	SELF_BODY->half_size[0] = 0.5;
-	SELF_BODY->half_size[1] = 0.5;
+	SELF_BODY->half_size[0] = 0.5 * ENTITY_SCALE;
+	SELF_BODY->half_size[1] = 0.5 * ENTITY_SCALE;
 	SELF_BODY->is_static = false;
 	SELF_BODY->solve_layer = 0;
 	SELF_BODY->solve_mask  = 0;
@@ -79,7 +79,7 @@ ent_fireball_new(EntityID caster, vec2 position, vec2 vel)
 
 	SELF_SPRITE->type = SPRITE_ENTITIES;
 	vec2_dup(SELF_SPRITE->position, position);
-	vec2_dup(SELF_SPRITE->half_size, (vec2){ 0.5, 0.5 });
+	vec2_dup(SELF_SPRITE->half_size, (vec2){ 0.5 * ENTITY_SCALE, 0.5 * ENTITY_SCALE });
 	vec4_dup(SELF_SPRITE->color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 	SELF_SPRITE->rotation = 0.0;
 	SELF_SPRITE->sprite_x = 0; SELF_SPRITE->sprite_y = 1;
