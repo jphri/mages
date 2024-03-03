@@ -26,6 +26,9 @@ static Map *map;
 
 static Subscriber *level_subscriber;
 static vec2 camera_position;
+static float time;
+
+static Door *door_test;
 
 void
 GAME_STATE_LEVEL_init(void)
@@ -67,6 +70,9 @@ GAME_STATE_LEVEL_init(void)
 	map_set_gfx_scene(map);
 	map_set_phx_scene(map);
 	map_set_ent_scene(map);
+
+	door_test = ent_door_new((vec2){ 0.0, 0.0 });
+	door_test->open = 1;
 }
 
 void
@@ -87,6 +93,12 @@ GAME_STATE_LEVEL_update(float delta)
 		vec2_add_scaled(camera_position, camera_position, delta_pos, dist2 * delta);
 
 		gfx_set_camera(camera_position, (vec2){ 32.0, 32.0 });
+	}
+
+	time += delta; 
+	if(time > 2.0) {
+		time = 0;
+		door_test->open = !door_test->open;
 	}
 }
 

@@ -15,7 +15,8 @@
 	MAC_ENTITY(ENTITY_DUMMY)    \
 	MAC_ENTITY(ENTITY_FIREBALL) \
 	MAC_ENTITY(ENTITY_DAMAGE_NUMBER) \
-	MAC_ENTITY(ENTITY_PARTICLE)
+	MAC_ENTITY(ENTITY_PARTICLE) \
+	MAC_ENTITY(ENTITY_DOOR)
 
 typedef enum {
 	ENTITY_NULL,
@@ -71,6 +72,12 @@ union Entity {
 		Mob mob;
 		Body *body;
 	} player;
+
+	ENTITY_STRUCT(ENTITY_DOOR) {
+		bool open;
+		float openness, openness_speed;
+		SceneLine *line;
+	} door;
 };
 
 typedef struct {
@@ -85,6 +92,7 @@ typedef struct ENTITY_FIREBALL_struct Fireball;
 typedef struct ENTITY_DUMMY_struct Dummy;
 typedef struct ENTITY_PARTICLE_struct Particle;
 typedef struct ENTITY_PLAYER_struct Player;
+typedef struct ENTITY_DOOR_struct Door;
 
 void ent_init(void);
 void ent_end(void);
@@ -108,6 +116,7 @@ Player       *ent_player_new(vec2 position);
 Fireball     *ent_fireball_new(Entity *caster, vec2 position, vec2 vel);
 Dummy        *ent_dummy_new(vec2 position);
 DamageNumber *ent_damage_number(vec2 position, float damage);
+Door         *ent_door_new(vec2 position);
 
 Particle     *ent_particle_new(vec2 position, vec2 velocity, vec4 color, float time);
 void          ent_shot_particles(vec2 position, vec2 velocity, vec4 color, float time, int count);
