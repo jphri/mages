@@ -208,10 +208,10 @@ render_thing(Thing *c)
 void
 thing_null_render(Thing *c)
 {
-	gfx_draw_texture_rect(gfx_white_texture(), c->position, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 1.0, 0.0, 0.0, 1.0 });
+	gfx_draw_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 1.0, 0.0, 0.0, 1.0 });
 
 	if(c == selected_thing) {
-		gfx_draw_texture_rect(gfx_white_texture(), c->position, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
+		gfx_draw_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
 	}
 }
 
@@ -219,10 +219,10 @@ void
 thing_player_render(Thing *c)
 {
 	TextureStamp stamp = get_sprite(SPRITE_ENTITIES, 0, 0);
-	gfx_draw_texture_rect(&stamp, c->position, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+	gfx_draw_texture_rect(&stamp, c->position, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 
 	if(c == selected_thing) {
-		gfx_draw_texture_rect(gfx_white_texture(), c->position, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
+		gfx_draw_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
 	}
 }
 
@@ -230,10 +230,10 @@ void
 thing_dummy_render(Thing *c)
 {
 	TextureStamp stamp = get_sprite(SPRITE_ENTITIES, 0, 2);
-	gfx_draw_texture_rect(&stamp, c->position, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+	gfx_draw_texture_rect(&stamp, c->position, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 
 	if(c == selected_thing) {
-		gfx_draw_texture_rect(gfx_white_texture(), c->position, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
+		gfx_draw_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
 	}
 }
 
@@ -244,7 +244,7 @@ select_thing(vec2 v)
 	for(Thing *c = editor.map->things; c; c = c->next) {
 		Rectangle r = {
 			.position = { c->position[0], c->position[1] },
-			.half_size = { 1.0, 1.0 }
+			.half_size = { 0.5, 0.5 }
 		};
 		if(rect_contains_point(&r, v)) {
 			selected_thing = c;
