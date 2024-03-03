@@ -22,6 +22,7 @@ struct SceneObjectPrivData {
 		SceneSprite sprite;
 		SceneText   text;
 		SceneAnimatedSprite anim;
+		SceneLine line;
 	} data;
 };
 
@@ -161,6 +162,14 @@ gfx_scene_draw(void)
 				stamp = get_sprite(frame->type, frame->sprite_x, frame->sprite_y);
 				gfx_draw_texture_rect(&stamp, object_id->data.anim.position, object_id->data.anim.half_size, object_id->data.anim.rotation, object_id->data.anim.color);
 				break;
+			case SCENE_OBJECT_LINE:
+				gfx_draw_line(
+					object_id->data.line.p1,
+					object_id->data.line.p2,
+					object_id->data.line.thickness,
+					object_id->data.line.color);
+				break;
+
 			default: 
 				assert(0 && "invalid object type");
 			}
@@ -210,3 +219,4 @@ gfx_scene_set_tilemap(int layer, SpriteType atlas, int w, int h, int *data)
 	layer_tmaps[layer] = gfx_tmap_new(atlas, w, h, data);
 	layer_tmap_set |= (1 << layer);
 }
+
