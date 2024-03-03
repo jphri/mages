@@ -1,6 +1,8 @@
+#include "../physics.h"
 #include "../entity.h"
 #include "../graphics.h"
 #include <math.h>
+#include <stdbool.h>
 
 #define DOOR(ID) ENT_DATA(ENTITY_DOOR, ID)
 
@@ -32,7 +34,42 @@ ent_door_new(vec2 position)
 	door->line->color[2] = 0.149;
 	door->line->color[3] = 1.000;
 	door->line->thickness = ENTITY_SCALE / 8;
+
+	door->body = phx_new();
+	vec2_dup(door->body->position, position);
+	door->body->half_size[0] = ENTITY_SCALE / 8;
+	door->body->half_size[1] = ENTITY_SCALE * 2;
+	door->body->is_static = true;
+	door->body->no_update = true;
+	door->body->collision_layer = PHX_LAYER_ENTITIES_BIT;
+	door->body->solve_layer = PHX_LAYER_ENTITIES_BIT;
+	door->body->entity = (Entity*)door;
+
 	return door;
+}
+
+void
+ent_door_open(Door *door)
+{
+	if(!door->open) {
+		door->open = true;
+		door->body->active = 0;
+	}
+}
+
+void
+ent_door_close(Door *door)
+{
+	if(door->open) {
+		door->open = false;
+		door->body->active = 1;
+	}
+}
+
+bool
+ent_door_is_open(Door *door)
+{
+	return door->open;
 }
 
 void
@@ -62,4 +99,5 @@ void
 door_die(Entity *door_ent)
 {
 	gfx_scene_del_obj(door_ent->door.line);
+	phx_del(door_ent->door.body);
 }

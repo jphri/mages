@@ -98,7 +98,11 @@ GAME_STATE_LEVEL_update(float delta)
 	time += delta; 
 	if(time > 2.0) {
 		time = 0;
-		door_test->open = !door_test->open;
+		if(ent_door_is_open(door_test)) {
+			ent_door_close(door_test);
+		} else {
+			ent_door_open(door_test);
+		}
 	}
 }
 
