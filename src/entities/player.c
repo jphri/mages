@@ -30,7 +30,7 @@ ent_player_new(vec2 position)
 	
 	self->sprite = gfx_scene_new_obj(0, SCENE_OBJECT_ANIMATED_SPRITE);
 	vec2_dup(self_body->position, position);
-	vec2_dup(self_body->half_size, (vec2){ 1, 1 });
+	vec2_dup(self_body->half_size, (vec2){ ENTITY_SCALE, ENTITY_SCALE });
 	vec2_dup(self_body->velocity, (vec2){ 0.0, 0.0 });
 	self_body->is_static = false;
 	self_body->collision_layer = PHX_LAYER_ENTITIES_BIT;
@@ -41,7 +41,7 @@ ent_player_new(vec2 position)
 	self_body->damping = 5.0;
 
 	vec2_dup(self_sprite->position, position);
-	vec2_dup(self_sprite->half_size, (vec2){ 1, 1 });
+	vec2_dup(self_sprite->half_size, (vec2){ ENTITY_SCALE, ENTITY_SCALE });
 	vec4_dup(self_sprite->color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 	self_sprite->rotation = 0.0;
 	self_sprite->fps = 0.0;
@@ -71,11 +71,11 @@ ENTITY_PLAYER_update(EntityID self_id, float delta)
 	if(keys[SDL_SCANCODE_S])
 		self_body->accel[1] += SPEED;
 	if(keys[SDL_SCANCODE_A]) {
-		self_sprite->half_size[0] = -1.0;
+		self_sprite->half_size[0] = -ENTITY_SCALE;
 		self_body->accel[0] -= SPEED;
 	}
 	if(keys[SDL_SCANCODE_D]) {
-		self_sprite->half_size[0] = 1.0;
+		self_sprite->half_size[0] = ENTITY_SCALE;
 		self_body->accel[0] += SPEED;
 	}
 
