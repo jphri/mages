@@ -74,16 +74,16 @@ union Entity {
 	} player;
 
 	ENTITY_STRUCT(ENTITY_DOOR) {
-		enum {
-			DIR_LEFT,
-			DIR_RIGHT,
-			DIR_UP,
-			DIR_DOWN
+		enum DoorDir {
+			DOOR_DIR_LEFT,
+			DOOR_DIR_RIGHT,
+			DOOR_DIR_UP,
+			DOOR_DIR_DOWN
 		} dir;
 
 		Body *body;
 		bool open;
-		float openness, openness_speed;
+		float openness, openness_speed, door_angle;
 		SceneLine *line;
 	} door;
 };
@@ -124,7 +124,7 @@ Player       *ent_player_new(vec2 position);
 Fireball     *ent_fireball_new(Entity *caster, vec2 position, vec2 vel);
 Dummy        *ent_dummy_new(vec2 position);
 DamageNumber *ent_damage_number(vec2 position, float damage);
-Door         *ent_door_new(vec2 position);
+Door         *ent_door_new(vec2 position, enum DoorDir door);
 
 Particle     *ent_particle_new(vec2 position, vec2 velocity, vec4 color, float time);
 void          ent_shot_particles(vec2 position, vec2 velocity, vec4 color, float time, int count);
@@ -132,7 +132,6 @@ void          ent_shot_particles(vec2 position, vec2 velocity, vec4 color, float
 void ent_door_open(Door *door);
 void ent_door_close(Door *door);
 bool ent_door_is_open(Door *door);
-
 RelPtr   ent_relptr(void *ptr);
 
 #define ENT_DATA(NAME, ID) ((NAME##_struct*)ent_data(ID))

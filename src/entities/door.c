@@ -19,13 +19,14 @@ static EntityInterface door_int = {
 };
 
 Door *
-ent_door_new(vec2 position)
+ent_door_new(vec2 position, enum DoorDir door_dir)
 {
 	Door *door = &ent_new(ENTITY_DOOR, &door_int)->door;
 
 	door->openness = 0;
 	door->openness_speed = 0;
 	door->open = false;
+	door->dir = door_dir;
 	door->line = gfx_scene_new_obj(1, SCENE_OBJECT_LINE);
 	vec2_dup(door->line->p1, position);
 	vec2_add(door->line->p2, position, (vec2){ 0, ENTITY_SCALE * 4.0 });
@@ -44,6 +45,37 @@ ent_door_new(vec2 position)
 	door->body->collision_layer = PHX_LAYER_ENTITIES_BIT;
 	door->body->solve_layer = PHX_LAYER_ENTITIES_BIT;
 	door->body->entity = (Entity*)door;
+
+	switch(door_dir) {
+	case DOOR_DIR_LEFT:
+		door->door_angle = 0;
+		door->body->half_size[0] = ENTITY_SCALE / 8;
+		door->body->half_size[1] = ENTITY_SCALE * 2;
+		vec2_sub(door->line->p1, position, (vec2){ 0.0, ENTITY_SCALE * 2.0 });
+		vec2_add(door->line->p2, position, (vec2){ 0.0, ENTITY_SCALE * 2.0 });
+		break;
+	case DOOR_DIR_RIGHT:
+		door->door_angle = M_PI;
+		door->body->half_size[0] = ENTITY_SCALE / 8;
+		door->body->half_size[1] = ENTITY_SCALE * 2;
+		vec2_add(door->line->p1, position, (vec2){ 0.0, ENTITY_SCALE * 2.0 });
+		vec2_sub(door->line->p2, position, (vec2){ 0.0, ENTITY_SCALE * 2.0 });
+		break;
+	case DOOR_DIR_UP:
+		door->door_angle = M_PI / 2.0;
+		door->body->half_size[1] = ENTITY_SCALE / 8;
+		door->body->half_size[0] = ENTITY_SCALE * 2;
+		vec2_sub(door->line->p1, position, (vec2){ ENTITY_SCALE * 2.0, 0.0 });
+		vec2_add(door->line->p2, position, (vec2){ ENTITY_SCALE * 2.0, 0.0 });
+		break;
+	case DOOR_DIR_DOWN:
+		door->door_angle = M_PI + M_PI / 2.0;
+		door->body->half_size[1] = ENTITY_SCALE / 8;
+		door->body->half_size[0] = ENTITY_SCALE * 2;
+		vec2_add(door->line->p1, position, (vec2){ ENTITY_SCALE * 2.0, 0.0 });
+		vec2_sub(door->line->p2, position, (vec2){ ENTITY_SCALE * 2.0, 0.0 });
+		break;
+	}
 
 	return door;
 }
@@ -91,8 +123,8 @@ door_update(Entity *door_ent, float delta)
 		door->openness = 0.0;
 	}
 
-	door->line->p2[0] = sinf(door->openness * M_PI * 0.5) * ENTITY_SCALE * 4.0 + door->line->p1[0];
-	door->line->p2[1] = cosf(door->openness * M_PI * 0.5) * ENTITY_SCALE * 4.0 + door->line->p1[1];
+	door->line->p2[0] = sinf(door->openness * M_PI * 0.5 + door->door_angle) * ENTITY_SCALE * 4.0 + door->line->p1[0];
+	door->line->p2[1] = cosf(door->openness * M_PI * 0.5 + door->door_angle) * ENTITY_SCALE * 4.0 + door->line->p1[1];
 }
 
 void
