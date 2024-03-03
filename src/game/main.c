@@ -81,11 +81,13 @@ void
 GAME_STATE_LEVEL_render(void)
 {
 	vec2 offset;
+	Rectangle window_rect = gfx_window_rectangle();
+
 	#define PLAYER ENT_DATA(ENTITY_PLAYER, GLOBAL.player_id)
 	#define PLAYER_BODY phx_data(PLAYER->body.body)
 	if(GLOBAL.player_id) {
 		vec2_add_scaled(offset, (vec2){ 0.0, 0.0 }, PLAYER_BODY->position, -32);
-		vec2_add(offset, offset, (vec2){ 400, 300 });
+		vec2_add(offset, offset, window_rect.position);
 		gfx_set_camera(offset, (vec2){ 32.0, 32.0 });
 	}
 	#undef PLAYER
