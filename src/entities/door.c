@@ -47,14 +47,14 @@ ent_door_new(vec2 position, enum DoorDir door_dir)
 	door->body->entity = (Entity*)door;
 
 	switch(door_dir) {
-	case DOOR_DIR_LEFT:
+	case DOOR_DIR_RIGHT:
 		door->door_angle = 0;
 		door->body->half_size[0] = ENTITY_SCALE / 8;
 		door->body->half_size[1] = ENTITY_SCALE * 2;
 		vec2_sub(door->line->p1, position, (vec2){ 0.0, ENTITY_SCALE * 2.0 });
 		vec2_add(door->line->p2, position, (vec2){ 0.0, ENTITY_SCALE * 2.0 });
 		break;
-	case DOOR_DIR_RIGHT:
+	case DOOR_DIR_LEFT:
 		door->door_angle = M_PI;
 		door->body->half_size[0] = ENTITY_SCALE / 8;
 		door->body->half_size[1] = ENTITY_SCALE * 2;
