@@ -556,9 +556,8 @@ objpool_clean(ObjectPool *pool)
 {
 	Span span = arrbuf_span(&pool->dirty_buffer);
 	SPAN_FOR(span, data, void*) {
-		if(data_to_node(*data)->dead)
-			continue;
-		pool->clean_cbk(pool, *data);
+		if(pool->clean_cbk)
+			pool->clean_cbk(pool, *data);
 		remove_obj_node(pool, *data);
 		arrbuf_insert(&pool->free_stack, sizeof(void*), data);
 	}
