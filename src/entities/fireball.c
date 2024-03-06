@@ -23,11 +23,14 @@ collision_callback(BodyID self_body, BodyID other, Contact *contact)
 	EntityID self_id, other_ent;
 	EntityMob *mob;
 
+	self_id = phx_data(self_body)->entity;
 	if(!phx_data(other)->entity) {
+		ent_shot_particles(VEC2_DUP(SELF_BODY->position), VEC2_DUP(SELF_BODY->velocity), (vec4){ 1.0, 1.0, 0.0, 1.0 }, 0.25, 4);
+		audio_sfx_play(AUDIO_MIXER_SFX, AUDIO_BUFFER_FIREBALL_HIT, 1.0);
+		ent_del(self_id);
 		return;
 	}
 
-	self_id = phx_data(self_body)->entity;
 	other_ent = phx_data(other)->entity;
 
 	if(other_ent == SELF->caster) {
