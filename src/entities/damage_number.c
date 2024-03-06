@@ -10,11 +10,19 @@
 
 #define SELF      ENT_DATA(ENTITY_DAMAGE_NUMBER, self)
 
+static void damage_number_update(EntityID self, float delta);
+static void damage_number_die(EntityID self);
+
+static EntityInterface dn_interface = {
+	.update = damage_number_update,
+	.die = damage_number_die
+};
+
 EntityID 
 ent_damage_number(vec2 position, float damage)
 {
 	(void)damage;
-	EntityID self = ent_new(ENTITY_DAMAGE_NUMBER);
+	EntityID self = ent_new(ENTITY_DAMAGE_NUMBER, &dn_interface);
 	SELF->text_id = gfx_scene_new_obj(0, SCENE_OBJECT_TEXT);
 
 	vec2_dup(SELF->position, position);
@@ -32,7 +40,7 @@ ent_damage_number(vec2 position, float damage)
 }
 
 void
-ENTITY_DAMAGE_NUMBER_update(EntityID self, float delta) 
+damage_number_update(EntityID self, float delta) 
 {
 	vec2 position;
 
@@ -52,13 +60,7 @@ ENTITY_DAMAGE_NUMBER_update(EntityID self, float delta)
 }
 
 void
-ENTITY_DAMAGE_NUMBER_render(EntityID self)
-{
-	(void)self;
-}
-
-void
-ENTITY_DAMAGE_NUMBER_del(EntityID self) 
+damage_number_die(EntityID self) 
 {
 	gfx_scene_del_obj(SELF->text_id);
 }

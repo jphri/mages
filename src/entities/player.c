@@ -22,10 +22,20 @@
 
 #include "../entity_components.h"
 
+static void player_update(EntityID player, float delta);
+static void player_take_damage(EntityID player, float damage);
+static void player_die(EntityID player);
+
+static EntityInterface player_interface = {
+	.update = player_update,
+	.take_damage = player_take_damage,
+	.die = player_die
+};
+
 EntityID
 ent_player_new(vec2 position)
 {
-	EntityID self_id = ent_new(ENTITY_PLAYER);
+	EntityID self_id = ent_new(ENTITY_PLAYER, &player_interface);
 	process_init_components(self_id);
 	
 	self->sprite = gfx_scene_new_obj(0, SCENE_OBJECT_ANIMATED_SPRITE);
@@ -58,7 +68,7 @@ ent_player_new(vec2 position)
 }
 
 void
-ENTITY_PLAYER_update(EntityID self_id, float delta) 
+player_update(EntityID self_id, float delta) 
 {
 	(void)delta;
 	int mouse_x, mouse_y;
@@ -110,18 +120,19 @@ ENTITY_PLAYER_update(EntityID self_id, float delta)
 	} else {
 		self->fired = 0;
 	}
+	vec2_dup(self_sprite->position, self_body->position);
 
 	process_components(self_id);
 }
 
 void
-ENTITY_PLAYER_render(EntityID self_id)
+player_take_damage(EntityID self_id, float health)
 {
-	vec2_dup(self_sprite->position, self_body->position);
+	self->mob.health += health;
 }
 
 void
-ENTITY_PLAYER_del(EntityID self_id) 
+player_die(EntityID self_id) 
 {
 	process_del_components(self_id);
 	gfx_scene_del_obj(self->sprite);

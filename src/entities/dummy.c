@@ -18,10 +18,21 @@
 
 #include "../entity_components.h"
 
+static void dummy_update(EntityID self_id, float delta);
+static void dummy_take_damage(EntityID self_id, float damage);
+static void dummy_die(EntityID self_id);
+
+static EntityInterface dummy_in = {
+	.update = dummy_update, 
+	.take_damage = dummy_take_damage,
+	.die = dummy_die
+};
+
+
 EntityID 
 ent_dummy_new(vec2 position)
 {
-	EntityID self_id = ent_new(ENTITY_DUMMY);
+	EntityID self_id = ent_new(ENTITY_DUMMY, &dummy_in);
 	process_init_components(self_id);
 
 	self->sprite = gfx_scene_new_obj(0, SCENE_OBJECT_SPRITE);
@@ -51,7 +62,7 @@ ent_dummy_new(vec2 position)
 }
 
 void
-ENTITY_DUMMY_update(EntityID self_id, float delta)
+dummy_update(EntityID self_id, float delta)
 {
 	(void)delta;
 	vec2 delta_pos;
@@ -91,14 +102,14 @@ ENTITY_DUMMY_update(EntityID self_id, float delta)
 }
 
 void
-ENTITY_DUMMY_render(EntityID id)
-{
-	(void)id;
-}
-
-void
-ENTITY_DUMMY_del(EntityID self_id)
+dummy_die(EntityID self_id)
 {
 	gfx_scene_del_obj(self->sprite);
 	process_del_components(self_id);
+}
+
+void
+dummy_take_damage(EntityID self_id, float damage)
+{
+	self->mob.health += damage;
 }

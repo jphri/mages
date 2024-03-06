@@ -83,23 +83,30 @@ ENTITY_STRUCT(ENTITY_DAMAGE_NUMBER) {
 	unsigned int text_id;
 };
 
+typedef struct {
+	void (*update)(EntityID, float delta);
+	void (*render)(EntityID);
+	void (*take_damage)(EntityID, float damage);
+	void (*die)(EntityID);
+} EntityInterface;
+
 void ent_init(void);
 void ent_end(void);
 void ent_update(float delta);
 void ent_render(void);
 void ent_reset(void);
 
-EntityID   ent_new(EntityType type);
+EntityID   ent_new(EntityType type, EntityInterface *interface);
 void       ent_del(EntityID id);
 void      *ent_data(EntityID id);
 EntityType ent_type(EntityID id);
+RelPtr     ent_relptr(void *ptr);
 
-void *ent_component(EntityID id, EntityComponent comp);
+bool       ent_implements(EntityID id, ptrdiff_t offset);
+void       ent_take_damage(EntityID id, float damage, vec2 damage_indicator_pos);
 
-#define MAC_ENTITY(NAME) \
-void NAME##_update(EntityID, float), NAME##_render(EntityID), NAME##_del(EntityID);
-	ENTITY_LIST
-#undef MAC_ENTITY
+#define ENT_IMPLEMENTS(ID, FUNCTION_NAME) \
+	ent_implements(ID, offsetof(EntityInterface, FUNCTION_NAME))
 
 EntityID ent_player_new(vec2 position);
 EntityID ent_fireball_new(EntityID caster, vec2 position, vec2 vel);
@@ -108,8 +115,6 @@ EntityID ent_damage_number(vec2 position, float damage);
 
 EntityID ent_particle_new(vec2 position, vec2 velocity, vec4 color, float time);
 void     ent_shot_particles(vec2 position, vec2 velocity, vec4 color, float time, int count);
-
-RelPtr   ent_relptr(void *ptr);
 
 #define ENT_DATA(NAME, ID) ((NAME##_struct*)ent_data(ID))
 
