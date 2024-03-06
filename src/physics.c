@@ -92,6 +92,7 @@ phx_reset(void)
 BodyID phx_new(void)
 {
 	BodyID id = objalloc_alloc(&objects);
+	memset(phx_data(id), 0, sizeof(Body));
 	return id;
 }
 
@@ -195,8 +196,11 @@ update_body_grid(BodyGridNodeID self_grid, BodyGridNodeID target_id_grid)
 		}
 
 		if(body_check_collision(self, target_id, &contact)) {
-			if(pre_solve_callback)
-				pre_solve_callback(&contact);
+			if(phx_data(self)->pre_solve)
+				phx_data(self)->pre_solve(self, target_id, &contact);
+
+			if(phx_data(target_id)->pre_solve)
+				phx_data(target_id)->pre_solve(target_id, self, &contact);
 
 			if(contact.active)
 				solve(&contact);

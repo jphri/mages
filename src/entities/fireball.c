@@ -18,37 +18,36 @@
 #include "../entity_components.h"
 
 void
-collision_callback(EntityID self_id, BodyID other, Contact *contact)
+collision_callback(BodyID self_body, BodyID other, Contact *contact)
 {
-	EntityID ent_id;
+	EntityID self_id, other_ent;
 	EntityMob *mob;
 
-	switch(gobj_type(phx_data(other)->user_data)) {
-		case GAME_OBJECT_TYPE_ENTITY:
-			ent_id = gobj_id(phx_data(other)->user_data);
-			if(ent_id == SELF->caster) {
-				contact->active = false;
-				return;
-			}
-			if(ent_type(ent_id) == ENTITY_PARTICLE) {
-				contact->active = false;
-				return;
-			}
-			mob = ent_component(ent_id, ENTITY_COMP_MOB);
-			if(mob) {
-				ent_del(self_id);
-				mob->health += SELF->damage.damage;
-				ent_damage_number(SELF_BODY->position, SELF->damage.damage);
-			}
-		/* fallthrough */
-		case GAME_OBJECT_TYPE_NULL:
-			ent_del(self_id);
-			ent_shot_particles(VEC2_DUP(SELF_BODY->position), VEC2_DUP(SELF_BODY->velocity), (vec4){ 1.0, 1.0, 0.0, 1.0 }, 0.25, 4);
-			audio_sfx_play(AUDIO_MIXER_SFX, AUDIO_BUFFER_FIREBALL_HIT, 1.0);
-			break;
-		default:
-			do {} while(0);
+	if(!phx_data(other)->entity) {
+		return;
 	}
+
+	self_id = phx_data(self_body)->entity;
+	other_ent = phx_data(other)->entity;
+
+	if(other_ent == SELF->caster) {
+		contact->active = false;
+		return;
+	}
+
+	if(ent_type(other_ent) == ENTITY_PARTICLE) {
+		return;
+	}
+
+	mob = ent_component(other_ent, ENTITY_COMP_MOB);
+	if(mob) {
+		mob->health += SELF->damage.damage;
+		ent_damage_number(VEC2_DUP(SELF_BODY->position), SELF->damage.damage);
+	}
+
+	ent_shot_particles(VEC2_DUP(SELF_BODY->position), VEC2_DUP(SELF_BODY->velocity), (vec4){ 1.0, 1.0, 0.0, 1.0 }, 0.25, 4);
+	audio_sfx_play(AUDIO_MIXER_SFX, AUDIO_BUFFER_FIREBALL_HIT, 1.0);
+	ent_del(self_id);
 }
 
 EntityID
@@ -64,7 +63,6 @@ ent_fireball_new(EntityID caster, vec2 position, vec2 vel)
 
 	vec2_dup(SELF_BODY->position, position);
 	vec2_dup(SELF_BODY->velocity, vel);
-	BODY_COMPONENT.pre_solve = collision_callback;
 	SELF_BODY->half_size[0] = 0.5 * ENTITY_SCALE;
 	SELF_BODY->half_size[1] = 0.5 * ENTITY_SCALE;
 	SELF_BODY->is_static = false;
@@ -72,7 +70,8 @@ ent_fireball_new(EntityID caster, vec2 position, vec2 vel)
 	SELF_BODY->solve_mask  = 0;
 	SELF_BODY->collision_layer = 0;
 	SELF_BODY->collision_mask  = PHX_LAYER_MAP_BIT | PHX_LAYER_ENTITIES_BIT;
-	SELF_BODY->user_data = make_gobj_id(GAME_OBJECT_TYPE_ENTITY, self_id);
+	SELF_BODY->pre_solve = collision_callback;
+	SELF_BODY->entity = self_id;
 	SELF_BODY->mass = 1.0;
 	SELF_BODY->restitution = 0.55;
 	SELF_BODY->damping = 1.0;

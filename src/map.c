@@ -177,7 +177,7 @@ map_set_phx_scene(Map *map)
 		phx_data(body)->solve_layer     = PHX_LAYER_MAP_BIT;
 		phx_data(body)->collision_mask  = 0;
 		phx_data(body)->solve_mask      = 0;
-		phx_data(body)->user_data       = 0;
+		phx_data(body)->pre_solve       = NULL;
 		phx_data(body)->no_update       = false;
 		phx_data(body)->is_static       = true;
 		phx_data(body)->mass            = 0.0;
