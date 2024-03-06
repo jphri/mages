@@ -16,6 +16,14 @@
 
 #include "../entity_components.h"
 
+static void particle_update(EntityID, float delta);
+static void particle_die(EntityID);
+
+static EntityInterface particle_int = {
+	.update = particle_update,
+	.die = particle_die
+};
+
 void     
 ent_shot_particles(vec2 position, vec2 velocity, vec4 color, float time, int count)
 {
@@ -36,7 +44,7 @@ ent_shot_particles(vec2 position, vec2 velocity, vec4 color, float time, int cou
 EntityID 
 ent_particle_new(vec2 position, vec2 velocity, vec4 color, float time)
 {
-	EntityID self_id = ent_new(ENTITY_PARTICLE);
+	EntityID self_id = ent_new(ENTITY_PARTICLE, &particle_int);
 
 	process_init_components(self_id);
 	
@@ -69,7 +77,7 @@ ent_particle_new(vec2 position, vec2 velocity, vec4 color, float time)
 }
 
 void
-ENTITY_PARTICLE_update(EntityID self_id, float delta)
+particle_update(EntityID self_id, float delta)
 {
 	SELF->time -= delta;
 	SELF_SPRITE->rotation += delta * 10.0;
@@ -79,11 +87,8 @@ ENTITY_PARTICLE_update(EntityID self_id, float delta)
 	}
 }
 
-void 
-ENTITY_PARTICLE_render(EntityID id) {(void)id;} 
-
 void
-ENTITY_PARTICLE_del(EntityID self_id) 
+particle_die(EntityID self_id) 
 {
 	gfx_scene_del_obj(SELF->sprite);
 	process_del_components(self_id);

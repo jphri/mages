@@ -17,46 +17,19 @@
 
 #include "../entity_components.h"
 
-void
-collision_callback(BodyID self_body, BodyID other, Contact *contact)
-{
-	EntityID self_id, other_ent;
-	EntityMob *mob;
+static void collision_callback(BodyID self_body, BodyID other, Contact *contact);
+static void fireball_update(EntityID self_id, float delta);
+static void fireball_die(EntityID self_id);
 
-	self_id = phx_data(self_body)->entity;
-	if(!phx_data(other)->entity) {
-		ent_shot_particles(VEC2_DUP(SELF_BODY->position), VEC2_DUP(SELF_BODY->velocity), (vec4){ 1.0, 1.0, 0.0, 1.0 }, 0.25, 4);
-		audio_sfx_play(AUDIO_MIXER_SFX, AUDIO_BUFFER_FIREBALL_HIT, 1.0);
-		ent_del(self_id);
-		return;
-	}
-
-	other_ent = phx_data(other)->entity;
-
-	if(other_ent == SELF->caster) {
-		contact->active = false;
-		return;
-	}
-
-	if(ent_type(other_ent) == ENTITY_PARTICLE) {
-		return;
-	}
-
-	mob = ent_component(other_ent, ENTITY_COMP_MOB);
-	if(mob) {
-		mob->health += SELF->damage.damage;
-		ent_damage_number(VEC2_DUP(SELF_BODY->position), SELF->damage.damage);
-	}
-
-	ent_shot_particles(VEC2_DUP(SELF_BODY->position), VEC2_DUP(SELF_BODY->velocity), (vec4){ 1.0, 1.0, 0.0, 1.0 }, 0.25, 4);
-	audio_sfx_play(AUDIO_MIXER_SFX, AUDIO_BUFFER_FIREBALL_HIT, 1.0);
-	ent_del(self_id);
-}
+static EntityInterface fireball_interface = {
+	.update = fireball_update,
+	.die = fireball_die
+};
 
 EntityID
 ent_fireball_new(EntityID caster, vec2 position, vec2 vel)
 {
-	EntityID self_id = ent_new(ENTITY_FIREBALL);
+	EntityID self_id = ent_new(ENTITY_FIREBALL, &fireball_interface);
 
 	process_init_components(self_id);
 
@@ -92,42 +65,10 @@ ent_fireball_new(EntityID caster, vec2 position, vec2 vel)
 }
 
 void
-ENTITY_FIREBALL_update(EntityID self_id, float delta)
+fireball_update(EntityID self_id, float delta)
 {
-
 	SELF->time += delta;
 	vec2_dup(SELF_SPRITE->position, SELF_BODY->position);
-
-	//HitInfo *hits = phx_hits(SELF->body);
-	//for(; hits; hits = phx_hits_next(hits)) {
-	//	BodyID who = hits->id;
-	//	EntityID ent_id;
-	//	printf("%p\n", (void*)hits);
-
-	//	EntityMob *mob;
-
-	//	d++;
-
-	//	switch(id_type(phx_data(who)->user_data)) {
-	//	case ID_TYPE_ENTITY:
-	//		ent_id = id(phx_data(who)->user_data);
-	//		if(ent_type(ent_id) == ENTITY_PLAYER)
-	//			break;
-	//		mob = ent_component(ent_id, ENTITY_COMP_MOB);
-	//		if(mob) {
-	//			ent_del(self_id);
-	//			mob->health += SELF->damage.damage;
-	//			ent_damage_number(SELF_BODY->position, SELF->damage.damage);
-	//		}
-	//		break;
-	//	case ID_TYPE_NULL:
-	//		ent_del(self_id);
-	//		break;
-
-	//	default:
-	//		do {} while(0);
-	//	}
-	//}
 
 	if(SELF->time > 1.0) {
 		ent_del(self_id);
@@ -136,11 +77,38 @@ ENTITY_FIREBALL_update(EntityID self_id, float delta)
 }
 
 void
-ENTITY_FIREBALL_render(EntityID id) {(void)id;}
-
-void
-ENTITY_FIREBALL_del(EntityID self_id)
+fireball_die(EntityID self_id)
 {
 	gfx_scene_del_obj(SELF->sprite);
 	process_del_components(self_id);
 }
+
+void
+collision_callback(BodyID self_body, BodyID other, Contact *contact)
+{
+	EntityID self_id, other_ent;
+
+	self_id = phx_data(self_body)->entity;
+	if(!phx_data(other)->entity) {
+		ent_shot_particles(VEC2_DUP(SELF_BODY->position), VEC2_DUP(SELF_BODY->velocity), (vec4){ 1.0, 1.0, 0.0, 1.0 }, 0.25, 4);
+		audio_sfx_play(AUDIO_MIXER_SFX, AUDIO_BUFFER_FIREBALL_HIT, 1.0);
+		ent_del(self_id);
+		return;
+	}
+	other_ent = phx_data(other)->entity;
+
+	if(other_ent == SELF->caster) {
+		contact->active = false;
+		return;
+	}
+
+	if(!ENT_IMPLEMENTS(other_ent, take_damage))
+		return;
+	
+	ent_take_damage(other_ent, SELF->damage.damage, VEC2_DUP(SELF_BODY->position));
+
+	ent_shot_particles(VEC2_DUP(SELF_BODY->position), VEC2_DUP(SELF_BODY->velocity), (vec4){ 1.0, 1.0, 0.0, 1.0 }, 0.25, 4);
+	audio_sfx_play(AUDIO_MIXER_SFX, AUDIO_BUFFER_FIREBALL_HIT, 1.0);
+	ent_del(self_id);
+}
+

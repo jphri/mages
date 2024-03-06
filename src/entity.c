@@ -1,5 +1,7 @@
 #include <SDL.h>
 #include <stdbool.h>
+#include <assert.h>
+
 #include "util.h"
 #include "vecmath.h"
 #include "entity.h"
@@ -8,6 +10,7 @@
 
 typedef struct {
 	EntityType type;
+	EntityInterface *interface;
 	union {
 		#define MAC_ENTITY(NAME) \
 		NAME##_struct __##NAME##_struct;
@@ -15,18 +18,6 @@ typedef struct {
 		#undef MAC_ENTITY
 	} data;
 } EntityObject;
-
-static struct {
-	void (*update)(EntityID id, float delta);
-	void (*render)(EntityID id);
-	void (*delete)(EntityID id);
-} descr[LAST_ENTITY] =
-{
-	#define MAC_ENTITY(NAME) \
-		[NAME] = { NAME##_update, NAME##_render, NAME##_del },
-		ENTITY_LIST
-	#undef MAC_ENTITY
-};
 
 #define PRIVDATA(ID) ((EntityObject*)objalloc_data(&objects, ID))
 static ObjectAllocator objects;
@@ -62,8 +53,8 @@ ent_update(float delta)
 		id;
 		id = objalloc_next(&objects, id))
 	{
-		if(descr[ent_type(id)].update)
-			descr[ent_type(id)].update(id, delta);
+		if(PRIVDATA(id)->interface->update)
+			PRIVDATA(id)->interface->update(id, delta);
 	}
 	objalloc_clean(&objects);
 }
@@ -75,24 +66,27 @@ ent_render(void)
 		id;
 		id = objalloc_next(&objects, id))
 	{
-		if(descr[ent_type(id)].render)
-			descr[ent_type(id)].render(id);
+		if(PRIVDATA(id)->interface->render)
+			PRIVDATA(id)->interface->render(id);
 	}
 }
 
 EntityID
-ent_new(EntityType type)
+ent_new(EntityType type, EntityInterface *interface)
 {
+	assert(interface != NULL);
+
 	EntityID new = objalloc_alloc(&objects);
 	PRIVDATA(new)->type = type;
+	PRIVDATA(new)->interface = interface;
 	return new;
 }
 
 void
 ent_del(EntityID id)
 {
-	if(descr[ent_type(id)].delete)
-		descr[ent_type(id)].delete(id);
+	if(PRIVDATA(id)->interface->die)
+		PRIVDATA(id)->interface->die(id);
 	objalloc_free(&objects, id);
 }
 
@@ -108,25 +102,20 @@ ent_type(EntityID id)
 	return PRIVDATA(id)->type;
 }
 
-void *
-ent_component(EntityID id, EntityComponent comp)
+bool
+ent_implements(EntityID id, ptrdiff_t offset)
 {
-	unsigned int int_type = ent_type(id) | comp << 8;
+	/* beautiful, isn't it? */
+	void *fptr = *(void**)((uintptr_t)PRIVDATA(id)->interface + offset);
+	return fptr != NULL;
+}
 
-	#define DEFINE_COMPONENT_FOR(TYPE, COMPONENT, MEMBER_NAME) \
-		case (TYPE | (COMPONENT << 8)): return &ENT_DATA(TYPE, id)->MEMBER_NAME; break
-
-	switch(int_type) {
-	DEFINE_COMPONENT_FOR(ENTITY_DUMMY, ENTITY_COMP_MOB, mob);
-	DEFINE_COMPONENT_FOR(ENTITY_FIREBALL, ENTITY_COMP_DAMAGE, damage);
-
-	DEFINE_COMPONENT_FOR(ENTITY_PLAYER, ENTITY_COMP_BODY, body);
-	DEFINE_COMPONENT_FOR(ENTITY_DUMMY, ENTITY_COMP_BODY, body);
-	DEFINE_COMPONENT_FOR(ENTITY_FIREBALL, ENTITY_COMP_BODY, body);
-
-	DEFINE_COMPONENT_FOR(ENTITY_PARTICLE, ENTITY_COMP_BODY, body);
-	default:
-		return NULL;
+void 
+ent_take_damage(EntityID id, float damage, vec2 damage_indicator_pos)
+{
+	if(PRIVDATA(id)->interface->take_damage) {
+		PRIVDATA(id)->interface->take_damage(id, damage);
+		ent_damage_number(damage_indicator_pos, damage);
 	}
 }
 
