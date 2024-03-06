@@ -50,9 +50,9 @@ ent_particle_new(vec2 position, vec2 velocity, vec4 color, float time)
 	SELF_BODY->is_static = false;
 	SELF_BODY->solve_layer = 0;
 	SELF_BODY->solve_mask  = 0;
-	SELF_BODY->collision_layer = PHX_LAYER_ENTITIES_BIT;
-	SELF_BODY->collision_mask  = PHX_LAYER_MAP_BIT | PHX_LAYER_ENTITIES_BIT;
-	SELF_BODY->user_data = make_gobj_id(GAME_OBJECT_TYPE_ENTITY, self_id);
+	SELF_BODY->collision_layer = 0;
+	SELF_BODY->collision_mask  = PHX_LAYER_MAP_BIT;
+	SELF_BODY->entity = self_id;
 	SELF_BODY->mass = 0.0000001;
 	SELF_BODY->restitution = 1.0;
 	SELF_BODY->damping = 5.0;

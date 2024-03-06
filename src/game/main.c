@@ -19,14 +19,10 @@
 #include "../events.h"
 
 static void event_receiver(Event event, const void *data);
-
-static Map *map;
-
-static void pre_solve(Contact *contact);
 static void edit_cbk(UIObject obj, void *userptr);
 
+static Map *map;
 static SubscriberID level_subscriber;
-
 static vec2 camera_position;
 
 void
@@ -69,8 +65,6 @@ GAME_STATE_LEVEL_init(void)
 	map_set_gfx_scene(map);
 	map_set_phx_scene(map);
 	map_set_ent_scene(map);
-
-	phx_set_pre_solve(pre_solve);
 }
 
 void
@@ -125,29 +119,6 @@ GAME_STATE_LEVEL_keyboard(SDL_Event *event)
 }
 
 void GAME_STATE_LEVEL_mouse_wheel(SDL_Event *event) { (void)event; } 
-
-static void process_entity_collision(EntityID id, BodyID other, Contact *contact)
-{
-	EntityBody *ent_b = ent_component(id, ENTITY_COMP_BODY);
-	if(ent_b && ent_b->pre_solve)
-		ent_b->pre_solve(id, other, contact);
-}
-
-void
-pre_solve(Contact *contact)
-{
-	Body* b1 = phx_data(contact->body1);
-	Body* b2 = phx_data(contact->body2);
-
-	GameObjectID id1 = b1->user_data;
-	GameObjectID id2 = b2->user_data;
-
-	if(gobj_type(id1) == GAME_OBJECT_TYPE_ENTITY)
-		process_entity_collision(gobj_id(id1), contact->body2, contact);
-
-	if(gobj_type(id2) == GAME_OBJECT_TYPE_ENTITY)
-		process_entity_collision(gobj_id(id2), contact->body1, contact);
-}
 
 void 
 edit_cbk(UIObject obj, void *userptr)

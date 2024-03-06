@@ -52,7 +52,9 @@ typedef struct {
 	unsigned int collision_layer;
 	unsigned long long int collision_mask;
 
-	unsigned int user_data;
+	EntityID entity;
+	void (*pre_solve)(BodyID self, BodyID other, Contact *contact);
+
 	bool is_static, no_update;
 } Body;
 
@@ -61,7 +63,6 @@ void phx_end(void);
 void phx_reset(void);
 
 void phx_set_grid_size(int w, int h);
-void phx_set_pre_solve(void (*)(Contact *contact));
 
 BodyID phx_new(void);
 void   phx_del(BodyID self);
