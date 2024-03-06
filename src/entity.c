@@ -11,116 +11,98 @@
 typedef struct {
 	EntityType type;
 	EntityInterface *interface;
-	union {
-		#define MAC_ENTITY(NAME) \
-		NAME##_struct __##NAME##_struct;
-			ENTITY_LIST
-		#undef MAC_ENTITY
-	} data;
+	Entity data;
 } EntityObject;
 
-#define PRIVDATA(ID) ((EntityObject*)objalloc_data(&objects, ID))
-static ObjectAllocator objects;
-
-void
-_sys_int_cleanup(GameObjectID id)
-{
-	(void)id;
-}
+static ObjectPool objects;
 
 void
 ent_init(void)
 {
-	objalloc_init_allocator(&objects, sizeof(EntityObject), cache_aligned_allocator());
+	objpool_init(&objects, sizeof(EntityObject), DEFAULT_ALIGNMENT);
 }
 
 void
 ent_end(void)
 {
-	objalloc_end(&objects);
+	objpool_terminate(&objects);
 }
 
 void
 ent_reset(void)
 {
-	objalloc_reset(&objects);
+	objpool_reset(&objects);
 }
 
 void
 ent_update(float delta)
 {
-	for(EntityID id = objalloc_begin(&objects);
-		id;
-		id = objalloc_next(&objects, id))
+	for(EntityObject * obj = objpool_begin(&objects);
+		obj;
+		obj = objpool_next(obj))
 	{
-		if(PRIVDATA(id)->interface->update)
-			PRIVDATA(id)->interface->update(id, delta);
+		if(obj->interface->update)
+			obj->interface->update(&obj->data, delta);
 	}
-	objalloc_clean(&objects);
+	objpool_clean(&objects);
 }
 
 void
 ent_render(void)
 {
-	for(EntityID id = objalloc_begin(&objects);
-		id;
-		id = objalloc_next(&objects, id))
+	for(EntityObject *object = objpool_begin(&objects);
+		object;
+		object = objpool_next(object))
 	{
-		if(PRIVDATA(id)->interface->render)
-			PRIVDATA(id)->interface->render(id);
+		if(object->interface->render)
+			object->interface->render(&object->data);
 	}
 }
 
-EntityID
+Entity *
 ent_new(EntityType type, EntityInterface *interface)
 {
 	assert(interface != NULL);
 
-	EntityID new = objalloc_alloc(&objects);
-	PRIVDATA(new)->type = type;
-	PRIVDATA(new)->interface = interface;
-	return new;
+	EntityObject *object = objpool_new(&objects);
+	object->type = type;
+	object->interface = interface;
+	return &object->data;
 }
 
 void
-ent_del(EntityID id)
+ent_del(Entity *e)
 {
-	if(PRIVDATA(id)->interface->die)
-		PRIVDATA(id)->interface->die(id);
-	objalloc_free(&objects, id);
-}
-
-void *
-ent_data(EntityID id)
-{
-	return &PRIVDATA(id)->data;
+	EntityObject *obj = CONTAINER_OF(e, EntityObject, data);
+	if(obj->interface->die)
+		obj->interface->die(e);
+	objpool_free(obj);
 }
 
 EntityType
-ent_type(EntityID id)
+ent_type(Entity *e)
 {
-	return PRIVDATA(id)->type;
+	return CONTAINER_OF(e, EntityObject, data)->type;
 }
 
 bool
-ent_implements(EntityID id, ptrdiff_t offset)
+ent_implements(Entity *e, ptrdiff_t offset)
 {
+	EntityObject *obj = CONTAINER_OF(e, EntityObject, data);
+
 	/* beautiful, isn't it? */
-	void *fptr = *(void**)((uintptr_t)PRIVDATA(id)->interface + offset);
+	void *fptr = *(void**)((uintptr_t)obj->interface + offset);
 	return fptr != NULL;
 }
 
 void 
-ent_take_damage(EntityID id, float damage, vec2 damage_indicator_pos)
+ent_take_damage(Entity *e, float damage, vec2 damage_indicator_pos)
 {
-	if(PRIVDATA(id)->interface->take_damage) {
-		PRIVDATA(id)->interface->take_damage(id, damage);
+	EntityObject *obj = CONTAINER_OF(e, EntityObject, data);
+
+	if(obj->interface->take_damage) {
+		obj->interface->take_damage(e, damage);
 		ent_damage_number(damage_indicator_pos, damage);
 	}
 }
 
-RelPtr
-ent_relptr(void *ptr)
-{
-	return (RelPtr){ &objects.data_buffer.data, (unsigned char *)ptr - (unsigned char *)objects.data_buffer.data };
-}

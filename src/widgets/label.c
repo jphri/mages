@@ -1,10 +1,10 @@
 #include "../graphics.h"
 #include "../ui.h"
 
-UIObject 
+UIObject *
 ui_label_new(void)
 {
-	UIObject label = ui_new_object(0, UI_LABEL);
+	UIObject *label = ui_new_object(0, UI_LABEL);
 	ui_label_set_text(label, "");
 	ui_label_set_color(label, (vec4){ 0.0, 0.0, 0.0, 1.0 });
 
@@ -12,37 +12,37 @@ ui_label_new(void)
 }
 
 void
-ui_label_set_text(UIObject object, const char *text_ptr)
+ui_label_set_text(UIObject *object, const char *text_ptr)
 {
-	UI_LABEL_struct *l = ui_data(object);
+	UI_LABEL_struct *l = WIDGET(UI_LABEL, object);
 	l->label_ptr = text_ptr;
 }
 
 void
-ui_label_set_color(UIObject object, vec4 color)
+ui_label_set_color(UIObject *object, vec4 color)
 {
-	UI_LABEL_struct *l = ui_data(object);
+	UI_LABEL_struct *l = WIDGET(UI_LABEL, object);
 	vec4_dup(l->color, color);
 }
 
 void
-ui_label_set_border(UIObject object, vec2 border)
+ui_label_set_border(UIObject *object, vec2 border)
 {
-	UI_LABEL_struct *l = ui_data(object);
+	UI_LABEL_struct *l = WIDGET(UI_LABEL, object);
 	vec2_dup(l->border, border);
 }
 
 void
-ui_label_set_alignment(UIObject object, UILabelAlign align)
+ui_label_set_alignment(UIObject *object, UILabelAlign align)
 {
-	UI_LABEL_struct *l = ui_data(object);
+	UI_LABEL_struct *l = WIDGET(UI_LABEL, object);
 	l->align = align;
 }
 
 void
-label_draw(UIObject obj, Rectangle *rect)
+label_draw(UIObject *obj, Rectangle *rect)
 {
-	UI_LABEL_struct *label = ui_data(obj);
+	UI_LABEL_struct *label = WIDGET(UI_LABEL, obj);
 	vec2 content_size;
 	vec2 content_pos;
 
@@ -65,7 +65,7 @@ label_draw(UIObject obj, Rectangle *rect)
 }
 
 void
-UI_LABEL_event(UIObject label_obj, UIEvent *event, Rectangle *rect) 
+UI_LABEL_event(UIObject *label_obj, UIEvent *event, Rectangle *rect) 
 {
 	if(event->event_type == UI_DRAW)
 		label_draw(label_obj, rect);

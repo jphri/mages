@@ -4,10 +4,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "graphics.h"
 #include "game_objects.h"
 #include "vecmath.h"
 #include "math.h"
-#include "physics.h"
+#include "defs.h"
 
 #define ENTITY_LIST             \
 	MAC_ENTITY(ENTITY_PLAYER)   \
@@ -17,12 +18,6 @@
 	MAC_ENTITY(ENTITY_PARTICLE)
 
 typedef enum {
-	ENTITY_COMP_MOB,
-	ENTITY_COMP_DAMAGE,
-	ENTITY_COMP_BODY,
-} EntityComponent;
-
-typedef enum {
 	ENTITY_NULL,
 	#define MAC_ENTITY(NAME) NAME,
 		ENTITY_LIST
@@ -30,65 +25,66 @@ typedef enum {
 	LAST_ENTITY
 } EntityType;
 
-#define ENTITY_STRUCT(NAME) \
-typedef struct NAME##_struct NAME##_struct; \
-struct NAME##_struct
-
 typedef struct {
 	float health, health_max;
-} EntityMob;
+} Mob;
+
+#define ENTITY_STRUCT(NAME) \
+struct NAME##_struct
+
+union Entity {
+	ENTITY_STRUCT(ENTITY_DAMAGE_NUMBER) {
+		vec2 position;
+		float time, max_time;
+		char damage_str[32];
+		unsigned int text_id;
+		SceneText *text;
+	} damage_number;
+
+	ENTITY_STRUCT(ENTITY_FIREBALL) {
+		SceneSprite *sprite;
+		Entity *caster;
+		float time;
+
+		float damage;
+		Body *body;
+	} fireball;
+
+	ENTITY_STRUCT(ENTITY_DUMMY) {
+		SceneSprite *sprite;
+		Body *body;
+		
+		Mob mob;
+	} dummy;
+
+	ENTITY_STRUCT(ENTITY_PARTICLE) {
+		Body *body;
+		SceneSprite *sprite;
+		float time;
+	} particle;
+
+	ENTITY_STRUCT(ENTITY_PLAYER) {
+		SceneAnimatedSprite *sprite;
+
+		int fired;
+		bool moving;
+		Mob mob;
+		Body *body;
+	} player;
+};
 
 typedef struct {
-	float damage;
-} EntityDamage;
-
-typedef struct {
-	BodyID body;
-	void (*pre_solve)(EntityID self, BodyID other, Contact *contact);
-} EntityBody;
-
-ENTITY_STRUCT(ENTITY_PARTICLE) {
-	SceneSpriteID sprite;
-	float time;
-	EntityBody body;
-};
-
-ENTITY_STRUCT(ENTITY_PLAYER) {
-	SceneSpriteID sprite;
-	int fired;
-	bool moving;
-	EntityMob mob;
-	EntityBody body;
-};
-
-ENTITY_STRUCT(ENTITY_DUMMY) {
-	SceneSpriteID sprite;
-	EntityMob mob;
-	EntityBody body;
-};
-
-ENTITY_STRUCT(ENTITY_FIREBALL) {
-	SceneSpriteID sprite;
-	EntityID caster;
-	float time;
-	
-	EntityDamage damage;
-	EntityBody body;
-};
-
-ENTITY_STRUCT(ENTITY_DAMAGE_NUMBER) {
-	vec2 position;
-	float time, max_time;
-	char damage_str[32];
-	unsigned int text_id;
-};
-
-typedef struct {
-	void (*update)(EntityID, float delta);
-	void (*render)(EntityID);
-	void (*take_damage)(EntityID, float damage);
-	void (*die)(EntityID);
+	void (*update)(Entity*, float delta);
+	void (*render)(Entity*);
+	void (*take_damage)(Entity*, float damage);
+	void (*die)(Entity*);
 } EntityInterface;
+
+typedef struct ENTITY_DAMAGE_NUMBER_struct DamageNumber;
+typedef struct ENTITY_FIREBALL_struct Fireball;
+typedef struct ENTITY_DUMMY_struct Dummy;
+typedef struct ENTITY_PARTICLE_struct Particle;
+typedef struct ENTITY_PLAYER_struct Player;
 
 void ent_init(void);
 void ent_end(void);
@@ -96,25 +92,25 @@ void ent_update(float delta);
 void ent_render(void);
 void ent_reset(void);
 
-EntityID   ent_new(EntityType type, EntityInterface *interface);
-void       ent_del(EntityID id);
-void      *ent_data(EntityID id);
-EntityType ent_type(EntityID id);
-RelPtr     ent_relptr(void *ptr);
-
-bool       ent_implements(EntityID id, ptrdiff_t offset);
-void       ent_take_damage(EntityID id, float damage, vec2 damage_indicator_pos);
+bool       ent_implements(Entity* id, ptrdiff_t offset);
+void       ent_take_damage(Entity* id, float damage, vec2 damage_indicator_pos);
 
 #define ENT_IMPLEMENTS(ID, FUNCTION_NAME) \
 	ent_implements(ID, offsetof(EntityInterface, FUNCTION_NAME))
 
-EntityID ent_player_new(vec2 position);
-EntityID ent_fireball_new(EntityID caster, vec2 position, vec2 vel);
-EntityID ent_dummy_new(vec2 position);
-EntityID ent_damage_number(vec2 position, float damage);
+void mob_process(Entity *entity, Mob *mob);
 
-EntityID ent_particle_new(vec2 position, vec2 velocity, vec4 color, float time);
-void     ent_shot_particles(vec2 position, vec2 velocity, vec4 color, float time, int count);
+Entity       *ent_new(EntityType type, EntityInterface *interface);
+void          ent_del(Entity *entity);
+EntityType    ent_type(Entity *entity);
+
+Player       *ent_player_new(vec2 position);
+Fireball     *ent_fireball_new(Entity *caster, vec2 position, vec2 vel);
+Dummy        *ent_dummy_new(vec2 position);
+DamageNumber *ent_damage_number(vec2 position, float damage);
+
+Particle     *ent_particle_new(vec2 position, vec2 velocity, vec4 color, float time);
+void          ent_shot_particles(vec2 position, vec2 velocity, vec4 color, float time, int count);
 
 #define ENT_DATA(NAME, ID) ((NAME##_struct*)ent_data(ID))
 

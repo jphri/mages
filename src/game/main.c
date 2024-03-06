@@ -18,33 +18,35 @@
 #include "../audio.h"
 #include "../events.h"
 
+
 static void event_receiver(Event event, const void *data);
-static void edit_cbk(UIObject obj, void *userptr);
+static void edit_cbk(UIObject *obj, void *userptr);
 
 static Map *map;
-static SubscriberID level_subscriber;
+
+static Subscriber *level_subscriber;
 static vec2 camera_position;
 
 void
 GAME_STATE_LEVEL_init(void)
 {
-	GLOBAL.player_id = 0;
+	GLOBAL.player = NULL;
 
-	UIObject file_buttons_window = ui_window_new();
+	UIObject *file_buttons_window = ui_window_new();
 	ui_window_set_decorated(file_buttons_window, false);
 	ui_window_set_size(file_buttons_window, (vec2){ 40, 40 });
 	ui_window_set_position(file_buttons_window, UI_ORIGIN_TOP_RIGHT, (vec2){ -40, 40 });
 	{
-		UIObject layout = ui_layout_new();
+		UIObject *layout = ui_layout_new();
 		ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
 		{
-			UIObject btn;
+			UIObject *btn;
 
 			#define CREATE_BUTTON(name, userptr, cbk) \
 			btn = ui_button_new(); \
 			ui_button_set_callback(btn, userptr, cbk); \
 			{\
-				UIObject lbl = ui_label_new(); \
+				UIObject *lbl = ui_label_new(); \
 				ui_label_set_text(lbl, name); \
 				ui_label_set_color(lbl, (vec4){ 1.0, 1.0, 0.0, 1.0 }); \
 				ui_button_set_label(btn, lbl); \
@@ -74,10 +76,8 @@ GAME_STATE_LEVEL_update(float delta)
 	float dist2;
 	Rectangle window_rect = gfx_window_rectangle();
 
-	#define PLAYER ENT_DATA(ENTITY_PLAYER, GLOBAL.player_id)
-	#define PLAYER_BODY phx_data(PLAYER->body.body)
-	if(GLOBAL.player_id) {
-		vec2_add_scaled(offset, (vec2){ 0.0, 0.0 }, PLAYER_BODY->position, -32.0);
+	if(GLOBAL.player) {
+		vec2_add_scaled(offset, (vec2){ 0.0, 0.0 }, GLOBAL.player->player.body->position, -32.0);
 		vec2_add(offset, offset, window_rect.position);
 
 		vec2_sub(delta_pos, offset, camera_position);
@@ -88,8 +88,6 @@ GAME_STATE_LEVEL_update(float delta)
 
 		gfx_set_camera(camera_position, (vec2){ 32.0, 32.0 });
 	}
-	#undef PLAYER
-	#undef PLAYER_BODY
 }
 
 void
@@ -121,7 +119,7 @@ GAME_STATE_LEVEL_keyboard(SDL_Event *event)
 void GAME_STATE_LEVEL_mouse_wheel(SDL_Event *event) { (void)event; } 
 
 void 
-edit_cbk(UIObject obj, void *userptr)
+edit_cbk(UIObject *obj, void *userptr)
 {
 	(void)obj;
 	(void)userptr;
@@ -136,7 +134,7 @@ event_receiver(Event event, const void *data)
 	switch(event) {
 	case EVENT_PLAYER_SPAWN:
 		ev = data;
-		GLOBAL.player_id = ev->player_id;
+		GLOBAL.player = ev->player;
 	default:
 		break;
 	}

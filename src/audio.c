@@ -38,10 +38,8 @@ static SDL_AudioDeviceID audio_device;
 static AudioBuffer audio_buffers[LAST_AUDIO_BUFFER];
 static AudioMixer  audio_mixer[LAST_AUDIO_MIXER];
 static AudioSource bgm_source;
-static ObjectAllocator sfx_sources;
+static ObjectPool sfx_sources;
 static int bgm_playing;
-
-#define SOURCE(ALLOC, ID) ((AudioSource*)objalloc_data(&ALLOC, ID))
 
 void
 audio_init(void)
@@ -60,7 +58,7 @@ audio_init(void)
 		SDL_AUDIO_ALLOW_SAMPLES_CHANGE);
 	SDL_PauseAudioDevice(audio_device, 0);
 
-	objalloc_init_allocator(&sfx_sources, sizeof(AudioSource), cache_aligned_allocator());
+	objpool_init(&sfx_sources, sizeof(AudioSource), DEFAULT_ALIGNMENT);
 
 	printf("Audio Initialized!\n");
 	printf("Audio frequency: %d\n"
@@ -91,14 +89,13 @@ audio_end(void)
 void
 audio_sfx_play(Mixer mixer, Sound sound, float freq)
 {
-	ObjectID id;
 	SDL_LockAudioDevice(audio_device);
-	id = objalloc_alloc(&sfx_sources);
-	SOURCE(sfx_sources, id)->buffer = &audio_buffers[sound];
-	SOURCE(sfx_sources, id)->mixer = &audio_mixer[mixer];
-	SOURCE(sfx_sources, id)->position = 0;
-	SOURCE(sfx_sources, id)->freq_error = 0;
-	SOURCE(sfx_sources, id)->freq_change = (int)(freq * 256);
+	AudioSource *source = objpool_new(&sfx_sources);
+	source->buffer = &audio_buffers[sound];
+	source->mixer = &audio_mixer[mixer];
+	source->position = 0;
+	source->freq_error = 0;
+	source->freq_change = (int)(freq * 256);
 	SDL_UnlockAudioDevice(audio_device);
 }
 
@@ -118,12 +115,12 @@ source_process_callback(void *userdata, Uint8 *stream_raw, int len)
 		}
 	}
 
-	for(ObjectID id = objalloc_begin(&sfx_sources); id; id = objalloc_next(&sfx_sources, id)) {
-		process_audio_stream(stream, stream_len, SOURCE(sfx_sources, id));
-		if(SOURCE(sfx_sources, id)->position > SOURCE(sfx_sources, id)->buffer->length)
-			objalloc_free(&sfx_sources, id);
+	for(AudioSource *source = objpool_begin(&sfx_sources); source; source = objpool_next(source)) {
+		process_audio_stream(stream, stream_len, source);
+		if(source->position > source->buffer->length)
+			objpool_free(source);
 	}
-	objalloc_clean(&sfx_sources);
+	objpool_clean(&sfx_sources);
 }
 
 AudioBuffer

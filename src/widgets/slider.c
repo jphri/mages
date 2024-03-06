@@ -11,12 +11,12 @@ typedef struct {
 	Rectangle handle_rect;
 } SliderInfo;
 
-static SliderInfo slider_info(UIObject obj, Rectangle *rect);
+static SliderInfo slider_info(UIObject *obj, Rectangle *rect);
 
-UIObject 
+UIObject *
 ui_slider_new(void)
 {
-	UIObject slider =  ui_new_object(0, UI_SLIDER);
+	UIObject *slider =  ui_new_object(0, UI_SLIDER);
 	WIDGET(UI_SLIDER, slider)->max_value = 1;
 	WIDGET(UI_SLIDER, slider)->value = 0;
 	WIDGET(UI_SLIDER, slider)->old_value = 0;
@@ -31,27 +31,27 @@ ui_slider_new(void)
 }
 
 void
-ui_slider_enable_label(UIObject obj, bool value)
+ui_slider_enable_label(UIObject *obj, bool value)
 {
 	WIDGET(UI_SLIDER, obj)->label = value;
 }
 
 void
-ui_slider_set_precision(UIObject slider, int max_value)
+ui_slider_set_precision(UIObject *slider, int max_value)
 {
 	WIDGET(UI_SLIDER, slider)->max_value = max_value;
 }
 
 void
-ui_slider_set_handle_size(UIObject object, float size)
+ui_slider_set_handle_size(UIObject *object, float size)
 {
 	WIDGET(UI_SLIDER, object)->handle_size = size;
 }
 
 void
-ui_slider_set_value_raw(UIObject slider, int value)
+ui_slider_set_value_raw(UIObject *slider, int value)
 {
-	UI_SLIDER_struct *sdata = ui_data(slider);
+	UI_SLIDER_struct *sdata = WIDGET(UI_SLIDER, slider);
 	
 	sdata->value = value;
 	if(sdata->old_value != value) {
@@ -62,51 +62,51 @@ ui_slider_set_value_raw(UIObject slider, int value)
 }
 
 void
-ui_slider_set_value(UIObject slider, float value)
+ui_slider_set_value(UIObject *slider, float value)
 {
-	UI_SLIDER_struct *sdata = ui_data(slider);
+	UI_SLIDER_struct *sdata = WIDGET(UI_SLIDER, slider);
 	float v = (value + sdata->min) * sdata->max_value / (sdata->max - sdata->min);
 	ui_slider_set_value_raw(slider, v);
 }
 
 float
-ui_slider_get_value(UIObject slider)
+ui_slider_get_value(UIObject *slider)
 {
-	UI_SLIDER_struct *sdata = ui_data(slider);
+	UI_SLIDER_struct *sdata = WIDGET(UI_SLIDER, slider);
 	float delta = sdata->max - sdata->min;
 	return sdata->value * delta / sdata->max_value + sdata->min;
 }
 
 void
-ui_slider_set_max_value(UIObject slider, float max)
+ui_slider_set_max_value(UIObject *slider, float max)
 {
-	UI_SLIDER_struct *sdata = ui_data(slider);
+	UI_SLIDER_struct *sdata = WIDGET(UI_SLIDER, slider);
 	sdata->max = max;
 }
 
 void
-ui_slider_set_min_value(UIObject slider, float v)
+ui_slider_set_min_value(UIObject *slider, float v)
 {
-	UI_SLIDER_struct *sdata = ui_data(slider);
+	UI_SLIDER_struct *sdata = WIDGET(UI_SLIDER, slider);
 	sdata->min = v;
 }
 
 void
-ui_slider_set_callback(UIObject slider, void *userptr, void (*cbk)(UIObject, void *))
+ui_slider_set_callback(UIObject *slider, void *userptr, void (*cbk)(UIObject *, void *))
 {
-	UI_SLIDER_struct *sdata = ui_data(slider);
+	UI_SLIDER_struct *sdata = WIDGET(UI_SLIDER, slider);
 	sdata->user_ptr = userptr;
 	sdata->cbk = cbk;
 }
 
 void
-ui_slider_set_vertical(UIObject slider, bool v)
+ui_slider_set_vertical(UIObject *slider, bool v)
 {
 	WIDGET(UI_SLIDER, slider)->vertical = v;
 }
 
 static void
-slider_draw(UIObject obj, Rectangle *rect)
+slider_draw(UIObject *obj, Rectangle *rect)
 {
 	static vec4 colors[] = {
 		{ 0.6, 0.6, 0.6, 1.0 },
@@ -141,7 +141,7 @@ slider_draw(UIObject obj, Rectangle *rect)
 
 
 void
-slider_motion(UIObject obj, UIEvent *ev, Rectangle *rect)
+slider_motion(UIObject *obj, UIEvent *ev, Rectangle *rect)
 {
 	SliderInfo info = slider_info(obj, rect);
 	Rectangle handle_fix;
@@ -167,7 +167,7 @@ slider_motion(UIObject obj, UIEvent *ev, Rectangle *rect)
 }
 
 void
-slider_button(UIObject obj, UIEvent *ev, Rectangle *rect)
+slider_button(UIObject *obj, UIEvent *ev, Rectangle *rect)
 {
 	(void)rect;
 	if(ui_get_active() == 0) {
@@ -188,7 +188,7 @@ slider_button(UIObject obj, UIEvent *ev, Rectangle *rect)
 }
 
 void
-UI_SLIDER_event(UIObject obj, UIEvent *ev, Rectangle *rect)
+UI_SLIDER_event(UIObject *obj, UIEvent *ev, Rectangle *rect)
 {
 	ui_default_mouse_handle(obj, ev, rect);
 	switch(ev->event_type) {
@@ -205,10 +205,10 @@ UI_SLIDER_event(UIObject obj, UIEvent *ev, Rectangle *rect)
 	}
 }
 
-static SliderInfo slider_info(UIObject obj, Rectangle *rect)
+static SliderInfo slider_info(UIObject *obj, Rectangle *rect)
 {
 	SliderInfo slider;
-	UI_SLIDER_struct *ls = ui_data(obj);
+	UI_SLIDER_struct *ls = WIDGET(UI_SLIDER, obj);
 
 	if(WIDGET(UI_SLIDER, obj)->handle_size < 0) {
 		slider.width = rect->half_size[0] / (WIDGET(UI_SLIDER, obj)->max_value + 1);

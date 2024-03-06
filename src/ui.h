@@ -75,7 +75,6 @@ typedef struct {
 			const char *text;
 			size_t      text_size;
 		} text;
-
 		UIKey key;
 	} data;
 } UIEvent;
@@ -94,14 +93,15 @@ typedef struct UIPosition {
 	UIOrigin origin;
 } UIPosition;
 
-typedef unsigned int UIObject;
-typedef void UIEventProcessor(UIObject object, UIEvent *event, Rectangle *content);
+typedef union UIObject UIObject;
+
+typedef void UIEventProcessor(UIObject *object, UIEvent *event, Rectangle *content);
 
 #define DEFINE_WIDGET(NAME) \
 typedef struct NAME##_struct NAME##_struct; \
 struct NAME##_struct
 
-#define WIDGET(NAME, ID) ((NAME##_struct*)ui_data(ID))
+#define WIDGET(NAME, ID) ((NAME##_struct*)ID)
 
 DEFINE_WIDGET(UI_ROOT) { char lol; };
 
@@ -113,9 +113,9 @@ DEFINE_WIDGET(UI_WINDOW) {
 	vec4 background;
 	Rectangle window_rect;
 
-	UIObject title_label;
-	UIObject title_layout;
-	UIObject child_root;
+	UIObject *title_label;
+	UIObject *title_layout;
+	UIObject *child_root;
 
 	vec2 drag_begin;
 	vec2 drag_begin_pos;
@@ -147,8 +147,8 @@ DEFINE_WIDGET(UI_LAYOUT) {
 
 DEFINE_WIDGET(UI_BUTTON) {
 	void *user_ptr;
-	void (*callback)(UIObject button_obj, void *userptr);
-	UIObject label;
+	void (*callback)(UIObject *button_obj, void *userptr);
+	UIObject *label;
 };
 
 DEFINE_WIDGET(UI_SLIDER) {
@@ -159,7 +159,7 @@ DEFINE_WIDGET(UI_SLIDER) {
 	float handle_size;
 	bool vertical;
 	bool label;
-	void (*cbk)(UIObject, void *);
+	void (*cbk)(UIObject *, void *);
 };
 
 DEFINE_WIDGET(UI_TEXT_INPUT) {
@@ -170,7 +170,7 @@ DEFINE_WIDGET(UI_TEXT_INPUT) {
 	int (*filter)(int codepoint);
 
 	void *userptr;
-	void (*cbk)(UIObject, void*);
+	void (*cbk)(UIObject *, void*);
 };
 
 DEFINE_WIDGET(UI_IMAGE) {
@@ -181,7 +181,7 @@ DEFINE_WIDGET(UI_IMAGE) {
 DEFINE_WIDGET(UI_CHECKBOX) {
 	bool toggled;
 	void *userptr;
-	void (*callback)(UIObject, void*);
+	void (*callback)(UIObject *, void*);
 };
 
 DEFINE_WIDGET(UI_TILESET_SEL) {
@@ -192,9 +192,16 @@ DEFINE_WIDGET(UI_TILESET_SEL) {
 	int selected;
 
 	void *userptr;
-	void (*cbk)(UIObject, void *);
+	void (*cbk)(UIObject *, void *);
 
-	UIObject hscroll, vscroll;
+	UIObject *hscroll, *vscroll;
+};
+
+union UIObject {
+#define UI_WIDGET(NAME) \
+		NAME##_struct __##NAME;
+		UI_WIDGET_LIST
+#undef UI_WIDGET
 };
 
 void ui_init(void);
@@ -202,92 +209,91 @@ void ui_reset(void);
 void ui_terminate(void);
 bool ui_is_active(void);
 
-UIObject ui_window_new(void);
-void     ui_window_set_size(UIObject window, vec2 size);
-void     ui_window_set_position(UIObject window, UIOrigin origin, vec2 position);
-void     ui_window_set_background(UIObject window, vec4 background);
-void     ui_window_set_title(UIObject window, const char *title);
-void     ui_window_set_border(UIObject window, vec2 border);
-void     ui_window_set_decorated(UIObject window, bool decorated);
-void     ui_window_get_rect(UIObject window, Rectangle *rect_out);
-void     ui_window_append_child(UIObject window, UIObject child);
-void     ui_window_prepend_child(UIObject window, UIObject child);
+UIObject * ui_window_new(void);
+void     ui_window_set_size(UIObject * window, vec2 size);
+void     ui_window_set_position(UIObject * window, UIOrigin origin, vec2 position);
+void     ui_window_set_background(UIObject * window, vec4 background);
+void     ui_window_set_title(UIObject * window, const char *title);
+void     ui_window_set_border(UIObject * window, vec2 border);
+void     ui_window_set_decorated(UIObject * window, bool decorated);
+void     ui_window_get_rect(UIObject * window, Rectangle *rect_out);
+void     ui_window_append_child(UIObject * window, UIObject * child);
+void     ui_window_prepend_child(UIObject * window, UIObject * child);
 
-UIObject ui_layout_new(void);
-void     ui_layout_set_order(UIObject layout, UILayoutOrder order);
-void     ui_layout_set_border(UIObject layout, float left, float right, float up, float down);
-void     ui_layout_set_background(UIObject layout, vec4 color);
-void     ui_layout_append(UIObject layout, UIObject child);
+UIObject * ui_layout_new(void);
+void     ui_layout_set_order(UIObject * layout, UILayoutOrder order);
+void     ui_layout_set_border(UIObject * layout, float left, float right, float up, float down);
+void     ui_layout_set_background(UIObject * layout, vec4 color);
+void     ui_layout_append(UIObject * layout, UIObject * child);
 /* size < 0 = relative */
-void     ui_layout_set_fixed_size(UIObject layout, float size);
+void     ui_layout_set_fixed_size(UIObject * layout, float size);
 
-UIObject ui_button_new(void);
-void     ui_button_set_label(UIObject object, UIObject label);
-void     ui_button_set_callback(UIObject object, void *ptr, void(*callback)(UIObject button_obj, void *user_ptr));
+UIObject * ui_button_new(void);
+void     ui_button_set_label(UIObject * object, UIObject * label);
+void     ui_button_set_callback(UIObject * object, void *ptr, void(*callback)(UIObject * button_obj, void *user_ptr));
 
-UIObject ui_label_new(void);
-void     ui_label_set_text(UIObject object, const char *text_ptr);
-void     ui_label_set_color(UIObject object, vec4 color);
-void     ui_label_set_border(UIObject object, vec2 border);
-void     ui_label_set_alignment(UIObject object, UILabelAlign align);
+UIObject * ui_label_new(void);
+void     ui_label_set_text(UIObject * object, const char *text_ptr);
+void     ui_label_set_color(UIObject * object, vec4 color);
+void     ui_label_set_border(UIObject * object, vec2 border);
+void     ui_label_set_alignment(UIObject * object, UILabelAlign align);
 
-UIObject ui_slider_new(void);
-void     ui_slider_set_value_raw(UIObject slider, int value);
-void     ui_slider_set_value(UIObject slider, float value);
-float    ui_slider_get_value(UIObject slider);
-void     ui_slider_set_precision(UIObject slider, int values);
-void     ui_slider_set_min_value(UIObject slider, float min);
-void     ui_slider_set_max_value(UIObject slider, float max);
-void     ui_slider_set_callback(UIObject slider, void *userptr, void (*cbk)(UIObject, void *));
-void     ui_slider_set_handle_size(UIObject object, float size);
-void     ui_slider_set_vertical(UIObject object, bool slider);
-void     ui_slider_enable_label(UIObject obj, bool value);
+UIObject * ui_slider_new(void);
+void     ui_slider_set_value_raw(UIObject * slider, int value);
+void     ui_slider_set_value(UIObject * slider, float value);
+float    ui_slider_get_value(UIObject * slider);
+void     ui_slider_set_precision(UIObject * slider, int values);
+void     ui_slider_set_min_value(UIObject * slider, float min);
+void     ui_slider_set_max_value(UIObject * slider, float max);
+void     ui_slider_set_callback(UIObject * slider, void *userptr, void (*cbk)(UIObject *, void *));
+void     ui_slider_set_handle_size(UIObject * object, float size);
+void     ui_slider_set_vertical(UIObject * object, bool slider);
+void     ui_slider_enable_label(UIObject * obj, bool value);
 
-UIObject ui_text_input_new(void);
-void     ui_text_input_set_filter(UIObject obj, int (*filter)(int codepoint));
-void     ui_text_input_clear(UIObject obj);
-StrView  ui_text_input_get_str(UIObject obj);
-void     ui_text_input_set_text(UIObject obj, StrView str);
-void     ui_text_input_set_cbk(UIObject obj, void *userptr, void (*cbk)(UIObject, void *));
+UIObject * ui_text_input_new(void);
+void     ui_text_input_set_filter(UIObject * obj, int (*filter)(int codepoint));
+void     ui_text_input_clear(UIObject * obj);
+StrView  ui_text_input_get_str(UIObject * obj);
+void     ui_text_input_set_text(UIObject * obj, StrView str);
+void     ui_text_input_set_cbk(UIObject * obj, void *userptr, void (*cbk)(UIObject *, void *));
 
-UIObject ui_image_new(void);
-void     ui_image_set_stamp(UIObject image, TextureStamp *stamp);
-void     ui_image_set_keep_aspect(UIObject image, bool keep);
+UIObject * ui_image_new(void);
+void     ui_image_set_stamp(UIObject * image, TextureStamp *stamp);
+void     ui_image_set_keep_aspect(UIObject * image, bool keep);
 
-UIObject ui_checkbox_new(void);
-void     ui_checkbox_set_toggled(UIObject obj, bool toggled);
-bool     ui_checkbox_get_toggled(UIObject obj);
-void     ui_checkbox_set_callback(UIObject obj, void *userptr, void(*cbk)(UIObject obj, void *userptr));
+UIObject * ui_checkbox_new(void);
+void     ui_checkbox_set_toggled(UIObject * obj, bool toggled);
+bool     ui_checkbox_get_toggled(UIObject * obj);
+void     ui_checkbox_set_callback(UIObject * obj, void *userptr, void(*cbk)(UIObject * obj, void *userptr));
 
-UIObject ui_tileset_sel_new(void);
-void     ui_tileset_sel_set_tileset(UIObject tilesel, SpriteType tileset);
-int      ui_tileset_sel_get_selected(UIObject tilesel);
-void     ui_tileset_sel_set_cbk(UIObject tilesel, void *userptr, void (*)(UIObject obj, void *userptr));
+UIObject * ui_tileset_sel_new(void);
+void     ui_tileset_sel_set_tileset(UIObject * tilesel, SpriteType tileset);
+int      ui_tileset_sel_get_selected(UIObject * tilesel);
+void     ui_tileset_sel_set_cbk(UIObject * tilesel, void *userptr, void (*)(UIObject * obj, void *userptr));
 
-UIObject ui_new_object(UIObject parent, UIObjectType object_type);
-void     ui_del_object(UIObject object);
+UIObject * ui_new_object(UIObject * parent, UIObjectType object_type);
+void     ui_del_object(UIObject * object);
 void     ui_draw(void);
 
-void ui_set_hot(UIObject object);
-void ui_set_active(UIObject object);
-void ui_set_text_active(UIObject object);
-UIObject ui_get_hot(void);
-UIObject ui_get_active(void);
-UIObject ui_get_text_active(void);
+void ui_set_hot(UIObject * object);
+void ui_set_active(UIObject * object);
+void ui_set_text_active(UIObject * object);
+UIObject * ui_get_hot(void);
+UIObject * ui_get_active(void);
+UIObject * ui_get_text_active(void);
 
-void ui_call_event(UIObject object, UIEvent *event, Rectangle *rect);
-void *ui_data(UIObject obj);
+void ui_call_event(UIObject * object, UIEvent *event, Rectangle *rect);
 
-UIObject ui_child(UIObject parent);
-UIObject ui_last_child(UIObject parent);
-UIObject ui_child_next(UIObject child);
-UIObject ui_child_prev(UIObject object);
-int      ui_count_child(UIObject obj);
-void     ui_child_append(UIObject parent, UIObject child);
-void     ui_child_prepend(UIObject parent, UIObject child);
-void     ui_deparent(UIObject child);
+UIObject * ui_child(UIObject * parent);
+UIObject * ui_last_child(UIObject * parent);
+UIObject * ui_child_next(UIObject * child);
+UIObject * ui_child_prev(UIObject * object);
+int      ui_count_child(UIObject * obj);
+void     ui_child_append(UIObject * parent, UIObject * child);
+void     ui_child_prepend(UIObject * parent, UIObject * child);
+void     ui_deparent(UIObject * child);
 
-UIObjectType ui_get_type(UIObject obj);
+UIObjectType ui_get_type(UIObject * obj);
 
 void ui_position_translate(UIPosition *pos, Rectangle *bound, vec2 out_pos);
 
@@ -298,9 +304,9 @@ void ui_text(const char *buffer, size_t text_size);
 void ui_key(UIKey key);
 void ui_cleanup(void);
 
-UIObject ui_root(void);
-UIObject ui_get_parent(UIObject obj);
-void     ui_default_mouse_handle(UIObject obj, UIEvent *event, Rectangle *rect);
+UIObject * ui_root(void);
+UIObject * ui_get_parent(UIObject * obj);
+void     ui_default_mouse_handle(UIObject * obj, UIEvent *event, Rectangle *rect);
 
 #define UI_WIDGET(NAME) \
 	UIEventProcessor NAME##_event;

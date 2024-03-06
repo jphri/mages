@@ -8,13 +8,14 @@
 #include "vecmath.h"
 #include "ui.h"
 
-typedef struct {
+typedef struct UIObjectNode UIObjectNode;
+struct UIObjectNode {
 	UIObjectType type;
 
-	UIObject parent, next_parent;
-	UIObject sibling_next, sibling_prev;
-	UIObject child_list;
-	UIObject last_child;
+	UIObject *parent, *next_parent;
+	UIObjectNode *child_list;
+	UIObjectNode *sibling_next, *sibling_prev;
+	UIObjectNode *last_child;
 	size_t child_count;
 
 	bool deserted;
@@ -22,23 +23,16 @@ typedef struct {
 		PREPEND,
 		APPEND
 	} new_child_mode;
-
-	union {
-		#define UI_WIDGET(NAME) \
-			NAME##_struct __##NAME;
-		UI_WIDGET_LIST
-		#undef UI_WIDGET
-	} data;
-} UIObjectNode;
+	
+	UIObject data;
+};
 
 typedef struct {
-	UIObject child;
-	UIObject to_parent;
+	UIObjectNode * child;
+	UIObjectNode * to_parent;
 } Reparent;
 
-#define UI_NODE(ID) ((UIObjectNode*)objalloc_data(&objects, ID))
-
-static ObjectAllocator objects;
+static ObjectPool objects;
 static ArrayBuffer should_reparent;
 
 static UIEventProcessor *procs[LAST_UI_WIDGET] =
@@ -52,68 +46,68 @@ static UIEventProcessor *procs[LAST_UI_WIDGET] =
 };
 
 
-static inline void add_child(UIObject parent, UIObject child)
+static inline void add_child(UIObjectNode * parent, UIObjectNode * child)
 {
-	UI_NODE(child)->sibling_next = UI_NODE(parent)->child_list;
-	UI_NODE(child)->sibling_prev = 0;
+	child->sibling_next = (parent)->child_list;
+	child->sibling_prev = NULL;
 
-	if(UI_NODE(parent)->last_child == 0)
-		UI_NODE(parent)->last_child = child;
+	if(parent->last_child == NULL)
+		parent->last_child = child;
 	
-	if(UI_NODE(parent)->child_list)
-		UI_NODE(UI_NODE(parent)->child_list)->sibling_prev = child;
+	if(parent->child_list)
+		(parent->child_list)->sibling_prev = child;
 
-	UI_NODE(parent)->child_list = child;
-	UI_NODE(parent)->child_count ++;
+	parent->child_list = child;
+	parent->child_count ++;
 }
 
-static inline void add_child_last(UIObject parent, UIObject child)
+static inline void add_child_last(UIObjectNode * parent, UIObjectNode * child)
 {
-	UIObject last_child = UI_NODE(parent)->last_child;
-	UIObject first_child = UI_NODE(parent)->child_list;
+	UIObjectNode * last_child = (parent)->last_child;
+	UIObjectNode * first_child = (parent)->child_list;
 
-	UI_NODE(child)->sibling_prev = last_child;
-	UI_NODE(child)->sibling_next = 0;
+	(child)->sibling_prev = last_child;
+	(child)->sibling_next = 0;
 
 	if(!first_child)
-		UI_NODE(parent)->child_list = child;
+		(parent)->child_list = child;
 	
 	if(last_child)
-		UI_NODE(last_child)->sibling_next = child;
+		(last_child)->sibling_next = child;
 
-	UI_NODE(parent)->last_child = child;
-	UI_NODE(parent)->child_count++;
+	(parent)->last_child = child;
+	(parent)->child_count++;
 }
 
-static inline void remove_child(UIObject parent, UIObject child) 
+static inline void remove_child(UIObjectNode * parent, UIObjectNode * child) 
 {
-	UIObject next, prev;
+	UIObjectNode *next, *prev;
 
-	next = UI_NODE(child)->sibling_next;
-	prev = UI_NODE(child)->sibling_prev;
-	if(prev) UI_NODE(prev)->sibling_next = next;
-	if(next) UI_NODE(next)->sibling_prev = prev;
+	next = (child)->sibling_next;
+	prev = (child)->sibling_prev;
+	if(prev) (prev)->sibling_next = next;
+	if(next) (next)->sibling_prev = prev;
 
-	if(UI_NODE(parent)->last_child == child)
-		UI_NODE(parent)->last_child = prev;
+	if((parent)->last_child == child)
+		(parent)->last_child = prev;
 
-	if(UI_NODE(parent)->child_list == child)
-		UI_NODE(parent)->child_list = next;
+	if((parent)->child_list == child)
+		(parent)->child_list = next;
 
-	UI_NODE(parent)->child_count --;
+	(parent)->child_count --;
 }
 
-static void cleancbk(ObjectAllocator *obj, ObjectID id);
+static void cleancbk(ObjectPool *obj, void *);
 
-static UIObject hot, active, text_active;
-static UIObject root;
+static UIObject *hot, *active, *text_active;
+static UIObject *root;
 static vec2 mouse_pos;
 
 void 
 ui_init(void)
 {
 	arrbuf_init(&should_reparent);
-	objalloc_init_allocator(&objects, sizeof(UIObjectNode), cache_aligned_allocator());
+	objpool_init(&objects, sizeof(UIObjectNode), DEFAULT_ALIGNMENT);
 	objects.clean_cbk = cleancbk;
 	
 	ui_reset();
@@ -122,18 +116,18 @@ ui_init(void)
 void
 ui_reset(void)
 {
-	for(UIObject obj = objalloc_begin(&objects);
+	for(UIObjectNode * obj = objpool_begin(&objects);
 			obj;
-			obj = objalloc_next(&objects, obj))
+			obj = objpool_next(obj))
 	{
-		ui_del_object(obj);
+		objpool_free(obj);
 	}
 	ui_cleanup();
 
 	arrbuf_clear(&should_reparent);
 	root = ui_new_object(0, UI_ROOT);
-	hot = 0;
-	active = 0;
+	hot = NULL;
+	active = NULL;
 }
 
 void
@@ -143,7 +137,7 @@ ui_terminate(void)
 	ui_cleanup();
 
 	arrbuf_free(&should_reparent);
-	objalloc_end(&objects);
+	objpool_terminate(&objects);
 }
 
 bool
@@ -152,31 +146,31 @@ ui_is_active(void)
 	return hot || active;
 }
 
-UIObject
-ui_new_object(UIObject parent, UIObjectType object_type) 
+UIObject *
+ui_new_object(UIObject *parent, UIObjectType object_type) 
 {
-	UIObject object = objalloc_alloc(&objects);
-	memset(objalloc_data(&objects, object), 0, sizeof(UIObjectNode));
-	UI_NODE(object)->type         = object_type;
-	UI_NODE(object)->parent       = parent;
+	UIObjectNode *object = objpool_new(&objects);
+	memset(object, 0, sizeof(UIObjectNode));
+	object->type         = object_type;
+	object->parent       = parent;
 
 	if(parent)
-		add_child(parent, object); 
+		add_child(CONTAINER_OF(parent, UIObjectNode, data), object); 
 
-	return object;
+	return& object->data;
 }
 
 void
-ui_del_object(UIObject object) 
+ui_del_object(UIObject * object) 
 {
-	UIObject child = UI_NODE(object)->child_list;
+	UIObjectNode * child = CONTAINER_OF(object, UIObjectNode, data)->child_list;
 	while(child) {
-		UIObject next = UI_NODE(child)->sibling_next;
-		ui_del_object(child);
+		UIObjectNode *next = (child)->sibling_next;
+		ui_del_object(&child->data);
 		child = next;
 	}
 	ui_deparent(object);
-	objalloc_free(&objects, object);
+	objpool_free(CONTAINER_OF(object, UIObjectNode, data));
 }
 
 void
@@ -225,120 +219,123 @@ void
 ui_cleanup(void)
 {
 	Span reparent = arrbuf_span(&should_reparent);
-	SPAN_FOR(reparent, dp, UIObject) {
-		if(ui_get_parent(*dp))
-			remove_child(ui_get_parent(*dp), *dp);
+	SPAN_FOR(reparent, dp, UIObjectNode *) {
+		if((*dp)->parent)
+			remove_child(CONTAINER_OF((*dp)->parent, UIObjectNode, data), *dp);
 
-		if(UI_NODE(*dp)->next_parent) {
-			switch(UI_NODE(*dp)->new_child_mode) {
+		if((*dp)->next_parent) {
+			switch((*dp)->new_child_mode) {
 			case PREPEND:
-				add_child(UI_NODE(*dp)->next_parent, *dp);
+				add_child(CONTAINER_OF((*dp)->next_parent, UIObjectNode, data), *dp);
 				break;
 			case APPEND:
-				add_child_last(UI_NODE(*dp)->next_parent, *dp);
+				add_child_last(CONTAINER_OF((*dp)->next_parent, UIObjectNode, data), *dp);
 				break;
 			}
 		}
-		UI_NODE(*dp)->deserted = false;
-		UI_NODE(*dp)->parent = UI_NODE(*dp)->next_parent;
+		(*dp)->deserted = false;
+		(*dp)->parent = (*dp)->next_parent;
 	}
-	objalloc_clean(&objects);
+	arrbuf_clear(&should_reparent);
+	objpool_clean(&objects);
 }
 
 void
-ui_call_event(UIObject object, UIEvent *event, Rectangle *rect)
+ui_call_event(UIObject * object, UIEvent *event, Rectangle *rect)
 {
-	procs[UI_NODE(object)->type](object, event, rect);
+	procs[CONTAINER_OF(object, UIObjectNode, data)->type](object, event, rect);
 }
 
-void *
-ui_data(UIObject object) 
+UIObject *
+ui_child(UIObject *parent)
 {
-	return &UI_NODE(object)->data;
-}
-
-UIObject
-ui_child(UIObject parent)
-{
-	UIObject list = UI_NODE(parent)->child_list;
-	while(list && objalloc_is_dead(&objects, list)) {
-		list = UI_NODE(list)->sibling_next;
+	UIObjectNode * list = CONTAINER_OF(parent, UIObjectNode, data)->child_list;
+	while(list && objpool_is_dead(list)) {
+		list = (list)->sibling_next;
 	}
-	return list;
+	if(!list)
+		return NULL;
+	return &list->data;
 }
 
-UIObject
-ui_child_next(UIObject child)
+UIObject *
+ui_child_next(UIObject * child)
 {
-	child = UI_NODE(child)->sibling_next;
-	while(child && objalloc_is_dead(&objects, child) && UI_NODE(child)->deserted) {
-		child = UI_NODE(child)->sibling_next;
+	UIObjectNode *list = CONTAINER_OF(child, UIObjectNode, data)->sibling_next;
+	while(list && objpool_is_dead(list) && (list)->deserted) {
+		list = (list)->sibling_next;
 	}
-	return child;
+	if(!list)
+		return NULL;
+	return &list->data;
 }
 
-UIObject
-ui_last_child(UIObject parent)
+UIObject *
+ui_last_child(UIObject * parent)
 {
-	return UI_NODE(parent)->last_child;
+	if(!CONTAINER_OF(parent, UIObjectNode, data)->last_child)
+		return NULL;
+	return &CONTAINER_OF(parent, UIObjectNode, data)->last_child->data;
 }
 
-UIObject
-ui_child_prev(UIObject obj)
+UIObject *
+ui_child_prev(UIObject * obj)
 {
-	return UI_NODE(obj)->sibling_prev;
+	if(!CONTAINER_OF(obj, UIObjectNode, data)->sibling_prev)
+		return NULL;
+	return &CONTAINER_OF(obj, UIObjectNode, data)->sibling_prev->data;
 }
 
-UIObject
+UIObject *
 ui_root(void)
 {
 	return root;
 }
 
 void
-ui_map(UIObject obj)
+ui_map(UIObject *obj)
 {
 	ui_child_append(root, obj);
 }
 
 int
-ui_count_child(UIObject obj)
+ui_count_child(UIObject * obj)
 {
-	return UI_NODE(obj)->child_count;
+	return CONTAINER_OF(obj, UIObjectNode, data)->child_count;
 }
 
 void
-ui_set_hot(UIObject obj)
+ui_set_hot(UIObject * obj)
 {
 	hot = obj;
 }
 
 void
-ui_set_active(UIObject obj)
+ui_set_active(UIObject * obj)
 {
 	active = obj;
 }
 
-UIObject
+UIObject *
 ui_get_hot(void)
 {
 	return hot;
 }
 
-UIObject
+UIObject *
 ui_get_active(void)
 {
 	return active;
 }
 
-UIObject
-ui_get_parent(UIObject obj)
+UIObject *
+ui_get_parent(UIObject * obj)
 {
-	return UI_NODE(obj)->parent;
+	return CONTAINER_OF(obj, UIObjectNode, data)->parent;
 }
 
 void
-ui_set_text_active(UIObject obj)
+ui_set_text_active(UIObject * obj)
 {
 	text_active = obj;
 	if(obj)
@@ -348,9 +345,9 @@ ui_set_text_active(UIObject obj)
 }
 
 UIObjectType
-ui_get_type(UIObject obj)
+ui_get_type(UIObject * obj)
 {
-	return UI_NODE(obj)->type;
+	return CONTAINER_OF(obj, UIObjectNode, data)->type;
 }
 
 void
@@ -369,7 +366,7 @@ ui_position_translate(UIPosition *pos, Rectangle *bound, vec2 out_pos)
 	}
 }
 
-UIObject
+UIObject *
 ui_get_text_active(void)
 {
 	return text_active;
@@ -413,25 +410,28 @@ ui_key(UIKey key)
 }
 
 void
-ui_child_prepend(UIObject parent, UIObject child)
+ui_child_prepend(UIObject *parent, UIObject *child)
 {
-	UI_NODE(child)->deserted = true;
-	UI_NODE(child)->next_parent = parent;
-	UI_NODE(child)->new_child_mode = PREPEND;
-	arrbuf_insert(&should_reparent, sizeof(child), &child);
+	UIObjectNode *child_node = CONTAINER_OF(child, UIObjectNode, data);
+	child_node->deserted = true;
+	child_node->next_parent = parent;
+	child_node->new_child_mode = PREPEND;
+	arrbuf_insert(&should_reparent, sizeof(child_node), &child_node);
 }
 
 void
-ui_child_append(UIObject parent, UIObject child)
+ui_child_append(UIObject * parent, UIObject * child)
 {
-	UI_NODE(child)->deserted = true;
-	UI_NODE(child)->next_parent = parent;
-	UI_NODE(child)->new_child_mode = APPEND;
-	arrbuf_insert(&should_reparent, sizeof(child), &child);
+	UIObjectNode *child_node = CONTAINER_OF(child, UIObjectNode, data);
+
+	(child_node)->deserted = true;
+	(child_node)->next_parent = parent;
+	(child_node)->new_child_mode = APPEND;
+	arrbuf_insert(&should_reparent, sizeof(child_node), &child_node);
 }
 
 void
-ui_default_mouse_handle(UIObject obj, UIEvent *ev, Rectangle *rect)
+ui_default_mouse_handle(UIObject * obj, UIEvent *ev, Rectangle *rect)
 {
 	if(ev->event_type != UI_MOUSE_MOTION && ev->event_type != UI_MOUSE_BUTTON)
 		return;
@@ -450,17 +450,18 @@ ui_default_mouse_handle(UIObject obj, UIEvent *ev, Rectangle *rect)
 }
 
 void
-ui_deparent(UIObject obj)
+ui_deparent(UIObject * obj)
 {
 	ui_child_append(0, obj);
 }
 
 static void
-cleancbk(ObjectAllocator *obj, ObjectID id)
+cleancbk(ObjectPool *pool, void *obj)
 {
-	(void)obj;
+	(void)pool;
+	UIObjectNode *node = obj;
 	Rectangle rect = gfx_window_rectangle();
-	ui_call_event(id, &(UIEvent) {
+	ui_call_event(&node->data, &(UIEvent) {
 		.event_type = UI_DELETE
 	}, &rect);
 }

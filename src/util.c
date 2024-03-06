@@ -11,17 +11,72 @@
 #define UTF8_THREE_BYTES 0xE0
 #define UTF8_FOUR_BYTES 0xF0
 
-typedef struct {
-	ObjectID next, prev;
-	bool dead;
-	unsigned char obj[];
-} ObjectNode;
+#define OBJECT_ALLOCATOR_PAGE_SIZE 1024
 
-static ObjectID    node_to_object_id(ObjectAllocator *alloc, void *ptr);
-static ObjectNode *object_id_to_node(ObjectAllocator *alloc, ObjectID id);
-static void       *object_id_to_object(ObjectAllocator *alloc, ObjectID id);
-static void        insert_obj_list(ObjectAllocator *alloc, ObjectID id);
-static void        remove_obj_list(ObjectAllocator *alloc, ObjectID id);
+typedef struct ObjectNode ObjectNode;
+struct ObjectNode {
+	ObjectPool *pool;
+	ObjectNode *next, *prev;
+	bool dead;
+};
+
+static uintptr_t align_memory(uintptr_t ptr, size_t align)
+{
+	return (((ptr + align - 1) / align) * align);
+}
+
+static ObjectNode *data_to_node(void *data)
+{
+	return ((void**)data)[-1];
+}
+
+static void new_obj_page(ObjectPool *pool)
+{
+	void *page = malloc(pool->node_size * OBJECT_ALLOCATOR_PAGE_SIZE);
+	arrbuf_insert(&pool->pages, sizeof(void*), &page);
+	
+	for(int i = 0; i < OBJECT_ALLOCATOR_PAGE_SIZE; i++) {
+		ObjectNode *node = (ObjectNode*)((uintptr_t)page + pool->node_size * i);
+		node->pool = pool;
+		node->prev = NULL;
+		node->next = NULL;
+		node->dead = true;
+
+		void *data = (void*)align_memory((uintptr_t)node + sizeof(void*) + sizeof(ObjectNode), pool->alignment);
+		/* store the node address before the data itself */
+		((void**)data)[-1] = node;
+		
+		/* store the data pointer because it is easier to get the node back from data than it is
+		 * to calculate the alignment again */
+		arrbuf_insert(&pool->free_stack, sizeof(void*), &data);
+	}
+}
+
+static void insert_obj_node(ObjectPool *pool, void *data)
+{
+	ObjectNode *node = data_to_node(data);
+	
+	/* store the data, not the node */
+	if(pool->object_list)
+		data_to_node(pool->object_list)->prev = data;
+
+	node->prev = NULL;
+	node->next = pool->object_list;
+	pool->object_list = data;
+}
+
+static void remove_obj_node(ObjectPool *pool, void *data)
+{
+	ObjectNode *node = data_to_node(data);
+	
+	if(node->next)
+		data_to_node(node->next)->prev = node->prev;
+	if(node->prev)
+		data_to_node(node->prev)->next = node->next;
+	
+	if(pool->object_list == data)
+		pool->object_list = node->next;
+}
 
 static void *defaultalloc_allocate(size_t bytes, void *user_ptr);
 static void  defaultalloc_deallocate(void *ptr, void *user_ptr);
@@ -482,171 +537,112 @@ _erealloc(void *ptr, size_t size, const char *file, int line)
 	return ptr;
 }
 
-void
-objalloc_init(ObjectAllocator *obj, size_t obj_size)
+void 
+objpool_init(ObjectPool *pool, size_t object_size, size_t object_alignment)
 {
-	objalloc_init_allocator(obj, obj_size, allocator_default());
+	arrbuf_init(&pool->pages);
+	arrbuf_init(&pool->free_stack);
+	arrbuf_init(&pool->dirty_buffer);
+
+	pool->node_size = align_memory(sizeof(ObjectNode) + object_alignment + sizeof(void*) + object_size, object_alignment);
+	pool->obj_size  = object_size;
+	pool->alignment = object_alignment;
+
+	objpool_reset(pool);
 }
 
 void
-objalloc_init_allocator(ObjectAllocator *obj, size_t obj_size, Allocator alloc)
+objpool_clean(ObjectPool *pool) 
 {
-	arrbuf_init_allocator(&obj->data_buffer,  alloc);
-	arrbuf_init_allocator(&obj->free_stack, alloc);
-	arrbuf_init_allocator(&obj->dirty_buffer, alloc);
-	arrbuf_init_allocator(&obj->meta_buffer, alloc);
-
-	obj->obj_size = obj_size;
-	obj->node_size = sizeof(ObjectNode);
-	obj->object_list = 0;
-	obj->clean_cbk = NULL;
-}
-
-void
-objalloc_end(ObjectAllocator *obj)
-{
-	arrbuf_free(&obj->data_buffer);
-	arrbuf_free(&obj->free_stack);
-	arrbuf_free(&obj->dirty_buffer);
-	arrbuf_free(&obj->meta_buffer);
-	obj->object_list = 0;
-}
-
-void
-objalloc_clean(ObjectAllocator *obj)
-{
-	Span span = arrbuf_span(&obj->dirty_buffer);
-	SPAN_FOR(span, id, ObjectID) {
-		if(obj->clean_cbk)
-			obj->clean_cbk(obj, *id);
-
-		remove_obj_list(obj, *id);
-		arrbuf_insert(&obj->free_stack, sizeof(ObjectID), id);
+	Span span = arrbuf_span(&pool->dirty_buffer);
+	SPAN_FOR(span, data, void*) {
+		if(data_to_node(*data)->dead)
+			continue;
+		pool->clean_cbk(pool, *data);
+		remove_obj_node(pool, *data);
+		arrbuf_insert(&pool->free_stack, sizeof(void*), data);
 	}
-	arrbuf_clear(&obj->dirty_buffer);
+	arrbuf_clear(&pool->dirty_buffer);
 }
 
 void
-objalloc_reset(ObjectAllocator *obj)
+objpool_reset(ObjectPool *pool)
 {
-	arrbuf_clear(&obj->dirty_buffer);
-	arrbuf_clear(&obj->free_stack);
-	arrbuf_clear(&obj->data_buffer);
-	arrbuf_clear(&obj->meta_buffer);
-	obj->object_list = 0;
+	Span span = arrbuf_span(&pool->pages);
+	SPAN_FOR(span, page, void*) {
+		free(*page);
+	}
+	arrbuf_clear(&pool->pages);
+	arrbuf_clear(&pool->free_stack);
+	arrbuf_clear(&pool->dirty_buffer);
+	pool->object_list = NULL;
+	new_obj_page(pool);
 }
 
-ObjectID
-objalloc_alloc(ObjectAllocator *obj)
+void
+objpool_terminate(ObjectPool *pool)
 {
-	ObjectID *stack = arrbuf_peektop(&obj->free_stack, sizeof(ObjectID)),
-			  node_id;
-	ObjectNode *node;
-
-	if(stack) {
-		node = object_id_to_node(obj, *stack);
-		arrbuf_poptop(&obj->free_stack, sizeof(ObjectID));
-	} else {
-		node = arrbuf_newptr(&obj->meta_buffer, obj->node_size);
-		arrbuf_newptr(&obj->data_buffer, obj->obj_size);
+	Span span = arrbuf_span(&pool->pages);
+	SPAN_FOR(span, page, void*) {
+		free(*page);
 	}
-	node_id = node_to_object_id(obj, node);
-	memset(node, 0, obj->node_size);
-	insert_obj_list(obj, node_id);
-
-	return node_id;
+	arrbuf_free(&pool->pages);
+	arrbuf_free(&pool->free_stack);
+	arrbuf_free(&pool->dirty_buffer);
 }
 
 void *
-objalloc_data(ObjectAllocator *alloc, ObjectID id)
+objpool_begin(ObjectPool *pool) 
 {
-	return object_id_to_object(alloc, id);
-}
-
-void
-objalloc_free(ObjectAllocator *alloc, ObjectID id)
-{
-	if(!object_id_to_node(alloc, id)->dead) {
-		object_id_to_node(alloc, id)->dead = true;
-		arrbuf_insert(&alloc->dirty_buffer, sizeof(ObjectID), &id);
+	void *ptr = pool->object_list;
+	while(ptr && data_to_node(ptr)->dead) {
+		ptr = data_to_node(ptr)->next;
 	}
-}
-
-ObjectID
-objalloc_begin(ObjectAllocator *alloc)
-{
-	ObjectID list = alloc->object_list;
-	while(list && object_id_to_node(alloc, list)->dead)
-		list = object_id_to_node(alloc, list)->next;
-	return list;
-}
-
-ObjectID
-objalloc_next(ObjectAllocator *alloc, ObjectID id)
-{
-	do {
-		id = object_id_to_node(alloc, id)->next;
-	} while(id && object_id_to_node(alloc, id)->dead);
-	return id;
-}
-
-ObjectID
-node_to_object_id(ObjectAllocator *alloc, void *ptr)
-{
-	return 1 + ((unsigned char*)ptr - (unsigned char*)alloc->meta_buffer.data) / alloc->node_size;
-}
-
-ObjectNode *
-object_id_to_node(ObjectAllocator *alloc, ObjectID id)
-{
-	if(id == 0)
-		return NULL;
-	id --;
-	return (ObjectNode*)((unsigned char*)alloc->meta_buffer.data + alloc->node_size * id);
+	return ptr;
 }
 
 void *
-object_id_to_object(ObjectAllocator *alloc, ObjectID id)
+objpool_next(void *data)
 {
-	if(id == 0)
-		return NULL;
-	id --;
-	return (unsigned char*)alloc->data_buffer.data + alloc->obj_size * id;
+	void *ptr = data_to_node(data)->next;
+	while(ptr && data_to_node(ptr)->dead) {
+		ptr = data_to_node(ptr)->next;
+	}
+	return ptr;
+}
+
+void *
+objpool_new(ObjectPool *pool)
+{
+	void **element = arrbuf_peektop(&pool->free_stack, sizeof(void*));
+	if(!element) {
+		new_obj_page(pool);
+		element = arrbuf_peektop(&pool->free_stack, sizeof(void*));
+	}
+	arrbuf_poptop(&pool->free_stack, sizeof(void*));
+	data_to_node(*element)->dead = false;
+	insert_obj_node(pool, *element);
+	return *element;
 }
 
 void
-insert_obj_list(ObjectAllocator *alloc, ObjectID id)
+objpool_free(void *object_ptr)
 {
-	ObjectNode *node      = object_id_to_node(alloc, id);
-	ObjectNode *base_node = object_id_to_node(alloc, alloc->object_list);
-
-	if(base_node)
-		base_node->prev = id;
-
-	node->prev = 0;
-	node->next = alloc->object_list;
-	alloc->object_list = id;
-}
-
-void
-remove_obj_list(ObjectAllocator *alloc, ObjectID id)
-{
-	ObjectNode *next, *prev, *node;
-	node = object_id_to_node(alloc, id);
-	next = object_id_to_node(alloc, node->next);
-	prev = object_id_to_node(alloc, node->prev);
-
-	if(next) next->prev = node->prev;
-	if(prev) prev->next = node->next;
-
-	if(id == alloc->object_list)
-		alloc->object_list = node->next;
+	ObjectNode *node = data_to_node(object_ptr);
+	if(node->dead) {
+		printf("Detected double free.\n");
+		printf("Be careful...\n");
+		return;
+	}
+	node->dead = true;
+	
+	arrbuf_insert(&node->pool->dirty_buffer, sizeof(void*), &object_ptr);
 }
 
 bool
-objalloc_is_dead(ObjectAllocator *alloc, ObjectID id)
+objpool_is_dead(void *object_ptr)
 {
-	return object_id_to_node(alloc, id)->dead;
+	return data_to_node(object_ptr)->dead;
 }
 
 void *

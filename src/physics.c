@@ -19,43 +19,41 @@ typedef unsigned int BodyGridNodeID;
 
 typedef struct {
 	BodyGridNodeID next;
-	BodyID body;
+	Body *body;
 } BodyGridNode;
 
 typedef struct {
 	vec2 normal;
 	vec2 pierce;
-	BodyID self;
-	BodyID target;
+	Body *self, *target;
 } Hit;
 
-static bool have_to_test(BodyID self, BodyID target);
+static bool have_to_test(Body *self, Body *target);
 
 static BodyGridNodeID grid_to_id(BodyGridNode *node);
 static BodyGridNode*  id_to_grid(BodyGridNodeID id);
 
 static void calculate_grid(void);
 
-static bool body_check_collision(BodyID self, BodyID target, Contact *contact);
-static void update_body(BodyID body, float delta);
+static bool body_check_collision(Body * self, Body * target, Contact *contact);
+static void update_body(Body * body, float delta);
 static void update_body_grid(BodyGridNodeID self_grid, BodyGridNodeID other_grid);
 
 static void solve(Contact *contact);
-static void body_grid_pos(vec2 position, int *grid_x, int *grid_y);
 
 static float accumulator_time;
 static ArrayBuffer grid_node_arena;
 static int grid_size, grid_size_w, grid_size_h;
 static BodyGridNodeID *grid_list;
 static BodyGridNodeID *static_grid_list;
-static ObjectAllocator objects;
+static ObjectPool objects;
 
 static void (*pre_solve_callback)(Contact *contact);
 
 void
 phx_init(void)
 {
-	objalloc_init_allocator(&objects, sizeof(Body), cache_aligned_allocator());
+	objpool_init(&objects, sizeof(Body), DEFAULT_ALIGNMENT);
 	arrbuf_init(&grid_node_arena);
 	accumulator_time = 0;
 
@@ -80,32 +78,27 @@ void
 phx_end(void)
 {
 	arrbuf_free(&grid_node_arena);
-	objalloc_end(&objects);
+	objpool_terminate(&objects);
 }
 
 void
 phx_reset(void)
 {
-	objalloc_reset(&objects);
+	objpool_reset(&objects);
 }
 
-BodyID phx_new(void)
+Body * 
+phx_new(void)
 {
-	BodyID id = objalloc_alloc(&objects);
-	memset(phx_data(id), 0, sizeof(Body));
-	return id;
+	Body *body = objpool_new(&objects);
+	memset(body, 0, sizeof(*body));
+	return body;
 }
 
 void
-phx_del(BodyID id)
+phx_del(Body *body)
 {
-	objalloc_free(&objects, id);
-}
-
-Body *
-phx_data(BodyID id)
-{
-	return objalloc_data(&objects, id);
+	objpool_free(body);
 }
 
 void
@@ -113,7 +106,7 @@ phx_update(float delta)
 {
 	accumulator_time += delta;
 	while(accumulator_time > PHYSICS_TIME) {
-		objalloc_clean(&objects);
+		objpool_clean(&objects);
 		calculate_grid();
 
 		for(int i = 0; i < grid_size; i++) {
@@ -125,26 +118,26 @@ phx_update(float delta)
 				node_id = id_to_grid(node_id)->next;
 			}
 		}
-		for(BodyID body = objalloc_begin(&objects); body; body = objalloc_next(&objects, body))
+		for(Body *body = objpool_begin(&objects); body; body = objpool_next(body))
 			update_body(body, PHYSICS_TIME * SCALE_FACTOR);
 
 		accumulator_time -= PHYSICS_TIME;
 	}
-	for(BodyID body = objalloc_begin(&objects); body; body = objalloc_next(&objects, body))
-		vec2_dup(phx_data(body)->accel, (vec2){ 0.0, 0.0 });
+	for(Body *body = objpool_begin(&objects); body; body = objpool_next(body))
+		vec2_dup(body->accel, (vec2){ 0.0, 0.0 });
 }
 
 void
 phx_draw(void)
 {
 	//TODO: DEBUG
-	//BodyID body_id = _sys_list;
+	//Body * body_id = _sys_list;
 	//#define body phx_data(body_id)
 //	gfx_debug_begin();
 //	while(body_id) {
 //		vec2 pos, size;
 //
-//		BodyID next = _sys_node(body_id)->next;
+//		Body * next = _sys_node(body_id)->next;
 //		vec2_sub(pos, body->position, body->half_size);
 //		vec2_mul(size, body->half_size, (vec2){ 2, 2 });
 //
@@ -157,71 +150,62 @@ phx_draw(void)
 }
 
 void
-update_body(BodyID self, float delta)
+update_body(Body * self, float delta)
 {
-	#define SELF phx_data(self)
 	vec2 accel;
 	
-	if(!SELF->is_static) {
-		vec2_add_scaled(accel, SELF->accel, SELF->velocity, -SELF->damping * DAMPING_FACTOR * SCALE_FACTOR);
-		vec2_add_scaled(SELF->velocity, SELF->velocity, accel, delta);
-		vec2_add_scaled(SELF->position, SELF->position, SELF->velocity, delta);
+	if(!self->is_static) {
+		vec2_add_scaled(accel, self->accel, self->velocity, -self->damping * DAMPING_FACTOR * SCALE_FACTOR);
+		vec2_add_scaled(self->velocity, self->velocity, accel, delta);
+		vec2_add_scaled(self->position, self->position, self->velocity, delta);
 	} else {
-		vec2_dup(SELF->velocity, (vec2){ 0.0, 0.0 });
-		vec2_dup(SELF->accel, (vec2){ 0.0, 0.0 });
+		vec2_dup(self->velocity, (vec2){ 0.0, 0.0 });
+		vec2_dup(self->accel, (vec2){ 0.0, 0.0 });
 	}
-	(void)body_grid_pos;
-
-	#undef SELF
 }
 
 void
 update_body_grid(BodyGridNodeID self_grid, BodyGridNodeID target_id_grid)
 {
-	#define SELF phx_data(self)
-	BodyID self = id_to_grid(self_grid)->body;
+	Body* self = id_to_grid(self_grid)->body;
 
-	if(objalloc_is_dead(&objects, self))
+	if(objpool_is_dead(self))
 		return;
 
 	for(; target_id_grid; target_id_grid = id_to_grid(target_id_grid)->next) {
 		Contact contact = {0};
-		BodyID target_id = id_to_grid(target_id_grid)->body;
+		Body *target = id_to_grid(target_id_grid)->body;
 
-		if(objalloc_is_dead(&objects, target_id))
+		if(objpool_is_dead(target))
 			continue;
 
-		if(!(have_to_test(self, target_id) || have_to_test(target_id, self))) {
+		if(!(have_to_test(self, target) || have_to_test(target, self))) {
 			continue;
 		}
 
-		if(body_check_collision(self, target_id, &contact)) {
-			if(phx_data(self)->pre_solve)
-				phx_data(self)->pre_solve(self, target_id, &contact);
+		if(body_check_collision(self, target, &contact)) {
+			if(self->pre_solve)
+				self->pre_solve(self, target, &contact);
 
-			if(phx_data(target_id)->pre_solve)
-				phx_data(target_id)->pre_solve(target_id, self, &contact);
+			if(target->pre_solve)
+				target->pre_solve(target, self, &contact);
 
 			if(contact.active)
 				solve(&contact);
 			
-			if(objalloc_is_dead(&objects, self))
+			if(objpool_is_dead(self))
 				return;
 		}
 	}
-	#undef SELF
 }
 
 bool
-body_check_collision(BodyID self_id, BodyID target_id, Contact *contact)
+body_check_collision(Body *self, Body *target, Contact *contact)
 {
-	#define SELF phx_data(self_id)
-	#define TARGET phx_data(target_id)
-
 	vec2 subbed_pos, added_size, min, max;
 
-	vec2_sub(subbed_pos, TARGET->position,  SELF->position);
-	vec2_add(added_size, TARGET->half_size, SELF->half_size);
+	vec2_sub(subbed_pos, target->position,  self->position);
+	vec2_add(added_size, target->half_size, self->half_size);
 	vec2_sub(min, subbed_pos, added_size);
 	vec2_add(max, subbed_pos, added_size);
 
@@ -236,55 +220,42 @@ body_check_collision(BodyID self_id, BodyID target_id, Contact *contact)
 	contact->normal[1] = (ht[1] < ht[0]) * ((subbed_pos[1] > 0) - (subbed_pos[1] < 0));
 	contact->pierce[0] = contact->normal[0] * (ht[0]);
 	contact->pierce[1] = contact->normal[1] * (ht[1]);
-	contact->body1 = self_id;
-	contact->body2 = target_id;
+	contact->body1 = self;
+	contact->body2 = target;
 	contact->active = true;
 
 	return true;
-
-	#undef SELF
-	#undef TARGET
 }
 
 void
 solve(Contact *contact)
 {
-	#define SELF phx_data(contact->body1)
-	#define TARGET phx_data(contact->body2)
-
 	float j;
 	vec2 vel_rel;
 
-	float self_inertia = SELF->is_static ? 0 : 1.0 / SELF->mass;
-	float target_inertia = TARGET->is_static ? 0 : 1.0 / TARGET->mass;
+	Body *self = contact->body1;
+	Body *target = contact->body2;
 
-	vec2_sub(vel_rel, VEC2_DUP(SELF->velocity), VEC2_DUP(TARGET->velocity));
+	float self_inertia = self->is_static ? 0 : 1.0 / self->mass;
+	float target_inertia = target->is_static ? 0 : 1.0 / target->mass;
+
+	vec2_sub(vel_rel, VEC2_DUP(self->velocity), VEC2_DUP(target->velocity));
 	j = vec2_dot(contact->normal, vel_rel);
-	j *= -(1 + SELF->restitution + TARGET->restitution);
+	j *= -(1 + self->restitution + target->restitution);
 	j /= (self_inertia + target_inertia);
 	
-	vec2_add_scaled(SELF->velocity, SELF->velocity, contact->normal, j * self_inertia);
-	vec2_add_scaled(TARGET->velocity, TARGET->velocity, contact->normal, -j * target_inertia);
+	vec2_add_scaled(self->velocity, self->velocity, contact->normal, j * self_inertia);
+	vec2_add_scaled(target->velocity, target->velocity, contact->normal, -j * target_inertia);
 
-	if(TARGET->is_static) {
-		vec2_add_scaled(SELF->position, SELF->position, contact->pierce, -1.0f);
-	} else if (SELF->is_static) {
-		vec2_add_scaled(TARGET->position, TARGET->position, contact->pierce, 1.0f);
+	if(target->is_static) {
+		vec2_add_scaled(self->position, self->position, contact->pierce, -1.0f);
+	} else if (self->is_static) {
+		vec2_add_scaled(target->position, target->position, contact->pierce, 1.0f);
 	} else {
-		float total_mass = SELF->mass + TARGET->mass;
-		vec2_add_scaled(SELF->position, SELF->position, contact->pierce, -(TARGET->mass / total_mass));
-		vec2_add_scaled(TARGET->position, TARGET->position, contact->pierce, SELF->mass / total_mass);
+		float total_mass = self->mass + target->mass;
+		vec2_add_scaled(self->position, self->position, contact->pierce, -(target->mass / total_mass));
+		vec2_add_scaled(target->position, target->position, contact->pierce, self->mass / total_mass);
 	}
-
-	#undef SELF
-	#undef TARGET
-}
-
-void
-body_grid_pos(vec2 position, int *grid_x, int *grid_y)
-{
-	*grid_x = floorf(position[0] / GRID_TILE_SIZE);
-	*grid_y = floorf(position[1] / GRID_TILE_SIZE);
 }
 
 BodyGridNodeID
@@ -306,11 +277,11 @@ calculate_grid(void)
 	memset(static_grid_list, 0, sizeof(static_grid_list[0]) * grid_size);
 	arrbuf_clear(&grid_node_arena);
 
-	for(BodyID body = objalloc_begin(&objects); body; body = objalloc_next(&objects, body)) {
-		int grid_min_x = floorf((phx_data(body)->position[0] - phx_data(body)->half_size[0]) / GRID_TILE_SIZE);
-		int grid_min_y = floorf((phx_data(body)->position[1] - phx_data(body)->half_size[1]) / GRID_TILE_SIZE);
-		int grid_max_x = floorf((phx_data(body)->position[0] + phx_data(body)->half_size[0]) / GRID_TILE_SIZE);
-		int grid_max_y = floorf((phx_data(body)->position[1] + phx_data(body)->half_size[1]) / GRID_TILE_SIZE);
+	for(Body *body = objpool_begin(&objects); body; body = objpool_next(body)) {
+		int grid_min_x = floorf(body->position[0] - body->half_size[0]) / GRID_TILE_SIZE;
+		int grid_min_y = floorf(body->position[1] - body->half_size[1]) / GRID_TILE_SIZE;
+		int grid_max_x = floorf(body->position[0] + body->half_size[0]) / GRID_TILE_SIZE;
+		int grid_max_y = floorf(body->position[1] + body->half_size[1]) / GRID_TILE_SIZE;
 
 		for(int x = grid_min_x; x <= grid_max_x; x++) {
 			if(x < 0 || x >= grid_size_w)
@@ -322,7 +293,7 @@ calculate_grid(void)
 
 				BodyGridNode *node = arrbuf_newptr(&grid_node_arena, sizeof(BodyGridNode));
 				node->body = body;
-				if(!phx_data(body)->is_static) {
+				if(!body->is_static) {
 					node->next = grid_list[x + y * grid_size_w];
 					grid_list[x + y * grid_size_w] = grid_to_id(node);
 				} else {
@@ -335,9 +306,9 @@ calculate_grid(void)
 }
 
 bool
-have_to_test(BodyID self, BodyID target)
+have_to_test(Body *self, Body *target)
 {
-	return !!(phx_data(self)->collision_mask & phx_data(target)->collision_layer);
+	return !!(self->collision_mask & target->collision_layer);
 }
 
 void

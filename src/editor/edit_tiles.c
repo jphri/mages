@@ -58,27 +58,27 @@ static int current_layer = 0;
 static MouseState mouse_state;
 static vec2 mouse_position;
 
-static UIObject cursor_layout;
-static UIObject context_root, context_layout;
-static UIObject general_root;
-static UIObject tileset_window;
-static UIObject after_layer_alpha_slider;
+static UIObject *cursor_layout;
+static UIObject *context_root, *context_layout;
+static UIObject *general_root;
+static UIObject *tileset_window;
+static UIObject *after_layer_alpha_slider;
 static CursorMode cursor_mode;
 static float cursor_mode_size;
 
-static UIObject tiles_root;
+static UIObject *tiles_root;
 
-static UIObject cursor_checkboxes[LAST_CURSOR_MODE];
+static UIObject *cursor_checkboxes[LAST_CURSOR_MODE];
 
 static ArrayBuffer fill_preview_stack;
 static ArrayBuffer fill_layer_helper;
 
-static void layer_slider_cbk(UIObject slider, void *userptr);
-static void cursor_size_cbk(UIObject obj, void *userptr);
-static void cursorchb_cbk(UIObject obj, void *userptr);
-static void tileselect_cbk(UIObject obj, void *userptr);
+static void layer_slider_cbk(UIObject *slider, void *userptr);
+static void cursor_size_cbk(UIObject *obj, void *userptr);
+static void cursorchb_cbk(UIObject *obj, void *userptr);
+static void tileselect_cbk(UIObject *obj, void *userptr);
 
-static void tileset_btn_cbk(UIObject obj, void *ptr);
+static void tileset_btn_cbk(UIObject *obj, void *ptr);
 
 static void draw_preview(void);
 static void apply_cursor(int x, int y);
@@ -213,17 +213,17 @@ edit_init(void)
 	context_layout = ui_layout_new();
 	ui_layout_set_order(context_layout, UI_LAYOUT_VERTICAL);
 	{
-		UIObject sublayout = ui_layout_new();
+		UIObject *sublayout = ui_layout_new();
 		ui_layout_set_order(sublayout, UI_LAYOUT_HORIZONTAL);
 		ui_layout_set_border(sublayout, 2.5, 2.5, 2.5, 2.5);
 		{
-			UIObject label = ui_label_new();
+			UIObject *label = ui_label_new();
 			ui_label_set_text(label, "Cursor Size: ");
 			ui_label_set_alignment(label, UI_LABEL_ALIGN_RIGHT);
 			ui_label_set_color(label, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 			ui_layout_append(sublayout, label);
 
-			UIObject slider_size = ui_slider_new();
+			UIObject *slider_size = ui_slider_new();
 			ui_slider_set_min_value(slider_size, 1.0);
 			ui_slider_set_max_value(slider_size, 32.0);
 			ui_slider_set_precision(slider_size, SLIDER_SIZE_PRECISION);
@@ -242,21 +242,21 @@ edit_init(void)
 	ui_window_set_size(tileset_window, (vec2){ 150, 150 });
 	ui_window_set_position(tileset_window, UI_ORIGIN_BOTTOM_RIGHT, (vec2){ - 150, - 150 });
 	{
-		UIObject tileset = ui_tileset_sel_new();
+		UIObject *tileset = ui_tileset_sel_new();
 		ui_tileset_sel_set_cbk(tileset, NULL, tileselect_cbk);
 
 		ui_window_append_child(tileset_window, tileset);
 	}
 
-	UIObject tileset_btn_window = ui_window_new();
+	UIObject *tileset_btn_window = ui_window_new();
 	ui_window_set_decorated(tileset_btn_window, false);
 	ui_window_set_size(tileset_btn_window, (vec2){ 30, 10 });
 	ui_window_set_position(tileset_btn_window, UI_ORIGIN_BOTTOM_RIGHT, (vec2){ -30, - 10 });
 	{
-		UIObject tileset_btn = ui_button_new();
+		UIObject *tileset_btn = ui_button_new();
 		ui_button_set_callback(tileset_btn, NULL, tileset_btn_cbk);
 		{
-			UIObject tileset_lbl = ui_label_new();
+			UIObject *tileset_lbl = ui_label_new();
 
 			ui_label_set_color(tileset_lbl, (vec4){ 1.0, 1.0, 0.0, 1.0 });
 			ui_label_set_text(tileset_lbl, "Tiles");
@@ -275,17 +275,17 @@ edit_init(void)
 			ui_checkbox_set_toggled(cursor_checkboxes[i], (CursorMode)i == cursor_mode);
 			ui_layout_append(cursor_layout, cursor_checkboxes[i]);
 
-			UIObject img = ui_image_new();
+			UIObject *img = ui_image_new();
 			ui_image_set_keep_aspect(img, true);
 			ui_image_set_stamp(img, &cursor_info[i].image);
 			ui_layout_append(cursor_layout, img);
 		}
 	}
 
-	UIObject general_layout = ui_layout_new();
+	UIObject *general_layout = ui_layout_new();
 	ui_layout_set_order(general_layout, UI_LAYOUT_VERTICAL);
 	{
-		UIObject sublayout, label;
+		UIObject *sublayout, *label;
 
 		#define BEGIN_SUB(LABEL_STRING) \
 		sublayout = ui_layout_new(); \
@@ -302,7 +302,7 @@ edit_init(void)
 		BEGIN_SUB("Layer: ") {
 			
 
-			UIObject slider_size = ui_slider_new();
+			UIObject *slider_size = ui_slider_new();
 			ui_slider_set_min_value(slider_size, 0.0);
 			ui_slider_set_max_value(slider_size, MAX_LAYERS - 1);
 			ui_slider_set_precision(slider_size, MAX_LAYERS - 1);
@@ -459,10 +459,10 @@ fill_apply(int x, int y)
 }
 
 void
-cursorchb_cbk(UIObject obj, void *userptr)
+cursorchb_cbk(UIObject *obj, void *userptr)
 {
 	(void)obj;
-	UIObject *self = userptr;
+	UIObject **self = userptr;
 	cursor_mode = self - cursor_checkboxes;
 	for(int i = 0; i < LAST_CURSOR_MODE; i++) {
 		ui_checkbox_set_toggled(cursor_checkboxes[i], &cursor_checkboxes[i] == self);
@@ -470,21 +470,21 @@ cursorchb_cbk(UIObject obj, void *userptr)
 }
 
 void
-cursor_size_cbk(UIObject obj, void *userptr)
+cursor_size_cbk(UIObject *obj, void *userptr)
 {
 	(void)userptr;
 	cursor_mode_size = ui_slider_get_value(obj);
 }
 
 void
-layer_slider_cbk(UIObject slider, void *ptr)
+layer_slider_cbk(UIObject *slider, void *ptr)
 {
 	(void)ptr;
 	current_layer = ui_slider_get_value(slider);
 }
 
 void
-tileset_btn_cbk(UIObject obj, void *ptr)
+tileset_btn_cbk(UIObject *obj, void *ptr)
 {
 	(void)ptr;
 	obj = ui_get_parent(ui_get_parent(obj));
@@ -499,7 +499,7 @@ tileset_btn_cbk(UIObject obj, void *ptr)
 }
 
 void 
-tileselect_cbk(UIObject obj, void *userptr)
+tileselect_cbk(UIObject *obj, void *userptr)
 {
 	(void)userptr;
 

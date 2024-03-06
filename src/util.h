@@ -10,7 +10,7 @@
 typedef struct ArrayBuffer ArrayBuffer;
 typedef struct StrView StrView;
 typedef struct Span Span;
-typedef struct ObjectAllocator ObjectAllocator;
+typedef struct ObjectPool ObjectPool;
 typedef struct RelPtr RelPtr;
 typedef struct Allocator Allocator;
 typedef struct FileBuffer FileBuffer;
@@ -36,18 +36,17 @@ struct StrView {
 	const unsigned char *end;
 };
 
-struct ObjectAllocator {
-	ArrayBuffer data_buffer;
+struct ObjectPool {
+	ArrayBuffer pages;
 	ArrayBuffer free_stack;
 	ArrayBuffer dirty_buffer;
-	ArrayBuffer meta_buffer;
-	ObjectID object_list;
+	void *object_list;
 
 	size_t node_size;
 	size_t obj_size;
 	size_t alignment;
 
-	void (*clean_cbk)(ObjectAllocator *, ObjectID);
+	void (*clean_cbk)(ObjectPool *, void*);
 };
 
 struct FileBuffer {
@@ -77,6 +76,9 @@ struct RelPtr {
 #define ASSERT(CHECK) if(!(CHECK)) { die("%s:%d: '%s' failed\n", __FILE__, __LINE__, #CHECK); }
 
 #define SPAN_FOR(SPAN, NAME, ...) for(__VA_ARGS__* NAME = SPAN.begin; NAME < (__VA_ARGS__*)SPAN.end; NAME++)
+
+#define CONTAINER_OF(PTR, STRUCT, MEMBER) \
+	((STRUCT*)((uintptr_t)(PTR) - offsetof(STRUCT, MEMBER)))
 
 #define emalloc(size) _emalloc(size, __FILE__, __LINE__)
 #define efree(ptr) _efree(ptr, __FILE__, __LINE__)
@@ -135,17 +137,21 @@ void *_emalloc(size_t size, const char *file, int line);
 void  _efree(void *ptr, const char *file, int line);
 void *_erealloc(void *ptr, size_t size, const char *file, int line);
 
-void      objalloc_init(ObjectAllocator *alloc, size_t object_size);
-void      objalloc_init_allocator(ObjectAllocator *alloc, size_t object_size, Allocator a);
-void      objalloc_end(ObjectAllocator *alloc);
-void      objalloc_clean(ObjectAllocator *alloc);
-void      objalloc_reset(ObjectAllocator *alloc);
-ObjectID  objalloc_alloc(ObjectAllocator *alloc);
-void     *objalloc_data(ObjectAllocator *alloc, ObjectID id);
-void      objalloc_free(ObjectAllocator *alloc, ObjectID id);
-ObjectID  objalloc_begin(ObjectAllocator *alloc);
-ObjectID  objalloc_next(ObjectAllocator *alloc, ObjectID next);
-bool      objalloc_is_dead(ObjectAllocator *alloc, ObjectID id);
+/* 
+ * alignment needs to be a multiple of sizeof(void*) the same as posix_memalign() 
+ * use DEFAULT_ALIGNMENT if you don't care about this (which is likely) 
+ */
+void objpool_init(ObjectPool *pool, size_t object_size, size_t object_alignment);
+void objpool_clean(ObjectPool *pool);
+void objpool_reset(ObjectPool *pool);
+void objpool_terminate(ObjectPool *pool);
+
+void *objpool_begin(ObjectPool *pool);
+void *objpool_next(void *data);
+
+void *objpool_new(ObjectPool *pool);
+void  objpool_free(void *object_ptr);
+bool  objpool_is_dead(void *object_ptr);
 
 Allocator allocator_default(void);
 
@@ -172,5 +178,7 @@ static inline int maxi(int a, int b) {
 static inline int clampi(int x, int minv, int maxv) {
 	return mini(maxi(x, minv), maxv);
 }
+
+#define DEFAULT_ALIGNMENT (sizeof(void*))
 
 #endif

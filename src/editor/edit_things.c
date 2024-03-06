@@ -22,14 +22,14 @@ static void render_thing(Thing *thing);
 static void select_thing(vec2 position);
 static void update_thing_context(void);
 
-static void thing_type_name_cbk(UIObject obj, void *userptr);
+static void thing_type_name_cbk(UIObject *obj, void *userptr);
 
 static MouseState mouse_state;
 static vec2 move_offset, mouse_position;
 static bool ctrl_pressed;
 
 static Thing *selected_thing;
-static UIObject thing_context, thing_type_name;
+static UIObject *thing_context, *thing_type_name;
 
 static StrView type_string[LAST_THING];
 
@@ -46,13 +46,13 @@ thing_init(void)
 	type_string[THING_PLAYER] = to_strview("THING_PLAYER");
 	type_string[THING_DUMMY]  = to_strview("THING_DUMMY");
 
-	thing_context = ui_new_object(UI_ROOT, 0);
-	UIObject layout = ui_layout_new();
+	thing_context = ui_new_object(0, UI_ROOT);
+	UIObject *layout = ui_layout_new();
 	ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
 	ui_layout_set_border(layout, 2.0, 2.0, 2.0, 2.0);
 	ui_layout_set_fixed_size(layout, 15.0); \
 	{
-		UIObject sublayout, label;
+		UIObject *sublayout, *label;
 
 		#define BEGIN_LAYOUT(NAME) \
 		sublayout = ui_layout_new(); \
@@ -266,7 +266,7 @@ update_thing_context(void)
 }
 
 void
-thing_type_name_cbk(UIObject obj, void *userptr)
+thing_type_name_cbk(UIObject *obj, void *userptr)
 {
 	(void)userptr;
 	selected_thing->type = THING_NULL;
