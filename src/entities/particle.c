@@ -56,9 +56,9 @@ ent_particle_new(vec2 position, vec2 velocity, vec4 color, float time)
 	self->body->half_size[1] = 0.1;
 	self->body->is_static = false;
 	self->body->solve_layer = 0;
-	self->body->solve_mask  = 0;
-	self->body->collision_layer = PHX_LAYER_ENTITIES_BIT;
-	self->body->collision_mask  = PHX_LAYER_MAP_BIT | PHX_LAYER_ENTITIES_BIT;
+	self->body->solve_mask  = PHX_LAYER_MAP_BIT;
+	self->body->collision_layer = 0;
+	self->body->collision_mask  = PHX_LAYER_MAP_BIT;
 	self->body->mass = 0.0000001;
 	self->body->restitution = 1.0;
 	self->body->damping = 5.0;
