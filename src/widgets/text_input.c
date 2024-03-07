@@ -59,7 +59,6 @@ UI_TEXT_INPUT_event(UIObject *obj, UIEvent *event, Rectangle *rect)
 {
 	switch(event->event_type) {
 	case UI_DELETE:
-		printf("Deleting...\n");
 		arrbuf_free(&WIDGET(UI_TEXT_INPUT, obj)->text_buffer);
 		break;
 	case UI_DRAW:
