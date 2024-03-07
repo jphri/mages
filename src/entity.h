@@ -88,6 +88,13 @@ union Entity {
 	} door;
 };
 
+typedef struct ENTITY_DAMAGE_NUMBER_struct DamageNumber;
+typedef struct ENTITY_FIREBALL_struct Fireball;
+typedef struct ENTITY_DUMMY_struct Dummy;
+typedef struct ENTITY_PARTICLE_struct Particle;
+typedef struct ENTITY_PLAYER_struct Player;
+typedef struct ENTITY_DOOR_struct Door;
+
 typedef struct {
 	void (*update)(Entity*, float delta);
 	void (*render)(Entity*);
@@ -95,14 +102,9 @@ typedef struct {
 	void (*die)(Entity*);
 
 	bool (*mouse_hovered)(Entity *, vec2 mouse_click);
+	void (*mouse_interact)(Entity *self, Player *who, vec2 mouse_click);
 } EntityInterface;
 
-typedef struct ENTITY_DAMAGE_NUMBER_struct DamageNumber;
-typedef struct ENTITY_FIREBALL_struct Fireball;
-typedef struct ENTITY_DUMMY_struct Dummy;
-typedef struct ENTITY_PARTICLE_struct Particle;
-typedef struct ENTITY_PLAYER_struct Player;
-typedef struct ENTITY_DOOR_struct Door;
 
 void ent_init(void);
 void ent_end(void);
@@ -132,6 +134,7 @@ Particle     *ent_particle_new(vec2 position, vec2 velocity, vec4 color, float t
 void          ent_shot_particles(vec2 position, vec2 velocity, vec4 color, float time, int count);
 
 Entity *ent_hover(vec2 position);
+void    ent_mouse_interact(Player *who, vec2 mouse_click);
 
 void ent_door_open(Door *door);
 void ent_door_close(Door *door);

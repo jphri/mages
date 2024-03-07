@@ -15,11 +15,13 @@ static Rectangle door_hover_rect(Entity *);
 static void door_update(Entity *, float);
 static void door_die(Entity *);
 static bool door_mouse_hovered(Entity *, vec2 mouse_pos);
+static void door_mouse_interact(Entity *, Player *, vec2 mouse_pos);
 
 static EntityInterface door_int = {
 	.die = door_die,
 	.update = door_update,
 	.mouse_hovered = door_mouse_hovered,
+	.mouse_interact = door_mouse_interact
 };
 
 Door *
@@ -206,4 +208,18 @@ door_hover_rect(Entity *door_ent)
 	}
 
 	return rect;
+}
+
+void 
+door_mouse_interact(Entity *ent, Player *player, vec2 mouse_pos)
+{
+	(void)player;
+	(void)mouse_pos;
+
+	Door *door = &ent->door;
+	if(door->open) {
+		ent_door_close(door);
+	} else {
+		ent_door_open(door);
+	}
 }

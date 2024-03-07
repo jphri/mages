@@ -2,11 +2,14 @@
 #include <stdbool.h>
 #include <assert.h>
 
+#include "physics.h"
 #include "util.h"
 #include "vecmath.h"
 #include "entity.h"
 #include "game_objects.h"
 #include "global.h"
+
+#define MAX_INTERACT_DIST (10 * ENTITY_SCALE)
 
 typedef struct {
 	EntityType type;
@@ -121,4 +124,30 @@ ent_hover(vec2 mouse_pos)
 	}
 
 	return NULL;
+}
+
+void
+ent_mouse_interact(Player *who, vec2 mouse_click)
+{
+	vec2 delta_dist;
+	float dist2;
+
+	if(!who)
+		return;
+
+	vec2_sub(delta_dist, mouse_click, who->body->position);
+	dist2 = vec2_dot(delta_dist, delta_dist);
+	printf("Dist2: %f\n", dist2);
+	if(dist2 > (MAX_INTERACT_DIST * MAX_INTERACT_DIST))
+		return;
+	
+	Entity *hovered = ent_hover(mouse_click);
+	if(!hovered)
+		return;
+
+	EntityObject *obj = CONTAINER_OF(hovered, EntityObject, data);
+	if(!obj->interface->mouse_interact)
+		return;
+
+	obj->interface->mouse_interact(hovered, who, mouse_click);
 }

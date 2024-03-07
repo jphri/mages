@@ -17,6 +17,7 @@
 #include "../util.h"
 #include "../audio.h"
 #include "../events.h"
+#include "SDL_events.h"
 
 
 static void event_receiver(Event event, const void *data);
@@ -27,7 +28,6 @@ static Map *map;
 static Subscriber *level_subscriber;
 static vec2 camera_position;
 static vec2 mouse_pos;
-static float time;
 
 static Door *door_test;
 
@@ -95,16 +95,6 @@ GAME_STATE_LEVEL_update(float delta)
 
 		gfx_set_camera(camera_position, (vec2){ 32.0, 32.0 });
 	}
-
-	time += delta; 
-	if(time > 2.0) {
-		time = 0;
-		if(ent_door_is_open(door_test)) {
-			ent_door_close(door_test);
-		} else {
-			ent_door_open(door_test);
-		}
-	}
 }
 
 void
@@ -134,7 +124,14 @@ GAME_STATE_LEVEL_mouse_move(SDL_Event *event)
 	}
 }
 
-void GAME_STATE_LEVEL_mouse_button(SDL_Event *event) { (void)event; }
+void 
+GAME_STATE_LEVEL_mouse_button(SDL_Event *event)
+{ 
+	if(event->type == SDL_MOUSEBUTTONDOWN && event->button.button == SDL_BUTTON_RIGHT) {
+		gfx_pixel_to_world((vec2){ event->button.x, event->button.y }, mouse_pos);
+		ent_mouse_interact(&GLOBAL.player->player, mouse_pos);
+	}
+}
 
 void 
 GAME_STATE_LEVEL_keyboard(SDL_Event *event) 
