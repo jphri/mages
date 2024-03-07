@@ -12,9 +12,10 @@
 #include "graphics.h"
 #include "global.h"
 
-typedef struct {
-	SceneObjectID next, prev;
-	SceneObjectID next_layer, prev_layer;
+typedef struct SceneObjectPrivData SceneObjectPrivData;
+struct SceneObjectPrivData {
+	SceneObjectPrivData *next, *prev;
+	SceneObjectPrivData *next_layer, *prev_layer;
 	SceneObjectType type;
 	int layer;
 	union {
@@ -22,7 +23,7 @@ typedef struct {
 		SceneText   text;
 		SceneAnimatedSprite anim;
 	} data;
-} SceneObjectPrivData;
+};
 
 typedef struct {
 	SpriteType type;
@@ -58,62 +59,64 @@ static inline Frame *calculate_frame_animation(SceneAnimatedSprite *sprite)
 	return &animations[sprite->animation].frames[frame];
 }
 
-static SceneObjectID   layer_objects[SCENE_LAYERS];
+static SceneObjectPrivData   *layer_objects[SCENE_LAYERS];
 static GraphicsTileMap layer_tmaps[SCENE_LAYERS];
 static uint64_t        layer_tmap_set;
-static ObjectAllocator objects;
+static ObjectPool objects;
 
 #define PRIVDATA(ID) ((SceneObjectPrivData*)objalloc_data(&objects, ID))
 #define OBJECT_DATA(ID) ((SceneObjectPrivData*)objalloc_data(&objects, ID))
 
-static inline void insert_object_layer(SceneObjectID id) 
+static inline void insert_object_layer(SceneObjectPrivData *object) 
 {
-	int layer_id = PRIVDATA(id)->layer;
+	int layer_id = object->layer;
 	
-	PRIVDATA(id)->next_layer = layer_objects[layer_id];
-	PRIVDATA(id)->prev_layer = 0;
+	object->next_layer = layer_objects[layer_id];
+	object->prev_layer = NULL;
 
 	if(layer_objects[layer_id])
-		PRIVDATA(layer_objects[layer_id])->prev_layer = id;
-	layer_objects[layer_id] = id;
+		layer_objects[layer_id]->prev_layer = object;
+	layer_objects[layer_id] = object;
 }
 
-static inline void remove_object_layer(SceneObjectID id) 
+static inline void remove_object_layer(SceneObjectPrivData *object) 
 {
-	SceneObjectID next = PRIVDATA(id)->next_layer,
-				  prev = PRIVDATA(id)->prev_layer;
-	int lay            = PRIVDATA(id)->layer;
+	SceneObjectPrivData *next = object->next_layer,
+				  *prev = object->prev_layer;
+	int lay            = object->layer;
 
-	if(next) PRIVDATA(next)->prev_layer = PRIVDATA(id)->prev_layer;
-	if(prev) PRIVDATA(prev)->next_layer = PRIVDATA(id)->next_layer;
-	if(layer_objects[lay] == id) layer_objects[lay] = next;
+	if(next) next->prev_layer = object->prev_layer;
+	if(prev) prev->next_layer = object->next_layer;
+	if(layer_objects[lay] == object) layer_objects[lay] = next;
 }
 
-static SceneObjectID new_object(SceneObjectType type, int layer) 
+static SceneObjectPrivData *
+new_object(SceneObjectType type, int layer) 
 {
-	SceneObjectID id = objalloc_alloc(&objects);
-	PRIVDATA(id)->type = type;
-	PRIVDATA(id)->layer = layer;
-	insert_object_layer(id);
+	SceneObjectPrivData *object = objpool_new(&objects);
+	object->type = type;
+	object->layer = layer;
+	insert_object_layer(object);
 
-	return id;
+	return object;
 }
 
-static void del_object(SceneObjectID id) 
+static void del_object(SceneObjectPrivData *object) 
 {
-	objalloc_free(&objects, id);
+	objpool_free(object);
 }
 
-static void cleanup_callback(ObjectAllocator *alloc, ObjectID id) 
+static void 
+cleanup_callback(ObjectPool *pool, void *ptr) 
 {
-	(void)alloc;
-	remove_object_layer(id);
+	(void)pool;
+	remove_object_layer(ptr);
 }
 
 void
 gfx_scene_setup(void)
 {
-	objalloc_init_allocator(&objects, sizeof(SceneObjectPrivData), cache_aligned_allocator());
+	objpool_init(&objects, sizeof(SceneObjectPrivData), DEFAULT_ALIGNMENT);
 	objects.clean_cbk = cleanup_callback;
 	memset(layer_objects, 0, sizeof(layer_objects));
 }
@@ -126,99 +129,77 @@ gfx_scene_reset(void)
 		layer_objects[i] = 0;
 		gfx_tmap_free(&layer_tmaps[i]);
 	}
-	objalloc_reset(&objects);
+	objpool_reset(&objects);
 }
 
 void 
 gfx_scene_draw(void)
 {
-	objalloc_clean(&objects);
+	objpool_clean(&objects);
 	for(int i = 0; i < SCENE_LAYERS; i++) {
-		SceneSpriteID object_id = layer_objects[i];
 		gfx_draw_begin(layer_tmap_set & (1 << i) ? &layer_tmaps[i] : NULL);
+		SceneObjectPrivData *object_id = layer_objects[i];
 		while(object_id) {
-			SceneSprite *ss = gfx_scene_spr(object_id);
-			SceneText *tt = gfx_scene_text(object_id);
-			SceneAnimatedSprite *as = gfx_scene_animspr(object_id);
 			TextureStamp stamp;
 			Frame *frame;
 
-			switch(PRIVDATA(object_id)->type) {
+			switch(object_id->type) {
 			case SCENE_OBJECT_SPRITE:
-				stamp = get_sprite(ss->type, ss->sprite_x, ss->sprite_y);
-				gfx_draw_texture_rect(&stamp, ss->position, ss->half_size, ss->rotation, ss->color);
+				stamp = get_sprite(object_id->data.sprite.type, object_id->data.sprite.sprite_x, object_id->data.sprite.sprite_y);
+				gfx_draw_texture_rect(&stamp, object_id->data.sprite.position, object_id->data.sprite.half_size, object_id->data.sprite.rotation, object_id->data.sprite.color);
 				break;
 			case SCENE_OBJECT_TEXT:
 				gfx_draw_font2(FONT_ROBOTO,
-						tt->position,
-						tt->char_size[0],
-						tt->color,
+						object_id->data.text.position,
+						object_id->data.text.char_size[0],
+						object_id->data.text.color,
 						"%s",
-						to_ptr(tt->text_ptr));
+						object_id->data.text.text_ptr);
 				break;
 			case SCENE_OBJECT_ANIMATED_SPRITE:
-				frame = calculate_frame_animation(as);
+				frame = calculate_frame_animation(&object_id->data.anim);
 				stamp = get_sprite(frame->type, frame->sprite_x, frame->sprite_y);
-				gfx_draw_texture_rect(&stamp, as->position, as->half_size, as->rotation, as->color);
+				gfx_draw_texture_rect(&stamp, object_id->data.anim.position, object_id->data.anim.half_size, object_id->data.anim.rotation, object_id->data.anim.color);
 				break;
 			default: 
 				assert(0 && "invalid object type");
 			}
-			object_id = PRIVDATA(object_id)->next_layer;
+			object_id = object_id->next_layer;
 		}
 		gfx_draw_end();
 	}
 }
 
-SceneSpriteID  
+SceneObject *  
 gfx_scene_new_obj(int layer, SceneObjectType type)
 {
-	return new_object(type, layer);
+	SceneObjectPrivData *obj = new_object(type, layer);
+	return &obj->data;
 }
 
 void 
-gfx_scene_del_obj(SceneObjectID obj_id) 
+gfx_scene_del_obj(SceneObject *obj) 
 {
-	del_object(obj_id);
+	del_object(CONTAINER_OF(obj, SceneObjectPrivData, data));
 }
 
 void
 gfx_scene_update(float delta)
 {
 	for(int i = 0; i < SCENE_LAYERS; i++) {
-		SceneSpriteID object_id = layer_objects[i];
+		SceneObjectPrivData *object_id = layer_objects[i];
 
 		while(object_id) {
-			SceneAnimatedSprite *as = gfx_scene_animspr(object_id);
-
-			switch(PRIVDATA(object_id)->type) {
+			switch(object_id->type) {
 			case SCENE_OBJECT_ANIMATED_SPRITE:
-				as->time += delta;
+				object_id->data.anim.time += delta;
 			default:
 				do {} while(0);
 			}
 
-			object_id = PRIVDATA(object_id)->next_layer;
+			object_id = object_id->next_layer;
 		}
 	}
-}
-
-SceneSprite *
-gfx_scene_spr(SceneSpriteID spr_id)
-{
-	return &OBJECT_DATA(spr_id)->data.sprite;
-}
-
-SceneText *
-gfx_scene_text(SceneTextID text_id)
-{
-	return &OBJECT_DATA(text_id)->data.text;
-}
-
-SceneAnimatedSprite *
-gfx_scene_animspr(SceneAnimatedSpriteID text_id)
-{
-	return &OBJECT_DATA(text_id)->data.anim;
 }
 
 void

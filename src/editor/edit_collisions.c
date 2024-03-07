@@ -31,8 +31,8 @@ static void cursor_drag(int x, int y);
 static void cursor_end(int x, int y);
 static void cursor_draw(void);
 
-static void layer_slider_cbk(UIObject obj, void *userptr);
-static void cursor_cbk(UIObject obj, void *userptr);
+static void layer_slider_cbk(UIObject *obj, void *userptr);
+static void cursor_cbk(UIObject *obj, void *userptr);
 
 static void rect_begin(int x, int y);
 static void rect_drag(int x, int y);
@@ -74,11 +74,11 @@ static CursorMode current_cursor;
 static ArrayBuffer fill_stack;
 static ArrayBuffer fill_layer_helper;
 
-static UIObject general_root;
-static UIObject after_layer_alpha_slider;
-static UIObject cursors_ui;
+static UIObject *general_root;
+static UIObject *after_layer_alpha_slider;
+static UIObject *cursors_ui;
 
-static UIObject cursor_checkboxes[LAST_CURSOR_MODE];
+static UIObject *cursor_checkboxes[LAST_CURSOR_MODE];
 
 void
 collision_init(void)
@@ -88,10 +88,10 @@ collision_init(void)
 
 	general_root = ui_new_object(0, UI_ROOT);
 	{
-		UIObject general_layout = ui_layout_new();
+		UIObject *general_layout = ui_layout_new();
 		ui_layout_set_order(general_layout, UI_LAYOUT_VERTICAL);
 		{
-			UIObject sublayout, label;
+			UIObject *sublayout, *label;
 
 			#define BEGIN_SUB(LABEL_STRING) \
 			sublayout = ui_layout_new(); \
@@ -106,7 +106,7 @@ collision_init(void)
 			#define END_SUB ui_layout_append(general_layout, sublayout)
 
 			BEGIN_SUB("Layer: ") {
-				UIObject slider_size = ui_slider_new();
+				UIObject *slider_size = ui_slider_new();
 				ui_slider_set_min_value(slider_size, 0.0);
 				ui_slider_set_max_value(slider_size, MAX_LAYERS - 1);
 				ui_slider_set_precision(slider_size, MAX_LAYERS - 1);
@@ -140,7 +140,7 @@ collision_init(void)
 			ui_checkbox_set_toggled(cursor_checkboxes[i], (CursorMode)i == current_cursor);
 			ui_layout_append(cursors_ui, cursor_checkboxes[i]);
 
-			UIObject img = ui_image_new();
+			UIObject *img = ui_image_new();
 			ui_image_set_keep_aspect(img, true);
 			ui_image_set_stamp(img, &cursor_info[i].image);
 			ui_layout_append(cursors_ui, img);
@@ -305,17 +305,17 @@ cursor_draw(void)
 }
 
 void
-layer_slider_cbk(UIObject slider, void *userptr)
+layer_slider_cbk(UIObject *slider, void *userptr)
 {
 	(void)userptr;
 	current_layer = ui_slider_get_value(slider);
 }
 
 void 
-cursor_cbk(UIObject obj, void *userptr)
+cursor_cbk(UIObject *obj, void *userptr)
 {
 	(void)obj;
-	UIObject *self = userptr;
+	UIObject **self = userptr;
 	current_cursor = self - cursor_checkboxes;
 	for(int i = 0; i < LAST_CURSOR_MODE; i++) {
 		ui_checkbox_set_toggled(cursor_checkboxes[i], &cursor_checkboxes[i] == self);

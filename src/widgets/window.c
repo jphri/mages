@@ -3,21 +3,21 @@
 
 #define WINDOW_TITLE_HEIGHT 14
 
-static void window_mouse_button(UIObject window, UIEvent *event);
-static void window_mouse_move(UIObject window, UIEvent *event);
+static void window_mouse_button(UIObject *window, UIEvent *event);
+static void window_mouse_move(UIObject *window, UIEvent *event);
 
-static void window_draw(UIObject window, Rectangle *all_window_rect);
+static void window_draw(UIObject *window, Rectangle *all_window_rect);
 //static void window_draw_title(UI_WINDOW_struct *window, Rectangle *title_rect);
 
 #define WINDOW(obj) WIDGET(UI_WINDOW, obj)
 
-UIObject
+UIObject *
 ui_window_new(void)
 {
-	UIObject window = ui_new_object(0, UI_WINDOW);
-	UIObject title_label = ui_label_new();
-	UIObject title_layout = ui_layout_new();
-	UIObject child_root = ui_new_object(window, UI_ROOT);
+	UIObject *window = ui_new_object(0, UI_WINDOW);
+	UIObject *title_label = ui_label_new();
+	UIObject *title_layout = ui_layout_new();
+	UIObject *child_root = ui_new_object(window, UI_ROOT);
 
 	ui_label_set_text(title_label, "Window");
 	ui_label_set_color(title_label, (vec4){ 1.0, 1.0, 1.0, 1.0 });
@@ -38,43 +38,43 @@ ui_window_new(void)
 }
 
 void
-ui_window_set_size(UIObject window, vec2 size)
+ui_window_set_size(UIObject *window, vec2 size)
 {
-	UI_WINDOW_struct *wdata = ui_data(window);
+	UI_WINDOW_struct *wdata = WIDGET(UI_WINDOW, window);
 	vec2_dup(wdata->window_rect.half_size, size);
 }
 
 void
-ui_window_set_position(UIObject window, UIOrigin origin, vec2 position)
+ui_window_set_position(UIObject *window, UIOrigin origin, vec2 position)
 {
-	UI_WINDOW_struct *wdata = ui_data(window);
+	UI_WINDOW_struct *wdata = WIDGET(UI_WINDOW, window);
 	vec2_dup(wdata->position.position, position);
 	wdata->position.origin = origin;
 }
 
 void
-ui_window_set_background(UIObject window, vec4 background)
+ui_window_set_background(UIObject *window, vec4 background)
 {
-	UI_WINDOW_struct *wdata = ui_data(window);
+	UI_WINDOW_struct *wdata = WIDGET(UI_WINDOW, window);
 	vec4_dup(wdata->background, background);
 }
 
 void
-ui_window_set_border(UIObject window, vec2 border)
+ui_window_set_border(UIObject *window, vec2 border)
 {
-	UI_WINDOW_struct *wdata = ui_data(window);
+	UI_WINDOW_struct *wdata = WIDGET(UI_WINDOW, window);
 	vec2_dup(wdata->border, border);
 }
 
 void
-ui_window_set_title(UIObject window, const char *title)
+ui_window_set_title(UIObject *window, const char *title)
 {
-	UI_WINDOW_struct *wdata = ui_data(window);
+	UI_WINDOW_struct *wdata = WIDGET(UI_WINDOW, window);
 	ui_label_set_text(wdata->title_label, title);
 }
 
 void
-UI_WINDOW_event(UIObject obj, UIEvent *event, Rectangle *rect)
+UI_WINDOW_event(UIObject *obj, UIEvent *event, Rectangle *rect)
 {
 	Rectangle all_rect;
 	Rectangle title_rect;
@@ -127,25 +127,25 @@ UI_WINDOW_event(UIObject obj, UIEvent *event, Rectangle *rect)
 }
 
 void
-ui_window_append_child(UIObject window, UIObject child)
+ui_window_append_child(UIObject *window, UIObject *child)
 {
 	ui_child_append(WINDOW(window)->child_root, child);
 }
 
 void
-ui_window_append_prepend(UIObject window, UIObject child)
+ui_window_append_prepend(UIObject *window, UIObject *child)
 {
 	ui_child_append(WINDOW(window)->child_root, child);
 }
 
 void
-ui_window_set_decorated(UIObject window, bool decorated)
+ui_window_set_decorated(UIObject *window, bool decorated)
 {
 	WINDOW(window)->decorated = decorated;
 }
 
 void
-window_draw(UIObject window, Rectangle *all_window_rect)
+window_draw(UIObject *window, Rectangle *all_window_rect)
 {
 	Rectangle rect = *all_window_rect;
 	vec2_sub(rect.half_size, rect.half_size, WINDOW(window)->border);
@@ -168,7 +168,7 @@ window_draw(UIObject window, Rectangle *all_window_rect)
 
 
 void 
-window_mouse_button(UIObject window, UIEvent *event)
+window_mouse_button(UIObject *window, UIEvent *event)
 {
 	if(ui_get_active() == 0) {
 		if(event->data.mouse.button == UI_MOUSE_LEFT) {
@@ -188,7 +188,7 @@ window_mouse_button(UIObject window, UIEvent *event)
 }
 
 void
-window_mouse_move(UIObject window, UIEvent *event)
+window_mouse_move(UIObject *window, UIEvent *event)
 {
 	if(ui_get_active() == WINDOW(window)->title_layout) {
 		vec2 delta;

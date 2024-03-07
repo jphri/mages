@@ -3,28 +3,28 @@
 
 #define IMAGE(OBJ) WIDGET(UI_IMAGE, OBJ)
 
-UIObject
+UIObject *
 ui_image_new(void)
 {
-	UIObject obj = ui_new_object(0, UI_IMAGE);
+	UIObject *obj = ui_new_object(0, UI_IMAGE);
 	ui_image_set_stamp(obj, &(TextureStamp){0});
 	return obj;
 }
 
 void
-ui_image_set_stamp(UIObject image, TextureStamp *stamp)
+ui_image_set_stamp(UIObject *image, TextureStamp *stamp)
 {
 	IMAGE(image)->image_stamp = *stamp;
 }
 
 void
-ui_image_set_keep_aspect(UIObject image, bool keep)
+ui_image_set_keep_aspect(UIObject *image, bool keep)
 {
 	IMAGE(image)->keep_aspect = keep;
 }
 
 void
-UI_IMAGE_event(UIObject image, UIEvent *event, Rectangle *rect)
+UI_IMAGE_event(UIObject *image, UIEvent *event, Rectangle *rect)
 {
 	if(event->event_type != UI_DRAW)
 		return;

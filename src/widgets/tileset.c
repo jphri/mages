@@ -5,19 +5,19 @@
 
 #define TSET(OBJ) WIDGET(UI_TILESET_SEL, OBJ)
 
-static void process_scrolls(UIObject tileset, UIEvent *ev, Rectangle *rect);
-static void draw_tileset(UIObject tileset, Rectangle *rect);
-static void tileset_button(UIObject tileset, UIEvent *ev, Rectangle *rect);
+static void process_scrolls(UIObject *tileset, UIEvent *ev, Rectangle *rect);
+static void draw_tileset(UIObject *tileset, Rectangle *rect);
+static void tileset_button(UIObject *tileset, UIEvent *ev, Rectangle *rect);
 
-static void vscroll_cbk(UIObject vscroll, void *ptr);
-static void hscroll_cbk(UIObject hscroll, void *ptr);
+static void vscroll_cbk(UIObject *vscroll, void *ptr);
+static void hscroll_cbk(UIObject *hscroll, void *ptr);
 
-UIObject 
+UIObject *
 ui_tileset_sel_new(void)
 {
-	UIObject tileset =  ui_new_object(0, UI_TILESET_SEL);
-	UIObject hscroll = ui_slider_new();
-	UIObject vscroll = ui_slider_new();
+	UIObject *tileset =  ui_new_object(0, UI_TILESET_SEL);
+	UIObject *hscroll = ui_slider_new();
+	UIObject *vscroll = ui_slider_new();
 
 	ui_slider_enable_label(hscroll, false);
 	ui_slider_enable_label(vscroll, false);
@@ -38,20 +38,20 @@ ui_tileset_sel_new(void)
 }
 
 void
-ui_tileset_sel_set_cbk(UIObject tilesel, void *userptr, void (*cbk)(UIObject obj, void *userptr))
+ui_tileset_sel_set_cbk(UIObject *tilesel, void *userptr, void (*cbk)(UIObject *obj, void *userptr))
 {
 	TSET(tilesel)->userptr = userptr;
 	TSET(tilesel)->cbk = cbk;
 }
 
 int
-ui_tileset_sel_get_selected(UIObject tilesel)
+ui_tileset_sel_get_selected(UIObject *tilesel)
 {
 	return TSET(tilesel)->selected;
 }
 
 void
-UI_TILESET_SEL_event(UIObject obj, UIEvent *ev, Rectangle *r)
+UI_TILESET_SEL_event(UIObject *obj, UIEvent *ev, Rectangle *r)
 {
 	(void)obj;
 	ui_default_mouse_handle(obj, ev, r);
@@ -74,7 +74,7 @@ UI_TILESET_SEL_event(UIObject obj, UIEvent *ev, Rectangle *r)
 }
 
 void
-draw_tileset(UIObject obj, Rectangle *rect)
+draw_tileset(UIObject *obj, Rectangle *rect)
 {
 	vec2 line_min, line_max;
 	rect_boundaries(line_min, line_max, rect);
@@ -126,7 +126,7 @@ draw_tileset(UIObject obj, Rectangle *rect)
 
 
 void 
-tileset_button(UIObject obj, UIEvent *ev, Rectangle *rect)
+tileset_button(UIObject *obj, UIEvent *ev, Rectangle *rect)
 {
 	vec2 line_min, line_max;
 	Rectangle r;
@@ -155,7 +155,7 @@ tileset_button(UIObject obj, UIEvent *ev, Rectangle *rect)
 }
 
 void
-process_scrolls(UIObject obj, UIEvent *ev, Rectangle *r)
+process_scrolls(UIObject *obj, UIEvent *ev, Rectangle *r)
 {
 	vec2 line_min, line_max;
 	rect_boundaries(line_min, line_max, r);
@@ -198,18 +198,18 @@ process_scrolls(UIObject obj, UIEvent *ev, Rectangle *r)
 }
 
 void 
-vscroll_cbk(UIObject vscroll, void *ptr)
+vscroll_cbk(UIObject *vscroll, void *ptr)
 {
 	(void)ptr;
 
-	UIObject tset = ui_get_parent(vscroll);
+	UIObject *tset = ui_get_parent(vscroll);
 	TSET(tset)->offset[1] = ui_slider_get_value(vscroll);
 }
 
-void hscroll_cbk(UIObject hscroll, void *ptr)
+void hscroll_cbk(UIObject *hscroll, void *ptr)
 {
 	(void)ptr;
 
-	UIObject tset = ui_get_parent(hscroll);
+	UIObject *tset = ui_get_parent(hscroll);
 	TSET(tset)->offset[0] = ui_slider_get_value(hscroll);
 }

@@ -5,6 +5,7 @@
 
 #include "vecmath.h"
 #include "game_objects.h"
+#include "defs.h"
 
 #define GRID_TILE_SIZE 16
 
@@ -29,16 +30,11 @@ enum {
 
 typedef struct {
 	bool active;
-	BodyID body1, body2;
+	Body *body1, *body2;
 	vec2 normal, pierce;
 } Contact;
 
-typedef struct {
-	BodyID body1, body2;
-	vec2 normal, pierce;
-} SolveInfo;
-
-typedef struct {
+struct Body {
 	vec2 accel;
 	vec2 position;
 	vec2 half_size;
@@ -52,11 +48,16 @@ typedef struct {
 	unsigned int collision_layer;
 	unsigned long long int collision_mask;
 
-	EntityID entity;
-	void (*pre_solve)(BodyID self, BodyID other, Contact *contact);
-
+	void (*pre_solve)(Body *self, Body *other, Contact *contact);
 	bool is_static, no_update;
-} Body;
+
+	Entity *entity;
+};
+
+typedef struct {
+	Body *body1, *body2;
+	vec2 normal, pierce;
+} SolveInfo;
 
 void phx_init(void);
 void phx_end(void);
@@ -64,10 +65,8 @@ void phx_reset(void);
 
 void phx_set_grid_size(int w, int h);
 
-BodyID phx_new(void);
-void   phx_del(BodyID self);
-void   phx_update(float delta);
-void   phx_draw(void);
-Body  *phx_data(BodyID self);
+Body *phx_new(void);
+void  phx_del(Body *body);
+void  phx_update(float delta);
 
 #endif

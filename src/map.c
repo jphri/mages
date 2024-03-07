@@ -169,19 +169,19 @@ void
 map_set_phx_scene(Map *map) 
 {
 	for(CollisionData *c = map->collision; c; c = c->next) {
-		BodyID body = phx_new();
-		vec2_dup(phx_data(body)->position,  VEC2_DUP(c->position));
-		vec2_dup(phx_data(body)->half_size, VEC2_DUP(c->half_size));
+		Body *body = phx_new();
+		vec2_dup(body->position,  VEC2_DUP(c->position));
+		vec2_dup(body->half_size, VEC2_DUP(c->half_size));
 		
-		phx_data(body)->collision_layer = PHX_LAYER_MAP_BIT;
-		phx_data(body)->solve_layer     = PHX_LAYER_MAP_BIT;
-		phx_data(body)->collision_mask  = 0;
-		phx_data(body)->solve_mask      = 0;
-		phx_data(body)->pre_solve       = NULL;
-		phx_data(body)->no_update       = false;
-		phx_data(body)->is_static       = true;
-		phx_data(body)->mass            = 0.0;
-		phx_data(body)->restitution     = 0.0;
+		body->collision_layer = PHX_LAYER_MAP_BIT;
+		body->solve_layer     = PHX_LAYER_MAP_BIT;
+		body->collision_mask  = 0;
+		body->solve_mask      = 0;
+		body->entity          = NULL;
+		body->no_update       = false;
+		body->is_static       = true;
+		body->mass            = 0.0;
+		body->restitution     = 0.0;
 	}
 }
 

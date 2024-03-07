@@ -1,38 +1,38 @@
 #include "../ui.h"
 #include "../graphics.h"
 
-static void button_motion(UIObject obj, UIEvent *event, Rectangle *rect);
-static void button_mouse(UIObject obj, UIEvent *event);
-static void button_draw(UIObject obj, UIEvent *event, Rectangle *rect);
+static void button_motion(UIObject *obj, UIEvent *event, Rectangle *rect);
+static void button_mouse(UIObject *obj, UIEvent *event);
+static void button_draw(UIObject *obj, UIEvent *event, Rectangle *rect);
 
-UIObject 
+UIObject *
 ui_button_new(void)
 {
-	UIObject obj = ui_new_object(0, UI_BUTTON);
+	UIObject *obj = ui_new_object(0, UI_BUTTON);
 	ui_button_set_label(obj, 0);
 	ui_button_set_callback(obj, NULL, NULL);
 	return obj;
 }
 
 void
-ui_button_set_label(UIObject object, UIObject label)
+ui_button_set_label(UIObject *object, UIObject *label)
 {
-	UI_BUTTON_struct *btn = ui_data(object);
+	UI_BUTTON_struct *btn = WIDGET(UI_BUTTON, object);
 	if(label)
 		ui_child_append(object, label);
 	btn->label = label;
 }
 
 void
-ui_button_set_callback(UIObject object, void *ptr, void(*callback)(UIObject button_obj, void *user_ptr))
+ui_button_set_callback(UIObject *object, void *ptr, void(*callback)(UIObject *button_obj, void *user_ptr))
 {
-	UI_BUTTON_struct *btn = ui_data(object);
+	UI_BUTTON_struct *btn = WIDGET(UI_BUTTON, object);
 	btn->user_ptr = ptr;
 	btn->callback = callback;
 }
 
 void 
-UI_BUTTON_event(UIObject obj, UIEvent *ev, Rectangle *content)
+UI_BUTTON_event(UIObject *obj, UIEvent *ev, Rectangle *content)
 {
 	ui_default_mouse_handle(obj, ev, content);
 	switch(ev->event_type) {
@@ -54,7 +54,7 @@ UI_BUTTON_event(UIObject obj, UIEvent *ev, Rectangle *content)
 }
 
 static void
-button_motion(UIObject obj, UIEvent *event, Rectangle *rect)
+button_motion(UIObject *obj, UIEvent *event, Rectangle *rect)
 {
 	(void)obj;
 	(void)event;
@@ -62,9 +62,9 @@ button_motion(UIObject obj, UIEvent *event, Rectangle *rect)
 }
 
 static void
-button_mouse(UIObject obj, UIEvent *event)
+button_mouse(UIObject *obj, UIEvent *event)
 {
-	UI_BUTTON_struct *data = ui_data(obj);
+	UI_BUTTON_struct *data = WIDGET(UI_BUTTON, obj);
 
 	if(ui_get_active() == 0) {
 		if(ui_get_hot() == obj) {
@@ -83,9 +83,9 @@ button_mouse(UIObject obj, UIEvent *event)
 }
 
 static void 
-button_draw(UIObject obj, UIEvent *event, Rectangle *rect)
+button_draw(UIObject *obj, UIEvent *event, Rectangle *rect)
 {
-	UI_BUTTON_struct *button = ui_data(obj);
+	UI_BUTTON_struct *button = WIDGET(UI_BUTTON, obj);
 
 	if(ui_get_active() == obj) {
 		gfx_draw_texture_rect(gfx_white_texture(), rect->position, rect->half_size, 0.0, (vec4){ 0.4, 0.4, 0.4, 1.0 });

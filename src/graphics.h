@@ -76,7 +76,7 @@ typedef struct {
 } SceneAnimatedSprite;
 
 typedef struct {
-	RelPtr text_ptr;
+	const char *text_ptr;
 	vec2 position;
 	vec2 char_size;
 	vec4 color;
@@ -124,12 +124,11 @@ void gfx_scene_cleanup(void);
 void gfx_scene_draw(void);
 void gfx_scene_reset(void);
 
-SceneObjectID gfx_scene_new_obj(int layer, SceneObjectType type);
-void          gfx_scene_del_obj(SceneObjectID id);
-void          gfx_scene_update(float delta);
-SceneSprite         *gfx_scene_spr(SceneSpriteID spr_id);
-SceneText           *gfx_scene_text(SceneTextID text_id);
-SceneAnimatedSprite *gfx_scene_animspr(SceneAnimatedSpriteID anim_id);
+typedef void SceneObject;
+
+SceneObject *gfx_scene_new_obj(int layer, SceneObjectType type);
+void         gfx_scene_del_obj(SceneObject *object);
+void         gfx_scene_update(float delta);
 
 void gfx_scene_set_tilemap(int layer, SpriteType atlas, int w, int h, int *data);
 

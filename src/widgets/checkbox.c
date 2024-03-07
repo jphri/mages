@@ -2,13 +2,13 @@
 
 #define CHECKBOX(obj) WIDGET(UI_CHECKBOX, obj)
 
-static void checkbox_draw(UIObject obj, Rectangle *rect);
-static void checkbox_button(UIObject obj, UIEvent *event);
+static void checkbox_draw(UIObject *obj, Rectangle *rect);
+static void checkbox_button(UIObject *obj, UIEvent *event);
 
-UIObject
+UIObject *
 ui_checkbox_new(void)
 {
-	UIObject obj = ui_new_object(0, UI_CHECKBOX);
+	UIObject *obj = ui_new_object(0, UI_CHECKBOX);
 	CHECKBOX(obj)->callback = NULL;
 	CHECKBOX(obj)->toggled = 0;
 	CHECKBOX(obj)->userptr = NULL;
@@ -16,26 +16,26 @@ ui_checkbox_new(void)
 }
 
 void
-ui_checkbox_set_callback(UIObject obj, void *userptr, void (*cbk)(UIObject, void *))
+ui_checkbox_set_callback(UIObject *obj, void *userptr, void (*cbk)(UIObject *, void *))
 {
 	CHECKBOX(obj)->callback = cbk;
 	CHECKBOX(obj)->userptr = userptr;
 }
 
 bool
-ui_checkbox_get_toggled(UIObject obj)
+ui_checkbox_get_toggled(UIObject *obj)
 {
 	return CHECKBOX(obj)->toggled;
 }
 
 void
-ui_checkbox_set_toggled(UIObject obj, bool toggled)
+ui_checkbox_set_toggled(UIObject *obj, bool toggled)
 {
 	CHECKBOX(obj)->toggled = toggled;
 }
 
 void
-UI_CHECKBOX_event(UIObject obj, UIEvent *event, Rectangle *rect)
+UI_CHECKBOX_event(UIObject *obj, UIEvent *event, Rectangle *rect)
 {
 	Rectangle actual_rect = *rect;
 	float aspect = fminf(actual_rect.half_size[0], actual_rect.half_size[1]);
@@ -51,14 +51,14 @@ UI_CHECKBOX_event(UIObject obj, UIEvent *event, Rectangle *rect)
 }
 
 void
-checkbox_draw(UIObject obj, Rectangle *rect)
+checkbox_draw(UIObject *obj, Rectangle *rect)
 {
 	TextureStamp stamp = get_sprite(SPRITE_UI, 0 + CHECKBOX(obj)->toggled, 1);
 	gfx_draw_texture_rect(&stamp, rect->position, rect->half_size, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 }
 
 void
-checkbox_button(UIObject obj, UIEvent *event)
+checkbox_button(UIObject *obj, UIEvent *event)
 {
 	if(ui_get_active() == 0) {
 		if(ui_get_hot() == obj) {

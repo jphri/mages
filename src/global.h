@@ -4,13 +4,14 @@
 #include <SDL.h>
 #include "game_objects.h"
 #include "util.h"
+#include "defs.h"
 
 typedef struct {
 	SDL_Renderer *renderer;
 	SDL_Window *window;
 	SDL_GLContext glctx;
-	
-	EntityID player_id;
+
+	Entity *player;
 } Global;
 
 extern Global GLOBAL;

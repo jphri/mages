@@ -3,13 +3,13 @@
 #include "../ui.h"
 #include "../graphics.h"
 
-static void tinput_draw(UIObject input, Rectangle *rect);
-static void keyboard_event(UIObject obj, UIEvent *event);
+static void tinput_draw(UIObject *input, Rectangle *rect);
+static void keyboard_event(UIObject *obj, UIEvent *event);
 
-UIObject
+UIObject *
 ui_text_input_new(void)
 {
-	UIObject obj = ui_new_object(0, UI_TEXT_INPUT);
+	UIObject *obj = ui_new_object(0, UI_TEXT_INPUT);
 	arrbuf_init(&WIDGET(UI_TEXT_INPUT, obj)->text_buffer);
 	WIDGET(UI_TEXT_INPUT, obj)->carot = 0;
 	WIDGET(UI_TEXT_INPUT, obj)->offset = 0;
@@ -18,7 +18,7 @@ ui_text_input_new(void)
 }
 
 StrView
-ui_text_input_get_str(UIObject obj)
+ui_text_input_get_str(UIObject *obj)
 {
 	void *buffer = WIDGET(UI_TEXT_INPUT, obj)->text_buffer.data;
 	size_t size  = WIDGET(UI_TEXT_INPUT, obj)->text_buffer.size;
@@ -26,14 +26,14 @@ ui_text_input_get_str(UIObject obj)
 }
 
 void
-ui_text_input_set_cbk(UIObject obj, void *userptr, void (*cbk)(UIObject, void*))
+ui_text_input_set_cbk(UIObject *obj, void *userptr, void (*cbk)(UIObject *, void*))
 {
 	WIDGET(UI_TEXT_INPUT, obj)->cbk = cbk;
 	WIDGET(UI_TEXT_INPUT, obj)->userptr = userptr;
 }
 
 void
-ui_text_input_clear(UIObject obj)
+ui_text_input_clear(UIObject *obj)
 {
 	arrbuf_clear(&WIDGET(UI_TEXT_INPUT, obj)->text_buffer);
 	WIDGET(UI_TEXT_INPUT, obj)->carot = 0;
@@ -41,7 +41,7 @@ ui_text_input_clear(UIObject obj)
 }
 
 void
-ui_text_input_set_text(UIObject obj, StrView str)
+ui_text_input_set_text(UIObject *obj, StrView str)
 {
 	ui_text_input_clear(obj);
 	arrbuf_insert(&WIDGET(UI_TEXT_INPUT, obj)->text_buffer, str.end - str.begin, str.begin);
@@ -49,13 +49,13 @@ ui_text_input_set_text(UIObject obj, StrView str)
 }
 
 void 
-ui_text_input_set_filter(UIObject obj, int (*filter)(int codepoint))
+ui_text_input_set_filter(UIObject *obj, int (*filter)(int codepoint))
 {
 	WIDGET(UI_TEXT_INPUT, obj)->filter = filter;
 }
 
 void 
-UI_TEXT_INPUT_event(UIObject obj, UIEvent *event, Rectangle *rect)
+UI_TEXT_INPUT_event(UIObject *obj, UIEvent *event, Rectangle *rect)
 {
 	switch(event->event_type) {
 	case UI_DELETE:
@@ -100,7 +100,7 @@ UI_TEXT_INPUT_event(UIObject obj, UIEvent *event, Rectangle *rect)
 }
 
 void 
-tinput_draw(UIObject input, Rectangle *rect)
+tinput_draw(UIObject *input, Rectangle *rect)
 {
 	vec2 text_position;
 	vec2 caret_position;
@@ -141,7 +141,7 @@ tinput_draw(UIObject input, Rectangle *rect)
 }
 
 void 
-keyboard_event(UIObject obj, UIEvent *event)
+keyboard_event(UIObject *obj, UIEvent *event)
 {
 	Span span;
 	StrView view;

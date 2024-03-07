@@ -61,31 +61,31 @@ enum {
 
 static int menu_shown;
 
-static UIObject new_window, new_width, new_height;
-static UIObject load_window, load_path;
-static UIObject save_window, save_path;
-static UIObject extra_window;
-static UIObject cursor_position;
+static UIObject *new_window, *new_width, *new_height;
+static UIObject *load_window, *load_path;
+static UIObject *save_window, *save_path;
+static UIObject *extra_window;
+static UIObject *cursor_position;
 
 static ArrayBuffer cursor_pos_str;
 
 static vec2 camera_offset;
 static float camera_zoom = 16.0;
 
-static void open_cbk(UIObject obj, void (*userptr));
-static void play_cbk(UIObject obj, void (*userptr));
-static void cancel_cbk(UIObject btn, void *userptr);
-static void newbtn_new_cbk(UIObject btn, void *userptr);
-static void loadbtn_load_cbk(UIObject btn, void *userptr);
-static void save_btn_cbk(UIObject btn, void *userptr);
+static void open_cbk(UIObject *obj, void (*userptr));
+static void play_cbk(UIObject *obj, void (*userptr));
+static void cancel_cbk(UIObject *btn, void *userptr);
+static void newbtn_new_cbk(UIObject *btn, void *userptr);
+static void loadbtn_load_cbk(UIObject *btn, void *userptr);
+static void save_btn_cbk(UIObject *btn, void *userptr);
 
-static void context_btn_cbk(UIObject btn, void *userptr);
-static void general_btn_cbk(UIObject btn, void *userptr);
+static void context_btn_cbk(UIObject *btn, void *userptr);
+static void general_btn_cbk(UIObject *btn, void *userptr);
 
 static void process_open_menu(void);
 static void update_cursor_pos(vec2 v);
 
-static void select_mode_cbk(UIObject obj, void *ptr)
+static void select_mode_cbk(UIObject *obj, void *ptr)
 {
 	(void)obj;
 
@@ -98,13 +98,13 @@ GAME_STATE_LEVEL_EDIT_init(void)
 {
 	arrbuf_init(&cursor_pos_str);
 
-	UIObject layout = ui_layout_new();
+	UIObject *layout = ui_layout_new();
 	ui_layout_set_order(layout, UI_LAYOUT_HORIZONTAL);
 
 	#define BUTTON_MODE(MODE, ICON_X, ICON_Y) \
 	{ \
-		UIObject btn = ui_button_new(); \
-		UIObject img = ui_image_new();  \
+		UIObject *btn = ui_button_new(); \
+		UIObject *img = ui_image_new();  \
 		ui_image_set_stamp(img, &(TextureStamp){   \
 			.texture = TEXTURE_UI, \
 			.position = { (ICON_X) / 256.0, (ICON_Y) / 256.0 }, \
@@ -122,7 +122,7 @@ GAME_STATE_LEVEL_EDIT_init(void)
 
 	#undef BUTTON_MODE
 
-	UIObject window = ui_window_new();
+	UIObject *window = ui_window_new();
 	ui_window_set_size(window, (vec2){ 80, 30 });
 	ui_window_set_position(window, UI_ORIGIN_TOP_LEFT, (vec2){ 80, 30 });
 	ui_window_set_border(window, (vec2){ 2, 2 });
@@ -130,7 +130,7 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	ui_window_append_child(window, layout);
 	ui_child_append(ui_root(), window);
 
-	UIObject cursor_position_window = ui_window_new();
+	UIObject *cursor_position_window = ui_window_new();
 	ui_window_set_size(cursor_position_window, (vec2){ 50, 15 });
 	ui_window_set_position(cursor_position_window, UI_ORIGIN_TOP_LEFT, (vec2){ 50, 60 + 15 });
 	ui_window_set_decorated(cursor_position_window, false);
@@ -143,21 +143,21 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	}
 	ui_child_append(ui_root(), cursor_position_window);
 
-	UIObject file_buttons_window = ui_window_new();
+	UIObject *file_buttons_window = ui_window_new();
 	ui_window_set_decorated(file_buttons_window, false);
 	ui_window_set_size(file_buttons_window, (vec2){ 40, 40 });
 	ui_window_set_position(file_buttons_window, UI_ORIGIN_TOP_RIGHT, (vec2){ -40, 40 });
 	{
-		UIObject layout = ui_layout_new();
+		UIObject *layout = ui_layout_new();
 		ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
 		{
-			UIObject btn;
+			UIObject *btn;
 
 			#define CREATE_BUTTON(name, userptr, cbk) \
 			btn = ui_button_new(); \
 			ui_button_set_callback(btn, userptr, cbk); \
 			{\
-				UIObject lbl = ui_label_new(); \
+				UIObject *lbl = ui_label_new(); \
 				ui_label_set_text(lbl, name); \
 				ui_label_set_color(lbl, (vec4){ 1.0, 1.0, 0.0, 1.0 }); \
 				ui_button_set_label(btn, lbl); \
@@ -180,12 +180,12 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	ui_window_set_title(new_window, "New");
 	ui_window_set_decorated(new_window, true);
 	{
-		UIObject layout = ui_layout_new();
+		UIObject *layout = ui_layout_new();
 		ui_layout_set_border(layout, 30, 30, 20, 20);
 		ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
 		ui_layout_set_fixed_size(layout, 20.0);
 		{
-			UIObject subv, lbl;
+			UIObject *subv, *lbl;
 			
 			#define SUBV(NAME_FIELD)\
 				subv = ui_layout_new(); \
@@ -215,21 +215,21 @@ GAME_STATE_LEVEL_EDIT_init(void)
 			ui_layout_set_order(subv, UI_LAYOUT_HORIZONTAL); \
 			ui_layout_set_border(subv, 5, 5, 5, 5);
 			{
-				UIObject new = ui_button_new();
+				UIObject *new = ui_button_new();
 				ui_button_set_callback(new, NULL, newbtn_new_cbk);
 				{
-					UIObject label = ui_label_new();
+					UIObject *label = ui_label_new();
 					ui_label_set_text(label, "New");
 					ui_label_set_alignment(label, UI_LABEL_ALIGN_CENTER);
 					ui_button_set_label(new, label);
 				}
 				ui_child_append(subv, new);
 
-				UIObject cancel = ui_button_new();
+				UIObject *cancel = ui_button_new();
 				ui_button_set_callback(cancel, &new_window, cancel_cbk);
 				
 				{
-					UIObject label = ui_label_new();
+					UIObject *label = ui_label_new();
 					ui_label_set_text(label, "Cancel");
 					ui_label_set_alignment(label, UI_LABEL_ALIGN_CENTER);
 					ui_button_set_label(cancel, label);
@@ -248,12 +248,12 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	ui_window_set_title(load_window, "New");
 	ui_window_set_decorated(load_window, true);
 	{
-		UIObject layout = ui_layout_new();
+		UIObject *layout = ui_layout_new();
 		ui_layout_set_border(layout, 30, 30, 20, 20);
 		ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
 		ui_layout_set_fixed_size(layout, 20.0);
 		{
-			UIObject subv, lbl;
+			UIObject *subv, *lbl;
 			
 			#define SUBV(NAME_FIELD)\
 				subv = ui_layout_new(); \
@@ -276,21 +276,21 @@ GAME_STATE_LEVEL_EDIT_init(void)
 			ui_layout_set_order(subv, UI_LAYOUT_HORIZONTAL); \
 			ui_layout_set_border(subv, 5, 5, 5, 5);
 			{
-				UIObject load = ui_button_new();
+				UIObject *load = ui_button_new();
 				ui_button_set_callback(load, NULL, loadbtn_load_cbk);
 				{
-					UIObject label = ui_label_new();
+					UIObject *label = ui_label_new();
 					ui_label_set_text(label, "Load");
 					ui_label_set_alignment(label, UI_LABEL_ALIGN_CENTER);
 					ui_button_set_label(load, label);
 				}
 				ui_child_append(subv, load);
 
-				UIObject cancel = ui_button_new();
+				UIObject *cancel = ui_button_new();
 				ui_button_set_callback(cancel, &load_window, cancel_cbk);
 				
 				{
-					UIObject label = ui_label_new();
+					UIObject *label = ui_label_new();
 					ui_label_set_text(label, "Cancel");
 					ui_label_set_alignment(label, UI_LABEL_ALIGN_CENTER);
 					ui_button_set_label(cancel, label);
@@ -309,12 +309,12 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	ui_window_set_title(save_window, "New");
 	ui_window_set_decorated(save_window, true);
 	{
-		UIObject layout = ui_layout_new();
+		UIObject *layout = ui_layout_new();
 		ui_layout_set_border(layout, 30, 30, 20, 20);
 		ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
 		ui_layout_set_fixed_size(layout, 20.0);
 		{
-			UIObject subv, lbl;
+			UIObject *subv, *lbl;
 			
 			#define SUBV(NAME_FIELD)\
 				subv = ui_layout_new(); \
@@ -337,20 +337,20 @@ GAME_STATE_LEVEL_EDIT_init(void)
 			ui_layout_set_order(subv, UI_LAYOUT_HORIZONTAL); \
 			ui_layout_set_border(subv, 5, 5, 5, 5);
 			{
-				UIObject save = ui_button_new();
+				UIObject *save = ui_button_new();
 				ui_button_set_callback(save, NULL, save_btn_cbk);
 				{
-					UIObject label = ui_label_new();
+					UIObject *label = ui_label_new();
 					ui_label_set_text(label, "Save");
 					ui_label_set_alignment(label, UI_LABEL_ALIGN_CENTER);
 					ui_button_set_label(save, label);
 				}
 				ui_child_append(subv, save);
 
-				UIObject cancel = ui_button_new();
+				UIObject *cancel = ui_button_new();
 				ui_button_set_callback(cancel, &save_window, cancel_cbk);
 				{
-					UIObject label = ui_label_new();
+					UIObject *label = ui_label_new();
 					ui_label_set_text(label, "Cancel");
 					ui_label_set_alignment(label, UI_LABEL_ALIGN_CENTER);
 					ui_button_set_label(cancel, label);
@@ -368,11 +368,11 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	ui_window_set_size(extra_window, (vec2){ 60, 10 });
 	ui_window_set_position(extra_window, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 60, - 30 - 10 });
 	{
-		UIObject layout = ui_layout_new();
+		UIObject *layout = ui_layout_new();
 		{
-			UIObject context_btn = ui_button_new();
+			UIObject *context_btn = ui_button_new();
 			{
-				UIObject context_lbl = ui_label_new();
+				UIObject *context_lbl = ui_label_new();
 				ui_label_set_text(context_lbl, "ctx");
 				ui_label_set_color(context_lbl, (vec4){ 1.0, 1.0, 0.0, 1.0 });
 				ui_label_set_alignment(context_lbl, UI_LABEL_ALIGN_CENTER);
@@ -381,9 +381,9 @@ GAME_STATE_LEVEL_EDIT_init(void)
 			ui_button_set_callback(context_btn, NULL, context_btn_cbk);
 			ui_layout_append(layout, context_btn);
 
-			UIObject general_btn = ui_button_new();
+			UIObject *general_btn = ui_button_new();
 			{
-				UIObject context_lbl = ui_label_new();
+				UIObject *context_lbl = ui_label_new();
 				ui_label_set_text(context_lbl, "gen");
 				ui_label_set_color(context_lbl, (vec4){ 1.0, 1.0, 0.0, 1.0 });
 				ui_label_set_alignment(context_lbl, UI_LABEL_ALIGN_CENTER);
@@ -548,24 +548,24 @@ editor_change_state(EditorState state)
 }
 
 void
-open_cbk(UIObject btn, void *userptr)
+open_cbk(UIObject *btn, void *userptr)
 {
 	(void)btn;
 	(void)userptr;
 
-	ui_child_prepend(ui_root(), *(UIObject*)userptr);
+	ui_child_prepend(ui_root(), *(UIObject**)userptr);
 }
 
 void
-cancel_cbk(UIObject obj, void *userptr)
+cancel_cbk(UIObject *obj, void *userptr)
 {
 	(void)obj;
 	(void)userptr;
-	ui_deparent(*(UIObject*)userptr);
+	ui_deparent(*(UIObject**)userptr);
 }
 
 void
-newbtn_new_cbk(UIObject obj, void *userptr)
+newbtn_new_cbk(UIObject *obj, void *userptr)
 {
 	(void)obj;
 	(void)userptr;
@@ -591,7 +591,7 @@ newbtn_new_cbk(UIObject obj, void *userptr)
 }
 
 void
-loadbtn_load_cbk(UIObject obj, void *userptr)
+loadbtn_load_cbk(UIObject *obj, void *userptr)
 {
 	(void)obj;
 	(void)userptr;
@@ -617,7 +617,7 @@ loadbtn_load_cbk(UIObject obj, void *userptr)
 }
 
 void
-save_btn_cbk(UIObject obj, void *userptr)
+save_btn_cbk(UIObject *obj, void *userptr)
 {
 	(void)obj;
 	(void)userptr;
@@ -633,7 +633,7 @@ save_btn_cbk(UIObject obj, void *userptr)
 }
 
 void
-context_btn_cbk(UIObject obj, void *ptr)
+context_btn_cbk(UIObject *obj, void *ptr)
 {
 	(void)obj;
 	(void)ptr;
@@ -646,7 +646,7 @@ context_btn_cbk(UIObject obj, void *ptr)
 }
 
 void
-general_btn_cbk(UIObject obj, void *ptr)
+general_btn_cbk(UIObject *obj, void *ptr)
 {
 	(void)obj;
 	(void)ptr;
@@ -714,7 +714,7 @@ editor_get_zoom(void)
 }
 
 void 
-play_cbk(UIObject obj, void (*userptr))
+play_cbk(UIObject *obj, void (*userptr))
 {
 	(void)obj;
 	(void)userptr;
