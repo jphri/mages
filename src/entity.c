@@ -106,3 +106,19 @@ ent_take_damage(Entity *e, float damage, vec2 damage_indicator_pos)
 	}
 }
 
+Entity *
+ent_hover(vec2 mouse_pos)
+{
+	for(EntityObject *obj = objpool_begin(&objects);
+		obj;
+		obj = objpool_next(obj))
+	{
+		if(!obj->interface->mouse_hovered)
+			continue;
+		
+		if(obj->interface->mouse_hovered(&obj->data, mouse_pos))
+			return &obj->data;
+	}
+
+	return NULL;
+}

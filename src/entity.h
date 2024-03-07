@@ -93,6 +93,8 @@ typedef struct {
 	void (*render)(Entity*);
 	void (*take_damage)(Entity*, float damage);
 	void (*die)(Entity*);
+
+	bool (*mouse_hovered)(Entity *, vec2 mouse_click);
 } EntityInterface;
 
 typedef struct ENTITY_DAMAGE_NUMBER_struct DamageNumber;
@@ -128,6 +130,8 @@ Door         *ent_door_new(vec2 position, enum DoorDir door);
 
 Particle     *ent_particle_new(vec2 position, vec2 velocity, vec4 color, float time);
 void          ent_shot_particles(vec2 position, vec2 velocity, vec4 color, float time, int count);
+
+Entity *ent_hover(vec2 position);
 
 void ent_door_open(Door *door);
 void ent_door_close(Door *door);

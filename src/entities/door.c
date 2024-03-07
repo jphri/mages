@@ -2,6 +2,7 @@
 #include "../entity.h"
 #include "../graphics.h"
 #include <math.h>
+#include <assert.h>
 #include <stdbool.h>
 
 #define DOOR(ID) ENT_DATA(ENTITY_DOOR, ID)
@@ -10,12 +11,15 @@
 #define EPSLON 0.001
 #define DRAG 100
 
+static Rectangle door_hover_rect(Entity *);
 static void door_update(Entity *, float);
 static void door_die(Entity *);
+static bool door_mouse_hovered(Entity *, vec2 mouse_pos);
 
 static EntityInterface door_int = {
 	.die = door_die,
 	.update = door_update,
+	.mouse_hovered = door_mouse_hovered,
 };
 
 Door *
@@ -132,4 +136,74 @@ door_die(Entity *door_ent)
 {
 	gfx_scene_del_obj(door_ent->door.line);
 	phx_del(door_ent->door.body);
+}
+
+bool 
+door_mouse_hovered(Entity *door_ent, vec2 mouse_pos)
+{
+	Rectangle rect = door_hover_rect(door_ent);
+	return rect_contains_point(&rect, mouse_pos);
+}
+
+Rectangle
+door_hover_rect(Entity *door_ent)
+{
+	Door *door = &door_ent->door;
+	Rectangle rect;
+
+	vec2_dup(rect.position, door->body->position);
+	switch(door->dir) {
+	case DOOR_DIR_RIGHT:
+		rect.half_size[0] = ENTITY_SCALE;
+		rect.half_size[1] = ENTITY_SCALE * 2;
+		if(door->open) {
+			rect.position[0] += ENTITY_SCALE * 2;
+			rect.position[1] -= ENTITY_SCALE * 2;
+
+			rect.half_size[1] = ENTITY_SCALE;
+			rect.half_size[0] = ENTITY_SCALE * 2;
+		}
+		break;
+	case DOOR_DIR_LEFT:
+		rect.half_size[0] = ENTITY_SCALE;
+		rect.half_size[1] = ENTITY_SCALE * 2;
+
+		if(door->open) {
+			rect.position[0] -= ENTITY_SCALE * 2;
+			rect.position[1] += ENTITY_SCALE * 2;
+
+			rect.half_size[1] = ENTITY_SCALE;
+			rect.half_size[0] = ENTITY_SCALE * 2;
+		}
+		break;
+	case DOOR_DIR_UP:
+		rect.half_size[1] = ENTITY_SCALE;
+		rect.half_size[0] = ENTITY_SCALE * 2;
+		
+		if(door->open) {
+			rect.position[1] += ENTITY_SCALE * 2;
+			rect.position[0] -= ENTITY_SCALE * 2;
+
+			rect.half_size[1] = ENTITY_SCALE;
+			rect.half_size[0] = ENTITY_SCALE * 2;
+		}
+		break;
+	case DOOR_DIR_DOWN:
+		rect.half_size[1] = ENTITY_SCALE;
+		rect.half_size[0] = ENTITY_SCALE * 2;
+
+		if(door->open) {
+			rect.position[1] += ENTITY_SCALE * 2;
+			rect.position[0] += ENTITY_SCALE * 2;
+
+			rect.half_size[0] = ENTITY_SCALE;
+			rect.half_size[1] = ENTITY_SCALE * 2;
+		}
+
+		break;
+	default:
+		assert(0 && "wrong door dir");
+	}
+
+	return rect;
 }

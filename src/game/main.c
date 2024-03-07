@@ -26,6 +26,7 @@ static Map *map;
 
 static Subscriber *level_subscriber;
 static vec2 camera_position;
+static vec2 mouse_pos;
 static float time;
 
 static Door *door_test;
@@ -71,7 +72,7 @@ GAME_STATE_LEVEL_init(void)
 	map_set_phx_scene(map);
 	map_set_ent_scene(map);
 
-	door_test = ent_door_new((vec2){ 0.0, 0.0 }, DOOR_DIR_DOWN);
+	door_test = ent_door_new((vec2){ 0.0, 0.0 }, DOOR_DIR_LEFT);
 	door_test->open = 1;
 }
 
@@ -123,7 +124,16 @@ GAME_STATE_LEVEL_end(void)
 	event_delete_subscriber(level_subscriber);
 }
 
-void GAME_STATE_LEVEL_mouse_move(SDL_Event *event) { (void)event; }
+void 
+GAME_STATE_LEVEL_mouse_move(SDL_Event *event) 
+{ 
+	gfx_pixel_to_world((vec2){ event->motion.x, event->motion.y }, mouse_pos);
+	Entity *e = ent_hover(mouse_pos);
+	if(e != NULL) {
+		printf("Hovered something...\n");
+	}
+}
+
 void GAME_STATE_LEVEL_mouse_button(SDL_Event *event) { (void)event; }
 
 void 
