@@ -21,6 +21,8 @@ static int thing_command(Map **map, StrView *tokenview);
 
 static int new_thing_command(Map **map, StrView *tokenview);
 static int thing_position_command(Map **map, StrView *tokenview);
+static int thing_health_command(Map **map, StrView *tokenview);
+static int thing_health_max_command(Map **map, StrView *tokenview);
 
 static ThingFunc thing_pc[LAST_THING] = {
 	[THING_PLAYER] = thing_player,
@@ -36,7 +38,9 @@ static struct {
 	{ "collision",  collision_command },
 	{ "thing", thing_command },
 	{ "new_thing", new_thing_command },
-	{ "thing_position", thing_position_command }
+	{ "thing_position", thing_position_command },
+	{ "thing_health", thing_health_command },
+	{ "thing_max_health", thing_health_max_command },
 };
 
 
@@ -274,6 +278,26 @@ thing_position_command(Map **map, StrView *tokenview)
 	return 0;
 }
 
+int
+thing_health_command(Map **map, StrView *tokenview)
+{
+	Thing *thing = (*map)->things;
+	
+	if(!strview_float(strview_token(tokenview, " "), &thing->health))
+		return 1;
+
+	return 0;
+}
+
+int
+thing_health_max_command(Map **map, StrView *tokenview)
+{
+	Thing *thing = (*map)->things;
+	if(!strview_float(strview_token(tokenview, " "), &thing->health_max))
+		return 1;
+	return 0;
+}
+
 void
 thing_player(Thing *c)
 {
@@ -283,6 +307,7 @@ thing_player(Thing *c)
 void
 thing_dummy(Thing *c)
 {
-	ent_dummy_new(c->position);
+	Dummy *dummy = ent_dummy_new(c->position);
+	dummy->mob.health = c->health;
+	dummy->mob.health_max = c->health_max;
 }
-
