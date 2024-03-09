@@ -19,6 +19,9 @@ static int tile_command(Map **map, StrView *tokenview);
 static int collision_command(Map **map, StrView *tokenview);
 static int thing_command(Map **map, StrView *tokenview);
 
+static int new_thing_command(Map **map, StrView *tokenview);
+static int thing_position_command(Map **map, StrView *tokenview);
+
 static ThingFunc thing_pc[LAST_THING] = {
 	[THING_PLAYER] = thing_player,
 	[THING_DUMMY]  = thing_dummy
@@ -31,7 +34,9 @@ static struct {
 	{ "size", size_command },
 	{ "tile", tile_command },
 	{ "collision",  collision_command },
-	{ "thing", thing_command }
+	{ "thing", thing_command },
+	{ "new_thing", new_thing_command },
+	{ "thing_position", thing_position_command }
 };
 
 
@@ -234,6 +239,38 @@ thing_command(Map **map, StrView *tokenview)
 		(*map)->things->prev = data;
 
 	(*map)->things = data;
+	return 0;
+}
+
+int
+new_thing_command(Map **map, StrView *tokenview)
+{
+	Thing *data = malloc(sizeof(*data));
+
+	if(!strview_int(strview_token(tokenview, " "), &data->type))
+		return 1;
+	
+	data->next = (*map)->things;
+	data->prev = NULL;
+	if((*map)->things)
+		(*map)->things->prev = data;
+
+	(*map)->things = data;
+
+	return 0;
+}
+
+int
+thing_position_command(Map **map, StrView *tokenview)
+{
+	Thing *thing = (*map)->things;
+	
+	if(!strview_float(strview_token(tokenview, " "), &thing->position[0]))
+		return 1;
+
+	if(!strview_float(strview_token(tokenview, " "), &thing->position[1]))
+		return 1;
+
 	return 0;
 }
 
