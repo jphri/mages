@@ -14,9 +14,24 @@ typedef void (*ThingFunc)(Thing *c);
 static void thing_player(Thing *c);
 static void thing_dummy(Thing *c);
 
+static int size_command(Map **map, StrView *tokenview);
+static int tile_command(Map **map, StrView *tokenview);
+static int collision_command(Map **map, StrView *tokenview);
+static int thing_command(Map **map, StrView *tokenview);
+
 static ThingFunc thing_pc[LAST_THING] = {
 	[THING_PLAYER] = thing_player,
 	[THING_DUMMY]  = thing_dummy
+};
+
+static struct {
+	const char *name;
+	int (*process)(Map **map, StrView *tokenview);
+} commands[] = {
+	{ "size", size_command },
+	{ "tile", tile_command },
+	{ "collision",  collision_command },
+	{ "thing", thing_command }
 };
 
 
@@ -46,64 +61,20 @@ map_load(const char *file)
 		StrView tokenview = fbuf_data_view(&fp);
 		StrView word = strview_token(&tokenview, " ");
 
-		if(strview_cmp(word, "size") == 0) {
-			int w, h;
-
-			if(!strview_int(strview_token(&tokenview, " "), &w))
-				goto error_load;
-
-			if(!strview_int(strview_token(&tokenview, " "), &h))
-				goto error_load;
-
-			map = map_alloc(w, h);
-		} else if(strview_cmp(word, "tile") == 0) {
-			int tile_id, tile;
-			if(!strview_int(strview_token(&tokenview, " "), &tile_id))
-				goto error_load;
-
-			if(!strview_int(strview_token(&tokenview, " "), &tile))
-				goto error_load;
-			
-			map->tiles[tile_id] = tile;
-		} else if(strview_cmp(word, "collision") == 0) {
-			CollisionData *data = malloc(sizeof(*data));
-			if(!strview_float(strview_token(&tokenview, " "), &data->position[0]))
-				goto error_load;
-
-			if(!strview_float(strview_token(&tokenview, " "), &data->position[1]))
-				goto error_load;
-
-			if(!strview_float(strview_token(&tokenview, " "), &data->half_size[0]))
-				goto error_load;
-
-			if(!strview_float(strview_token(&tokenview, " "), &data->half_size[1]))
-				goto error_load;
-
-			data->next = map->collision;
-			map->collision = data;
-		} else if(strview_cmp(word, "thing") == 0) {
-			Thing *data = malloc(sizeof(*data));
-			
-			if(!strview_int(strview_token(&tokenview, " "), &data->type))
-				goto error_load;
-
-			if(!strview_float(strview_token(&tokenview, " "), &data->position[0]))
-				goto error_load;
-
-			if(!strview_float(strview_token(&tokenview, " "), &data->position[1]))
-				goto error_load;
-
-			data->next = map->things;
-			data->prev = NULL;
-			if(map->things)
-				map->things->prev = data;
-			
-			map->things = data;
-		} else {
-			char *s = strview_str(word);
-			printf("unknown command %s\n", s);
-			free(s);
+		for(size_t i = 0; i < LENGTH(commands); i++) {
+			if(strview_cmp(word, commands[i].name) == 0) {
+				if(commands[i].process(&map, &tokenview))
+					goto error_load;
+				else
+					goto continue_loading;
+			}
 		}
+		char *s = strview_str(word);
+		printf("unknown command %s\n", s);
+		free(s);
+
+continue_loading:
+		continue;
 	}
 	fbuf_close(&fp);
 
@@ -193,6 +164,79 @@ map_set_ent_scene(Map *map)
 			thing_pc[c->type](c);
 }
 
+int
+size_command(Map **map, StrView *tokenview)
+{
+	int w, h;
+	if(!strview_int(strview_token(tokenview, " "), &w))
+		return 1;
+
+	if(!strview_int(strview_token(tokenview, " "), &h))
+		return 1;
+
+	*map = map_alloc(w, h);
+	return 0;
+}
+
+int
+tile_command(Map **map, StrView *tokenview)
+{
+	int tile_id, tile;
+	if(!strview_int(strview_token(tokenview, " "), &tile_id))
+		return 1;
+
+	if(!strview_int(strview_token(tokenview, " "), &tile))
+		return 1;
+
+	(*map)->tiles[tile_id] = tile;
+	return 0;
+}
+
+int
+collision_command(Map **map, StrView *tokenview)
+{
+	CollisionData *data = malloc(sizeof(*data));
+	if(!strview_float(strview_token(tokenview, " "), &data->position[0]))
+		return 1;
+
+	if(!strview_float(strview_token(tokenview, " "), &data->position[1]))
+		return 1;
+
+	if(!strview_float(strview_token(tokenview, " "), &data->half_size[0]))
+		return 1;
+
+	if(!strview_float(strview_token(tokenview, " "), &data->half_size[1]))
+		return 1;
+
+	data->next = (*map)->collision;
+	(*map)->collision = data;
+
+	return 0;
+}
+
+int
+thing_command(Map **map, StrView *tokenview)
+{
+	Thing *data = malloc(sizeof(*data));
+
+	if(!strview_int(strview_token(tokenview, " "), &data->type))
+		return 1;
+
+	if(!strview_float(strview_token(tokenview, " "), &data->position[0]))
+		return 1;
+
+	if(!strview_float(strview_token(tokenview, " "), &data->position[1]))
+		return 1;
+
+	data->next = (*map)->things;
+	data->prev = NULL;
+	if((*map)->things)
+		(*map)->things->prev = data;
+
+	(*map)->things = data;
+	return 0;
+}
+
 void
 thing_player(Thing *c)
 {
@@ -204,3 +248,4 @@ thing_dummy(Thing *c)
 {
 	ent_dummy_new(c->position);
 }
+
