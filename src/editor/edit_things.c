@@ -23,6 +23,9 @@ static void select_thing(vec2 position);
 static void update_thing_context(void);
 
 static void thing_type_name_cbk(UIObject *obj, void *userptr);
+static void thing_float(UIObject *obj, void *userptr);
+
+static void update_inputs(void);
 
 static MouseState mouse_state;
 static vec2 move_offset, mouse_position;
@@ -30,6 +33,10 @@ static bool ctrl_pressed;
 
 static Thing *selected_thing;
 static UIObject *thing_context, *thing_type_name;
+static UIObject *uiposition_x, *uiposition_y;
+static UIObject *uihealth, *uihealth_max;
+
+static ArrayBuffer helper_print;
 
 static StrView type_string[LAST_THING];
 
@@ -42,6 +49,7 @@ static ThingRender renders[] = {
 void
 thing_init(void)
 {
+	arrbuf_init(&helper_print);
 	type_string[THING_NULL]   = to_strview("");
 	type_string[THING_PLAYER] = to_strview("THING_PLAYER");
 	type_string[THING_DUMMY]  = to_strview("THING_DUMMY");
@@ -50,25 +58,64 @@ thing_init(void)
 	UIObject *layout = ui_layout_new();
 	ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
 	ui_layout_set_border(layout, 2.0, 2.0, 2.0, 2.0);
-	ui_layout_set_fixed_size(layout, 15.0); \
+	ui_layout_set_fixed_size(layout, 10.0); \
 	{
 		UIObject *sublayout, *label;
 
 		#define BEGIN_LAYOUT(NAME) \
 		sublayout = ui_layout_new(); \
 		ui_layout_set_order(sublayout, UI_LAYOUT_HORIZONTAL); \
+		ui_layout_set_border(sublayout, 2.0, 2.0, 2.0, 2.0); \
 		label = ui_label_new(); \
 		ui_label_set_text(label, NAME); \
-		ui_label_set_alignment(label, UI_LABEL_ALIGN_RIGHT); \
+		ui_label_set_alignment(label, UI_LABEL_ALIGN_LEFT); \
 		ui_layout_append(sublayout, label);
 
 		#define END_LAYOUT \
 		ui_layout_append(layout, sublayout);
 
-		BEGIN_LAYOUT("Thing Type: "); {
+
+		BEGIN_LAYOUT("type"); {
 			thing_type_name = ui_text_input_new();
 			ui_text_input_set_cbk(thing_type_name, NULL, thing_type_name_cbk);
 			ui_layout_append(sublayout, thing_type_name);
+		} END_LAYOUT;
+
+		BEGIN_LAYOUT("position"); {
+			UIObject *retarded = ui_layout_new(); 
+			ui_layout_set_order(retarded, UI_LAYOUT_HORIZONTAL);
+			{
+				uiposition_x = ui_text_input_new();
+				ui_text_input_set_cbk(uiposition_x, (void*)(offsetof(Thing, position[0])), thing_float);
+				ui_layout_append(retarded, uiposition_x);
+
+				uiposition_y = ui_text_input_new();
+				ui_text_input_set_cbk(uiposition_y, (void*)(offsetof(Thing, position[1])), thing_float);
+				ui_layout_append(retarded, uiposition_y);
+			}
+			ui_layout_append(sublayout, retarded);
+		} END_LAYOUT;
+
+		BEGIN_LAYOUT("health"); {
+			UIObject *retarded = ui_layout_new(); 
+			ui_layout_set_order(retarded, UI_LAYOUT_HORIZONTAL);
+			{
+				uihealth = ui_text_input_new();
+				ui_text_input_set_cbk(uihealth, (void*)(offsetof(Thing, health)), thing_float);
+				ui_layout_append(retarded, uihealth);
+			}
+			ui_layout_append(sublayout, retarded);
+		} END_LAYOUT;
+
+		BEGIN_LAYOUT("health_max"); {
+			UIObject *retarded = ui_layout_new(); 
+			ui_layout_set_order(retarded, UI_LAYOUT_HORIZONTAL);
+			{
+				uihealth_max = ui_text_input_new();
+				ui_text_input_set_cbk(uihealth_max, (void*)(offsetof(Thing, health_max)), thing_float);
+				ui_layout_append(retarded, uihealth_max);
+			}
+			ui_layout_append(sublayout, retarded);
 		} END_LAYOUT;
 	}
 	ui_child_append(thing_context, layout);
@@ -77,6 +124,7 @@ thing_init(void)
 void
 thing_terminate(void)
 {
+	arrbuf_free(&helper_print);
 	ui_del_object(thing_context);
 }
 
@@ -144,6 +192,7 @@ thing_mouse_motion(SDL_Event *event)
 		vec2_sub(v, move_offset, mouse_position);
 		if(selected_thing) {
 			vec2_sub(selected_thing->position, selected_thing->position, v);
+			update_inputs();
 		}
 		vec2_dup(move_offset, mouse_position);
 		break;
@@ -248,6 +297,7 @@ select_thing(vec2 v)
 		};
 		if(rect_contains_point(&r, v)) {
 			selected_thing = c;
+			update_inputs();
 			break;
 		}
 	}
@@ -260,6 +310,7 @@ update_thing_context(void)
 	if(selected_thing) {
 		ui_text_input_set_text(thing_type_name, type_string[selected_thing->type]);
 		ui_window_append_child(editor.context_window, thing_context);
+		update_inputs();
 	} else {
 		ui_deparent(thing_context);
 	}
@@ -275,7 +326,27 @@ thing_type_name_cbk(UIObject *obj, void *userptr)
 	for(int i = 0; i < LAST_THING; i++) {
 		if(strview_cmpstr(v, type_string[i]) == 0) {
 			selected_thing->type = i;
+			update_inputs();
 			return;
 		}
 	}
+}
+
+void
+thing_float(UIObject *obj, void *userptr)
+{
+	float *ptr = (void*)((uintptr_t)selected_thing + (uintptr_t)userptr);
+	strview_float(ui_text_input_get_str(obj), ptr);
+}
+
+void
+update_inputs(void)
+{
+	#define SETINPUT(INPUT, FORMAT, COMPONENT) \
+	arrbuf_clear(&helper_print); \
+	arrbuf_printf(&helper_print, FORMAT, COMPONENT); \
+	ui_text_input_set_text(INPUT, to_strview_buffer(helper_print.data, helper_print.size));
+	
+	SETINPUT(uiposition_x, "%f", selected_thing->position[0]);
+	SETINPUT(uiposition_y, "%f", selected_thing->position[1]);
 }
