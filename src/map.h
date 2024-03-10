@@ -21,6 +21,7 @@ struct CollisionData {
 struct Thing {
 	int type;
 	vec2 position;
+	float health, health_max;
 
 	Thing *next;
 	Thing *prev;

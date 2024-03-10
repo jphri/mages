@@ -14,9 +14,41 @@ typedef void (*ThingFunc)(Thing *c);
 static void thing_player(Thing *c);
 static void thing_dummy(Thing *c);
 
+static int size_command(Map **map, StrView *tokenview);
+static int tile_command(Map **map, StrView *tokenview);
+static int collision_command(Map **map, StrView *tokenview);
+static int thing_command(Map **map, StrView *tokenview);
+
+static int new_thing_command(Map **map, StrView *tokenview);
+static int thing_position_command(Map **map, StrView *tokenview);
+static int thing_health_command(Map **map, StrView *tokenview);
+static int thing_health_max_command(Map **map, StrView *tokenview);
+
 static ThingFunc thing_pc[LAST_THING] = {
 	[THING_PLAYER] = thing_player,
 	[THING_DUMMY]  = thing_dummy
+};
+
+static struct {
+	bool position;
+	bool health, health_max;
+} relevant_component[] = {
+	[THING_PLAYER] = { .position = true },
+	[THING_DUMMY] = { .position = true }
+};
+
+static struct {
+	const char *name;
+	int (*process)(Map **map, StrView *tokenview);
+} commands[] = {
+	{ "size", size_command },
+	{ "tile", tile_command },
+	{ "collision",  collision_command },
+	{ "thing", thing_command },
+	{ "new_thing", new_thing_command },
+	{ "thing_position", thing_position_command },
+	{ "thing_health", thing_health_command },
+	{ "thing_max_health", thing_health_max_command },
 };
 
 
@@ -46,64 +78,20 @@ map_load(const char *file)
 		StrView tokenview = fbuf_data_view(&fp);
 		StrView word = strview_token(&tokenview, " ");
 
-		if(strview_cmp(word, "size") == 0) {
-			int w, h;
-
-			if(!strview_int(strview_token(&tokenview, " "), &w))
-				goto error_load;
-
-			if(!strview_int(strview_token(&tokenview, " "), &h))
-				goto error_load;
-
-			map = map_alloc(w, h);
-		} else if(strview_cmp(word, "tile") == 0) {
-			int tile_id, tile;
-			if(!strview_int(strview_token(&tokenview, " "), &tile_id))
-				goto error_load;
-
-			if(!strview_int(strview_token(&tokenview, " "), &tile))
-				goto error_load;
-			
-			map->tiles[tile_id] = tile;
-		} else if(strview_cmp(word, "collision") == 0) {
-			CollisionData *data = malloc(sizeof(*data));
-			if(!strview_float(strview_token(&tokenview, " "), &data->position[0]))
-				goto error_load;
-
-			if(!strview_float(strview_token(&tokenview, " "), &data->position[1]))
-				goto error_load;
-
-			if(!strview_float(strview_token(&tokenview, " "), &data->half_size[0]))
-				goto error_load;
-
-			if(!strview_float(strview_token(&tokenview, " "), &data->half_size[1]))
-				goto error_load;
-
-			data->next = map->collision;
-			map->collision = data;
-		} else if(strview_cmp(word, "thing") == 0) {
-			Thing *data = malloc(sizeof(*data));
-			
-			if(!strview_int(strview_token(&tokenview, " "), &data->type))
-				goto error_load;
-
-			if(!strview_float(strview_token(&tokenview, " "), &data->position[0]))
-				goto error_load;
-
-			if(!strview_float(strview_token(&tokenview, " "), &data->position[1]))
-				goto error_load;
-
-			data->next = map->things;
-			data->prev = NULL;
-			if(map->things)
-				map->things->prev = data;
-			
-			map->things = data;
-		} else {
-			char *s = strview_str(word);
-			printf("unknown command %s\n", s);
-			free(s);
+		for(size_t i = 0; i < LENGTH(commands); i++) {
+			if(strview_cmp(word, commands[i].name) == 0) {
+				if(commands[i].process(&map, &tokenview))
+					goto error_load;
+				else
+					goto continue_loading;
+			}
 		}
+		char *s = strview_str(word);
+		printf("unknown command %s\n", s);
+		free(s);
+
+continue_loading:
+		continue;
 	}
 	fbuf_close(&fp);
 
@@ -148,8 +136,18 @@ map_export(Map *map, size_t *out_data_size)
 	for(CollisionData *c = map->collision; c; c = c->next)
 		arrbuf_printf(&buffer, "collision %f %f %f %f\n", c->position[0], c->position[1], c->half_size[0], c->half_size[1]);
 
-	for(Thing *t = map->things; t; t = t->next)
-		arrbuf_printf(&buffer, "thing %d %f %f\n", t->type, t->position[0], t->position[1]);
+	for(Thing *t = map->things; t; t = t->next) {
+		arrbuf_printf(&buffer, "new_thing %d\n", t->type);
+		if(relevant_component[t->type].position) {
+			arrbuf_printf(&buffer, "thing_position %f %f\n", t->position[0], t->position[1]);
+		}
+		if(relevant_component[t->type].health) {
+			arrbuf_printf(&buffer, "thing_health %f\n", t->health);
+		}
+		if(relevant_component[t->type].health_max) {
+			arrbuf_printf(&buffer, "thing_max_health %f\n", t->health_max);
+		}
+	}
 
 	*out_data_size = buffer.size;
 	return buffer.data;
@@ -191,6 +189,131 @@ map_set_ent_scene(Map *map)
 	for(Thing *c = map->things; c; c = c->next)
 		if(thing_pc[c->type])
 			thing_pc[c->type](c);
+}
+
+int
+size_command(Map **map, StrView *tokenview)
+{
+	int w, h;
+	if(!strview_int(strview_token(tokenview, " "), &w))
+		return 1;
+
+	if(!strview_int(strview_token(tokenview, " "), &h))
+		return 1;
+
+	*map = map_alloc(w, h);
+	return 0;
+}
+
+int
+tile_command(Map **map, StrView *tokenview)
+{
+	int tile_id, tile;
+	if(!strview_int(strview_token(tokenview, " "), &tile_id))
+		return 1;
+
+	if(!strview_int(strview_token(tokenview, " "), &tile))
+		return 1;
+
+	(*map)->tiles[tile_id] = tile;
+	return 0;
+}
+
+int
+collision_command(Map **map, StrView *tokenview)
+{
+	CollisionData *data = malloc(sizeof(*data));
+	if(!strview_float(strview_token(tokenview, " "), &data->position[0]))
+		return 1;
+
+	if(!strview_float(strview_token(tokenview, " "), &data->position[1]))
+		return 1;
+
+	if(!strview_float(strview_token(tokenview, " "), &data->half_size[0]))
+		return 1;
+
+	if(!strview_float(strview_token(tokenview, " "), &data->half_size[1]))
+		return 1;
+
+	data->next = (*map)->collision;
+	(*map)->collision = data;
+
+	return 0;
+}
+
+int
+thing_command(Map **map, StrView *tokenview)
+{
+	Thing *data = malloc(sizeof(*data));
+
+	if(!strview_int(strview_token(tokenview, " "), &data->type))
+		return 1;
+
+	if(!strview_float(strview_token(tokenview, " "), &data->position[0]))
+		return 1;
+
+	if(!strview_float(strview_token(tokenview, " "), &data->position[1]))
+		return 1;
+
+	data->next = (*map)->things;
+	data->prev = NULL;
+	if((*map)->things)
+		(*map)->things->prev = data;
+
+	(*map)->things = data;
+	return 0;
+}
+
+int
+new_thing_command(Map **map, StrView *tokenview)
+{
+	Thing *data = malloc(sizeof(*data));
+
+	if(!strview_int(strview_token(tokenview, " "), &data->type))
+		return 1;
+	
+	data->next = (*map)->things;
+	data->prev = NULL;
+	if((*map)->things)
+		(*map)->things->prev = data;
+
+	(*map)->things = data;
+
+	return 0;
+}
+
+int
+thing_position_command(Map **map, StrView *tokenview)
+{
+	Thing *thing = (*map)->things;
+	
+	if(!strview_float(strview_token(tokenview, " "), &thing->position[0]))
+		return 1;
+
+	if(!strview_float(strview_token(tokenview, " "), &thing->position[1]))
+		return 1;
+
+	return 0;
+}
+
+int
+thing_health_command(Map **map, StrView *tokenview)
+{
+	Thing *thing = (*map)->things;
+	
+	if(!strview_float(strview_token(tokenview, " "), &thing->health))
+		return 1;
+
+	return 0;
+}
+
+int
+thing_health_max_command(Map **map, StrView *tokenview)
+{
+	Thing *thing = (*map)->things;
+	if(!strview_float(strview_token(tokenview, " "), &thing->health_max))
+		return 1;
+	return 0;
 }
 
 void
