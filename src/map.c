@@ -34,7 +34,7 @@ static struct {
 	bool health, health_max;
 } relevant_component[] = {
 	[THING_PLAYER] = { .position = true },
-	[THING_DUMMY] = { .position = true, .health = true, .health_max = true }
+	[THING_DUMMY] = { .position = true }
 };
 
 static struct {
@@ -325,7 +325,5 @@ thing_player(Thing *c)
 void
 thing_dummy(Thing *c)
 {
-	Dummy *dummy = ent_dummy_new(c->position);
-	dummy->mob.health = c->health;
-	dummy->mob.health_max = c->health_max;
+	ent_dummy_new(c->position);
 }

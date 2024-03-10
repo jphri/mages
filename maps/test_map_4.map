@@ -1039,17 +1039,9 @@ new_thing 1
 thing_position 7.937929 12.084412
 new_thing 2
 thing_position 7.500000 8.500000
-thing_health 99999.000000
-thing_max_health 99999.000000
 new_thing 2
 thing_position 13.500000 8.562500
-thing_health 99999.000000
-thing_max_health 99999.000000
 new_thing 2
 thing_position 19.437500 8.500000
-thing_health 999.000000
-thing_max_health 999.000000
 new_thing 2
 thing_position 25.625000 8.562500
-thing_health 99999.000000
-thing_max_health 99999.000000
