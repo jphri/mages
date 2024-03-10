@@ -1,6 +1,7 @@
 #ifndef MAP_H
 #define MAP_H
 
+#include "defs.h"
 #include "vecmath.h"
 
 enum {
@@ -22,6 +23,7 @@ struct Thing {
 	int type;
 	vec2 position;
 	float health, health_max;
+	Direction direction;
 
 	Thing *next;
 	Thing *prev;

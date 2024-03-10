@@ -23,15 +23,17 @@ static int new_thing_command(Map **map, StrView *tokenview);
 static int thing_position_command(Map **map, StrView *tokenview);
 static int thing_health_command(Map **map, StrView *tokenview);
 static int thing_health_max_command(Map **map, StrView *tokenview);
+static int thing_direction_command(Map **map, StrView *tokenview);
 
 static ThingFunc thing_pc[LAST_THING] = {
-	[THING_PLAYER] = thing_player,
-	[THING_DUMMY]  = thing_dummy
+	[THING_PLAYER]    = thing_player,
+	[THING_DUMMY]     = thing_dummy,
 };
 
 static struct {
 	bool position;
 	bool health, health_max;
+	bool direction;
 } relevant_component[] = {
 	[THING_PLAYER] = { .position = true },
 	[THING_DUMMY] = { .position = true }
@@ -49,6 +51,7 @@ static struct {
 	{ "thing_position", thing_position_command },
 	{ "thing_health", thing_health_command },
 	{ "thing_max_health", thing_health_max_command },
+	{ "thing_direction", thing_direction_command }
 };
 
 
@@ -146,6 +149,14 @@ map_export(Map *map, size_t *out_data_size)
 		}
 		if(relevant_component[t->type].health_max) {
 			arrbuf_printf(&buffer, "thing_max_health %f\n", t->health_max);
+		}
+		if(relevant_component[t->type].direction) {
+			switch(t->direction) {
+			case DIR_UP: arrbuf_printf(&buffer, "thing_direction %s\n", "up"); break;
+			case DIR_DOWN: arrbuf_printf(&buffer, "thing_direction %s\n", "down"); break;
+			case DIR_LEFT: arrbuf_printf(&buffer, "thing_direction %s\n", "left"); break;
+			case DIR_RIGHT: arrbuf_printf(&buffer, "thing_direction %s\n", "right"); break;
+			}
 		}
 	}
 
@@ -316,6 +327,25 @@ thing_health_max_command(Map **map, StrView *tokenview)
 	return 0;
 }
 
+int
+thing_direction_command(Map **map, StrView *tokenview)
+{
+	Thing *thing = (*map)->things;
+	StrView tok = strview_token(tokenview, " ");
+	if(strview_cmp(tok, "up") == 0) {
+		thing->direction = DIR_UP;
+	} else if(strview_cmp(tok, "right") == 0) {
+		thing->direction = DIR_RIGHT;
+	} else if(strview_cmp(tok, "down") == 0) {
+		thing->direction = DIR_DOWN;
+	} else if(strview_cmp(tok, "left") == 0) {
+		thing->direction = DIR_LEFT;
+	} else {
+		return 1;
+	}
+	return 0;
+}
+
 void
 thing_player(Thing *c)
 {
@@ -327,3 +357,4 @@ thing_dummy(Thing *c)
 {
 	ent_dummy_new(c->position);
 }
+
