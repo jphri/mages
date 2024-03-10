@@ -347,6 +347,8 @@ update_inputs(void)
 	arrbuf_printf(&helper_print, FORMAT, COMPONENT); \
 	ui_text_input_set_text(INPUT, to_strview_buffer(helper_print.data, helper_print.size));
 	
-	SETINPUT(uiposition_x, "%f", selected_thing->position[0]);
-	SETINPUT(uiposition_y, "%f", selected_thing->position[1]);
+	SETINPUT(uiposition_x, "%0.2f", selected_thing->position[0]);
+	SETINPUT(uiposition_y, "%0.2f", selected_thing->position[1]);
+	SETINPUT(uihealth, "%0.2f", selected_thing->health);
+	SETINPUT(uihealth_max, "%0.2f", selected_thing->health_max);
 }
