@@ -74,12 +74,7 @@ union Entity {
 	} player;
 
 	ENTITY_STRUCT(ENTITY_DOOR) {
-		enum DoorDir {
-			DOOR_DIR_LEFT,
-			DOOR_DIR_RIGHT,
-			DOOR_DIR_UP,
-			DOOR_DIR_DOWN
-		} dir;
+		Direction direction;
 
 		Body *body;
 		bool open;
@@ -128,7 +123,7 @@ Player       *ent_player_new(vec2 position);
 Fireball     *ent_fireball_new(Entity *caster, vec2 position, vec2 vel);
 Dummy        *ent_dummy_new(vec2 position);
 DamageNumber *ent_damage_number(vec2 position, float damage);
-Door         *ent_door_new(vec2 position, enum DoorDir door);
+Door         *ent_door_new(vec2 position, Direction direction);
 
 Particle     *ent_particle_new(vec2 position, vec2 velocity, vec4 color, float time);
 void          ent_shot_particles(vec2 position, vec2 velocity, vec4 color, float time, int count);

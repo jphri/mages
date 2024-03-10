@@ -25,14 +25,14 @@ static EntityInterface door_int = {
 };
 
 Door *
-ent_door_new(vec2 position, enum DoorDir door_dir)
+ent_door_new(vec2 position, Direction direction)
 {
 	Door *door = &ent_new(ENTITY_DOOR, &door_int)->door;
 
 	door->openness = 0;
 	door->openness_speed = 0;
 	door->open = false;
-	door->dir = door_dir;
+	door->direction = direction;
 	door->line = gfx_scene_new_obj(1, SCENE_OBJECT_LINE);
 	vec2_dup(door->line->p1, position);
 	vec2_add(door->line->p2, position, (vec2){ 0, ENTITY_SCALE * 4.0 });
@@ -52,29 +52,29 @@ ent_door_new(vec2 position, enum DoorDir door_dir)
 	door->body->solve_layer = PHX_LAYER_ENTITIES_BIT;
 	door->body->entity = (Entity*)door;
 
-	switch(door_dir) {
-	case DOOR_DIR_RIGHT:
+	switch(direction) {
+	case DIR_RIGHT:
 		door->door_angle = 0;
 		door->body->half_size[0] = ENTITY_SCALE / 8;
 		door->body->half_size[1] = ENTITY_SCALE * 2;
 		vec2_sub(door->line->p1, position, (vec2){ 0.0, ENTITY_SCALE * 2.0 });
 		vec2_add(door->line->p2, position, (vec2){ 0.0, ENTITY_SCALE * 2.0 });
 		break;
-	case DOOR_DIR_LEFT:
+	case DIR_LEFT:
 		door->door_angle = M_PI;
 		door->body->half_size[0] = ENTITY_SCALE / 8;
 		door->body->half_size[1] = ENTITY_SCALE * 2;
 		vec2_add(door->line->p1, position, (vec2){ 0.0, ENTITY_SCALE * 2.0 });
 		vec2_sub(door->line->p2, position, (vec2){ 0.0, ENTITY_SCALE * 2.0 });
 		break;
-	case DOOR_DIR_UP:
+	case DIR_UP:
 		door->door_angle = M_PI / 2.0;
 		door->body->half_size[1] = ENTITY_SCALE / 8;
 		door->body->half_size[0] = ENTITY_SCALE * 2;
 		vec2_sub(door->line->p1, position, (vec2){ ENTITY_SCALE * 2.0, 0.0 });
 		vec2_add(door->line->p2, position, (vec2){ ENTITY_SCALE * 2.0, 0.0 });
 		break;
-	case DOOR_DIR_DOWN:
+	case DIR_DOWN:
 		door->door_angle = M_PI + M_PI / 2.0;
 		door->body->half_size[1] = ENTITY_SCALE / 8;
 		door->body->half_size[0] = ENTITY_SCALE * 2;
@@ -154,8 +154,8 @@ door_hover_rect(Entity *door_ent)
 	Rectangle rect;
 
 	vec2_dup(rect.position, door->body->position);
-	switch(door->dir) {
-	case DOOR_DIR_RIGHT:
+	switch(door->direction) {
+	case DIR_RIGHT:
 		rect.half_size[0] = ENTITY_SCALE;
 		rect.half_size[1] = ENTITY_SCALE * 2;
 		if(door->open) {
@@ -166,7 +166,7 @@ door_hover_rect(Entity *door_ent)
 			rect.half_size[0] = ENTITY_SCALE * 2;
 		}
 		break;
-	case DOOR_DIR_LEFT:
+	case DIR_LEFT:
 		rect.half_size[0] = ENTITY_SCALE;
 		rect.half_size[1] = ENTITY_SCALE * 2;
 
@@ -178,7 +178,7 @@ door_hover_rect(Entity *door_ent)
 			rect.half_size[0] = ENTITY_SCALE * 2;
 		}
 		break;
-	case DOOR_DIR_UP:
+	case DIR_UP:
 		rect.half_size[1] = ENTITY_SCALE;
 		rect.half_size[0] = ENTITY_SCALE * 2;
 		
@@ -190,7 +190,7 @@ door_hover_rect(Entity *door_ent)
 			rect.half_size[0] = ENTITY_SCALE * 2;
 		}
 		break;
-	case DOOR_DIR_DOWN:
+	case DIR_DOWN:
 		rect.half_size[1] = ENTITY_SCALE;
 		rect.half_size[0] = ENTITY_SCALE * 2;
 

@@ -72,7 +72,7 @@ GAME_STATE_LEVEL_init(void)
 	map_set_phx_scene(map);
 	map_set_ent_scene(map);
 
-	door_test = ent_door_new((vec2){ 0.0, 0.0 }, DOOR_DIR_LEFT);
+	door_test = ent_door_new((vec2){ 0.0, 0.0 }, DIR_LEFT);
 	door_test->open = 1;
 }
 
