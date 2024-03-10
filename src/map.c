@@ -30,6 +30,14 @@ static ThingFunc thing_pc[LAST_THING] = {
 };
 
 static struct {
+	bool position;
+	bool health, health_max;
+} relevant_component[] = {
+	[THING_PLAYER] = { .position = true },
+	[THING_DUMMY] = { .position = true, .health = true, .health_max = true }
+};
+
+static struct {
 	const char *name;
 	int (*process)(Map **map, StrView *tokenview);
 } commands[] = {
@@ -128,8 +136,18 @@ map_export(Map *map, size_t *out_data_size)
 	for(CollisionData *c = map->collision; c; c = c->next)
 		arrbuf_printf(&buffer, "collision %f %f %f %f\n", c->position[0], c->position[1], c->half_size[0], c->half_size[1]);
 
-	for(Thing *t = map->things; t; t = t->next)
-		arrbuf_printf(&buffer, "thing %d %f %f\n", t->type, t->position[0], t->position[1]);
+	for(Thing *t = map->things; t; t = t->next) {
+		arrbuf_printf(&buffer, "new_thing %d\n", t->type);
+		if(relevant_component[t->type].position) {
+			arrbuf_printf(&buffer, "thing_position %f %f\n", t->position[0], t->position[1]);
+		}
+		if(relevant_component[t->type].health) {
+			arrbuf_printf(&buffer, "thing_health %f\n", t->health);
+		}
+		if(relevant_component[t->type].health_max) {
+			arrbuf_printf(&buffer, "thing_max_health %f\n", t->health_max);
+		}
+	}
 
 	*out_data_size = buffer.size;
 	return buffer.data;
