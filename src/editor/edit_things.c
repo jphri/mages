@@ -24,6 +24,7 @@ static void update_thing_context(void);
 
 static void thing_type_name_cbk(UIObject *obj, void *userptr);
 static void thing_float(UIObject *obj, void *userptr);
+static void thing_direction(UIObject *obj, void *userptr);
 
 static void update_inputs(void);
 
@@ -35,6 +36,7 @@ static Thing *selected_thing;
 static UIObject *thing_context, *thing_type_name;
 static UIObject *uiposition_x, *uiposition_y;
 static UIObject *uihealth, *uihealth_max;
+static UIObject *uidirection;
 
 static ArrayBuffer helper_print;
 
@@ -44,6 +46,13 @@ static ThingRender renders[] = {
 	[THING_NULL] = thing_null_render,
 	[THING_PLAYER] = thing_player_render,
 	[THING_DUMMY] = thing_dummy_render
+};
+
+static const char *direction_str[] = {
+	[DIR_UP] = "up",
+	[DIR_LEFT] = "left",
+	[DIR_DOWN] = "down",
+	[DIR_RIGHT] = "right"
 };
 
 void
@@ -114,6 +123,17 @@ thing_init(void)
 				uihealth_max = ui_text_input_new();
 				ui_text_input_set_cbk(uihealth_max, (void*)(offsetof(Thing, health_max)), thing_float);
 				ui_layout_append(retarded, uihealth_max);
+			}
+			ui_layout_append(sublayout, retarded);
+		} END_LAYOUT;
+
+		BEGIN_LAYOUT("direction"); {
+			UIObject *retarded = ui_layout_new(); 
+			ui_layout_set_order(retarded, UI_LAYOUT_HORIZONTAL);
+			{
+				uidirection = ui_text_input_new();
+				ui_text_input_set_cbk(uidirection, (void*)(offsetof(Thing, direction)), thing_direction);
+				ui_layout_append(retarded, uidirection);
 			}
 			ui_layout_append(sublayout, retarded);
 		} END_LAYOUT;
@@ -340,6 +360,18 @@ thing_float(UIObject *obj, void *userptr)
 }
 
 void
+thing_direction(UIObject *obj, void *userptr)
+{
+	Direction *dir = (void*)((uintptr_t)selected_thing + (uintptr_t)userptr);
+	for(size_t i = 0; i < LENGTH(direction_str); i++) {
+		if(strview_cmp(ui_text_input_get_str(obj), direction_str[i]) == 0) {
+			*dir = i;
+			return;
+		}
+	}
+}
+
+void
 update_inputs(void)
 {
 	#define SETINPUT(INPUT, FORMAT, COMPONENT) \
@@ -351,4 +383,12 @@ update_inputs(void)
 	SETINPUT(uiposition_y, "%0.2f", selected_thing->position[1]);
 	SETINPUT(uihealth, "%0.2f", selected_thing->health);
 	SETINPUT(uihealth_max, "%0.2f", selected_thing->health_max);
+
+	if(selected_thing->direction >= 0 && selected_thing->direction <= 3) {
+		SETINPUT(uidirection, "%s", direction_str[selected_thing->direction]);
+	} else {
+		SETINPUT(uidirection, "%s", "");
+	}
 }
+
+
