@@ -240,6 +240,7 @@ thing_mouse_button(SDL_Event *event)
 			break;
 		case SDL_BUTTON_MIDDLE:
 			thing = malloc(sizeof(*thing));
+			memset(thing, 0, sizeof(*thing));
 			thing->type = THING_NULL;
 			vec2_dup(thing->position, mouse_position);
 			thing->prev = NULL;
