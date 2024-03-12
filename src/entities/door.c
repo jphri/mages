@@ -1,6 +1,7 @@
 #include "../physics.h"
 #include "../entity.h"
 #include "../graphics.h"
+#include "../audio.h"
 #include <math.h>
 #include <assert.h>
 #include <stdbool.h>
@@ -92,6 +93,7 @@ ent_door_open(Door *door)
 	if(!door->open) {
 		door->open = true;
 		door->body->active = 0;
+		audio_sfx_play(AUDIO_MIXER_SFX, AUDIO_BUFFER_DOOR_OPEN, 1.0);
 	}
 }
 
@@ -101,6 +103,7 @@ ent_door_close(Door *door)
 	if(door->open) {
 		door->open = false;
 		door->body->active = 1;
+		audio_sfx_play(AUDIO_MIXER_SFX, AUDIO_BUFFER_DOOR_CLOSE, 1.0);
 	}
 }
 
