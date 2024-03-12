@@ -62,6 +62,7 @@ thing_init(void)
 	type_string[THING_NULL]   = to_strview("");
 	type_string[THING_PLAYER] = to_strview("THING_PLAYER");
 	type_string[THING_DUMMY]  = to_strview("THING_DUMMY");
+	type_string[THING_DOOR]   = to_strview("THING_DOOR");
 
 	thing_context = ui_new_object(0, UI_ROOT);
 	UIObject *layout = ui_layout_new();

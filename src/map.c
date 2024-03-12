@@ -13,6 +13,7 @@ typedef void (*ThingFunc)(Thing *c);
 
 static void thing_player(Thing *c);
 static void thing_dummy(Thing *c);
+static void thing_door(Thing *c);
 
 static int size_command(Map **map, StrView *tokenview);
 static int tile_command(Map **map, StrView *tokenview);
@@ -28,6 +29,7 @@ static int thing_direction_command(Map **map, StrView *tokenview);
 static ThingFunc thing_pc[LAST_THING] = {
 	[THING_PLAYER]    = thing_player,
 	[THING_DUMMY]     = thing_dummy,
+	[THING_DOOR]      = thing_door
 };
 
 static struct {
@@ -358,3 +360,8 @@ thing_dummy(Thing *c)
 	ent_dummy_new(c->position);
 }
 
+void
+thing_door(Thing *c)
+{
+	ent_door_new(c->position, c->direction);
+}
