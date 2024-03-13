@@ -119,7 +119,7 @@ door_update(Entity *door_ent, float delta)
 	Door *door = &door_ent->door;
 	
 	float dist = (float)door->open - door->openness;
-	dist *= 0.1 * 1000.0;
+	dist *= 0.25 * 1000.0;
 	dist -= DRAG * 0.1 * door->openness_speed; 
 	door->openness_speed += (dist * delta) * 0.1;
 	door->openness += (door->openness_speed * delta);
