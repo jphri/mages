@@ -39,6 +39,7 @@ typedef enum {
 	SCENE_OBJECT_SPRITE,
 	SCENE_OBJECT_TEXT,
 	SCENE_OBJECT_ANIMATED_SPRITE,
+	SCENE_OBJECT_LINE,
 	LAST_SCENE_OBJECT_TYPE,
 } SceneObjectType;
 
@@ -63,6 +64,12 @@ typedef struct {
 	vec2 half_size;
 	vec4 color;
 } SceneSprite;
+
+typedef struct {
+	vec2 p1, p2;
+	vec4 color;
+	float thickness;
+} SceneLine;
 
 typedef struct {
 	vec2 position;

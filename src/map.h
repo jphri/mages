@@ -1,12 +1,14 @@
 #ifndef MAP_H
 #define MAP_H
 
+#include "defs.h"
 #include "vecmath.h"
 
 enum {
 	THING_NULL,
 	THING_PLAYER,
 	THING_DUMMY,
+	THING_DOOR,
 	LAST_THING
 };
 
@@ -22,6 +24,7 @@ struct Thing {
 	int type;
 	vec2 position;
 	float health, health_max;
+	Direction direction;
 
 	Thing *next;
 	Thing *prev;

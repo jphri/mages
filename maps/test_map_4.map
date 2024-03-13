@@ -569,10 +569,10 @@ tile 566 1
 tile 567 1
 tile 568 1
 tile 569 1
-tile 570 1
-tile 571 1
-tile 572 1
-tile 573 1
+tile 570 4
+tile 571 4
+tile 572 4
+tile 573 4
 tile 574 1
 tile 575 1
 tile 576 1
@@ -594,17 +594,17 @@ tile 591 4
 tile 592 4
 tile 593 4
 tile 594 4
-tile 595 3
+tile 595 2
 tile 596 35
 tile 597 1
 tile 598 1
 tile 599 1
 tile 600 1
 tile 601 1
-tile 602 1
-tile 603 1
-tile 604 1
-tile 605 1
+tile 602 4
+tile 603 4
+tile 604 4
+tile 605 4
 tile 606 1
 tile 607 1
 tile 608 1
@@ -626,17 +626,17 @@ tile 623 4
 tile 624 4
 tile 625 4
 tile 626 4
-tile 627 3
+tile 627 2
 tile 628 35
 tile 629 1
 tile 630 1
 tile 631 1
 tile 632 1
 tile 633 1
-tile 634 1
-tile 635 1
-tile 636 1
-tile 637 1
+tile 634 4
+tile 635 4
+tile 636 4
+tile 637 4
 tile 638 1
 tile 639 1
 tile 640 1
@@ -665,10 +665,10 @@ tile 662 1
 tile 663 1
 tile 664 1
 tile 665 1
-tile 666 1
-tile 667 1
-tile 668 1
-tile 669 1
+tile 666 4
+tile 667 4
+tile 668 4
+tile 669 4
 tile 670 1
 tile 671 1
 tile 672 1
@@ -697,10 +697,10 @@ tile 694 1
 tile 695 1
 tile 696 1
 tile 697 1
-tile 698 1
-tile 699 1
-tile 700 1
-tile 701 1
+tile 698 4
+tile 699 4
+tile 700 4
+tile 701 4
 tile 702 1
 tile 703 1
 tile 704 1
@@ -1028,20 +1028,24 @@ collision 24.500000 27.500000 0.500000 3.500000
 collision 6.500000 27.500000 0.500000 3.500000
 collision 22.500000 23.500000 2.500000 0.500000
 collision 8.500000 23.500000 2.500000 0.500000
-collision 19.500000 19.500000 0.500000 4.500000
+collision 19.500000 22.000000 0.500000 2.000000
+collision 19.500000 16.500000 0.500000 1.500000
 collision 11.500000 19.500000 0.500000 4.500000
 collision 24.500000 14.500000 5.500000 0.500000
 collision 7.500000 14.500000 4.500000 0.500000
 collision 30.500000 10.000000 0.500000 5.000000
 collision 2.500000 10.000000 0.500000 5.000000
 collision 16.500000 4.500000 14.500000 0.500000
-new_thing 1
-thing_position 7.937929 12.084412
+new_thing 3
+thing_position 19.536585 19.051735
+thing_direction left
 new_thing 2
-thing_position 7.500000 8.500000
-new_thing 2
-thing_position 13.500000 8.562500
+thing_position 25.625000 8.562500
 new_thing 2
 thing_position 19.437500 8.500000
 new_thing 2
-thing_position 25.625000 8.562500
+thing_position 13.500000 8.562500
+new_thing 2
+thing_position 7.500000 8.500000
+new_thing 1
+thing_position 28.072441 19.509394

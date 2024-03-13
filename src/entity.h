@@ -15,7 +15,8 @@
 	MAC_ENTITY(ENTITY_DUMMY)    \
 	MAC_ENTITY(ENTITY_FIREBALL) \
 	MAC_ENTITY(ENTITY_DAMAGE_NUMBER) \
-	MAC_ENTITY(ENTITY_PARTICLE)
+	MAC_ENTITY(ENTITY_PARTICLE) \
+	MAC_ENTITY(ENTITY_DOOR)
 
 typedef enum {
 	ENTITY_NULL,
@@ -71,20 +72,34 @@ union Entity {
 		Mob mob;
 		Body *body;
 	} player;
-};
 
-typedef struct {
-	void (*update)(Entity*, float delta);
-	void (*render)(Entity*);
-	void (*take_damage)(Entity*, float damage);
-	void (*die)(Entity*);
-} EntityInterface;
+	ENTITY_STRUCT(ENTITY_DOOR) {
+		Direction direction;
+
+		Body *body;
+		bool open;
+		float openness, openness_speed, door_angle;
+		SceneLine *line;
+	} door;
+};
 
 typedef struct ENTITY_DAMAGE_NUMBER_struct DamageNumber;
 typedef struct ENTITY_FIREBALL_struct Fireball;
 typedef struct ENTITY_DUMMY_struct Dummy;
 typedef struct ENTITY_PARTICLE_struct Particle;
 typedef struct ENTITY_PLAYER_struct Player;
+typedef struct ENTITY_DOOR_struct Door;
+
+typedef struct {
+	void (*update)(Entity*, float delta);
+	void (*render)(Entity*);
+	void (*take_damage)(Entity*, float damage);
+	void (*die)(Entity*);
+
+	bool (*mouse_hovered)(Entity *, vec2 mouse_click);
+	void (*mouse_interact)(Entity *self, Player *who, vec2 mouse_click);
+} EntityInterface;
+
 
 void ent_init(void);
 void ent_end(void);
@@ -108,9 +123,18 @@ Player       *ent_player_new(vec2 position);
 Fireball     *ent_fireball_new(Entity *caster, vec2 position, vec2 vel);
 Dummy        *ent_dummy_new(vec2 position);
 DamageNumber *ent_damage_number(vec2 position, float damage);
+Door         *ent_door_new(vec2 position, Direction direction);
 
 Particle     *ent_particle_new(vec2 position, vec2 velocity, vec4 color, float time);
 void          ent_shot_particles(vec2 position, vec2 velocity, vec4 color, float time, int count);
+
+Entity *ent_hover(vec2 position);
+void    ent_mouse_interact(Player *who, vec2 mouse_click);
+
+void ent_door_open(Door *door);
+void ent_door_close(Door *door);
+bool ent_door_is_open(Door *door);
+RelPtr   ent_relptr(void *ptr);
 
 #define ENT_DATA(NAME, ID) ((NAME##_struct*)ent_data(ID))
 

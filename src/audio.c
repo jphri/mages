@@ -53,6 +53,8 @@ audio_init(void)
 	audio_buffers[AUDIO_BUFFER_BGM_TEST] = load_audio("sounds/bgm/time-to-reflect-what-i-have-done.ogg");
 	audio_buffers[AUDIO_BUFFER_FIREBALL] = load_audio_wav("sounds/sfx/fireball.wav");
 	audio_buffers[AUDIO_BUFFER_FIREBALL_HIT] = load_audio_wav("sounds/sfx/fireball-hit.wav");
+	audio_buffers[AUDIO_BUFFER_DOOR_OPEN]  = load_audio_wav("sounds/sfx/door-open.wav");
+	audio_buffers[AUDIO_BUFFER_DOOR_CLOSE] = load_audio_wav("sounds/sfx/door-close.wav");
 
 	audio_device = SDL_OpenAudioDevice(NULL, false, &wanted_audio_spec, &audio_spec,
 		SDL_AUDIO_ALLOW_SAMPLES_CHANGE);

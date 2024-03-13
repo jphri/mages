@@ -95,10 +95,9 @@ collision_callback(Body *self_body, Body *other, Contact *contact)
 		return;
 	}
 
-	if(!ENT_IMPLEMENTS(other_ent, take_damage))
-		return;
-	
-	ent_take_damage(other_ent, self->fireball.damage, VEC2_DUP(self->fireball.body->position));
+	if(ENT_IMPLEMENTS(other_ent, take_damage)) {
+		ent_take_damage(other_ent, self->fireball.damage, VEC2_DUP(self->fireball.body->position));
+	}
 
 	ent_shot_particles(VEC2_DUP(self->fireball.body->position), VEC2_DUP(self->fireball.body->velocity), (vec4){ 1.0, 1.0, 0.0, 1.0 }, 0.25, 4);
 	audio_sfx_play(AUDIO_MIXER_SFX, AUDIO_BUFFER_FIREBALL_HIT, 1.0);

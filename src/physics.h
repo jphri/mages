@@ -50,6 +50,7 @@ struct Body {
 
 	void (*pre_solve)(Body *self, Body *other, Contact *contact);
 	bool is_static, no_update;
+	bool active;
 
 	Entity *entity;
 };

@@ -92,6 +92,7 @@ phx_new(void)
 {
 	Body *body = objpool_new(&objects);
 	memset(body, 0, sizeof(*body));
+	body->active = true;
 	return body;
 }
 
@@ -278,6 +279,9 @@ calculate_grid(void)
 	arrbuf_clear(&grid_node_arena);
 
 	for(Body *body = objpool_begin(&objects); body; body = objpool_next(body)) {
+		if(!body->active)
+			continue;
+
 		int grid_min_x = floorf(body->position[0] - body->half_size[0]) / GRID_TILE_SIZE;
 		int grid_min_y = floorf(body->position[1] - body->half_size[1]) / GRID_TILE_SIZE;
 		int grid_max_x = floorf(body->position[0] + body->half_size[0]) / GRID_TILE_SIZE;
