@@ -29,8 +29,6 @@ static Subscriber *level_subscriber;
 static vec2 camera_position;
 static vec2 mouse_pos;
 
-static Door *door_test;
-
 void
 GAME_STATE_LEVEL_init(void)
 {
@@ -71,9 +69,6 @@ GAME_STATE_LEVEL_init(void)
 	map_set_gfx_scene(map);
 	map_set_phx_scene(map);
 	map_set_ent_scene(map);
-
-	door_test = ent_door_new((vec2){ 0.0, 0.0 }, DIR_LEFT);
-	door_test->open = 1;
 }
 
 void
