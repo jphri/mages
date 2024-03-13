@@ -20,7 +20,6 @@
 #include "SDL_events.h"
 
 
-static void check_hover(void);
 static void event_receiver(Event event, const void *data);
 static void edit_cbk(UIObject *obj, void *userptr);
 
@@ -94,8 +93,6 @@ GAME_STATE_LEVEL_update(float delta)
 
 		vec2_add_scaled(camera_position, camera_position, delta_pos, dist2 * delta);
 		gfx_set_camera(camera_position, (vec2){ 32.0, 32.0 });
-
-		check_hover();
 	}
 }
 
@@ -119,8 +116,7 @@ GAME_STATE_LEVEL_end(void)
 void 
 GAME_STATE_LEVEL_mouse_move(SDL_Event *event) 
 { 
-	gfx_pixel_to_world((vec2){ event->motion.x, event->motion.y }, mouse_pos);
-	check_hover();
+	(void)event;
 }
 
 void 
@@ -159,14 +155,5 @@ event_receiver(Event event, const void *data)
 		GLOBAL.player = ev->player;
 	default:
 		break;
-	}
-}
-
-void
-check_hover(void)
-{
-	Entity *e = ent_hover(mouse_pos);
-	if(e != NULL) {
-		printf("Hovered something...\n");
 	}
 }

@@ -137,7 +137,6 @@ ent_mouse_interact(Player *who, vec2 mouse_click)
 
 	vec2_sub(delta_dist, mouse_click, who->body->position);
 	dist2 = vec2_dot(delta_dist, delta_dist);
-	printf("Dist2: %f\n", dist2);
 	if(dist2 > (MAX_INTERACT_DIST * MAX_INTERACT_DIST))
 		return;
 	
