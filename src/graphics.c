@@ -597,7 +597,7 @@ init_shaders(void)
 	SHADER_PROGRAM(sprite_program, default_vertex, default_fragment);
 	SHADER_PROGRAM(tile_map_program, tilemap_vertex, default_fragment);
 	SHADER_PROGRAM(post_clean, post_vertex, post_clean_fsh);
-	SHADER_PROGRAM(debug_program, debug_vertex, debug_fragment);
+	//SHADER_PROGRAM(debug_program, debug_vertex, debug_fragment);
 
 	#define SHADER(shader_name, shader_path, shader_type) \
 		glDeleteShader(shader_name);
@@ -687,10 +687,10 @@ gfx_tmap_new(SpriteType terrain, int w, int h, int *data)
 
 	unsigned int gpu_buffer = ugl_create_buffer(GL_STATIC_DRAW, buffer.size, buffer.data);
 	unsigned int gpu_vao    = ugl_create_vao(4, (VaoSpec[]) {
-		{ .name = VATTRIB_POSITION, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex),    .offset = offsetof(SpriteVertex, position), .buffer = sprite_buffer_gpu },
-		{ .name = VATTRIB_TEXCOORD, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex),    .offset = offsetof(SpriteVertex, texcoord), .buffer = sprite_buffer_gpu },
-		{ .name = VATTRIB_INST_POSITION,   .size = 2, .type = GL_FLOAT, .stride = sizeof(TileData), .offset = offsetof(TileData, position),  .divisor = 1, .buffer = gpu_buffer },
-		{ .name = VATTRIB_INST_SPRITE_ID,  .size = 2, .type = GL_FLOAT, .stride = sizeof(TileData), .offset = offsetof(TileData, tile_data), .divisor = 1, .buffer = gpu_buffer },
+		{ .name = tile_map_program.attributes[VATTRIB_POSITION], .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex),    .offset = offsetof(SpriteVertex, position), .buffer = sprite_buffer_gpu },
+		{ .name = tile_map_program.attributes[VATTRIB_TEXCOORD], .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex),    .offset = offsetof(SpriteVertex, texcoord), .buffer = sprite_buffer_gpu },
+		{ .name = tile_map_program.attributes[VATTRIB_INST_POSITION],   .size = 2, .type = GL_FLOAT, .stride = sizeof(TileData), .offset = offsetof(TileData, position),  .divisor = 1, .buffer = gpu_buffer },
+		{ .name = tile_map_program.attributes[VATTRIB_INST_SPRITE_ID],  .size = 2, .type = GL_FLOAT, .stride = sizeof(TileData), .offset = offsetof(TileData, tile_data), .divisor = 1, .buffer = gpu_buffer },
 	});
 
 	arrbuf_free(&buffer);
@@ -1110,17 +1110,16 @@ sprite_buffer_reserve(int count_sprites)
 	sprite_reserved = new_reserv;
 	sprite_buffer = new_buffer;
 	sprite_vao = ugl_create_vao(10, (VaoSpec[]){
-		{ .name = VATTRIB_POSITION, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex),   .offset = offsetof(SpriteVertex,   position), .buffer = sprite_buffer_gpu },
-		{ .name = VATTRIB_TEXCOORD, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex),   .offset = offsetof(SpriteVertex,   texcoord), .buffer = sprite_buffer_gpu },
-
-		{ .name = VATTRIB_INST_SPRITE_TYPE,      .size = 1, .type = GL_UNSIGNED_INT, .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, type),        .divisor = 1, .buffer = sprite_buffer },
-		{ .name = VATTRIB_INST_ROTATION,         .size = 1, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, rotation),    .divisor = 1, .buffer = sprite_buffer },
-		{ .name = VATTRIB_INST_POSITION,         .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, position),    .divisor = 1, .buffer = sprite_buffer },
-		{ .name = VATTRIB_INST_SIZE,             .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, half_size),   .divisor = 1, .buffer = sprite_buffer },
-		{ .name = VATTRIB_INST_TEXTURE_POSITION, .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, texpos),      .divisor = 1, .buffer = sprite_buffer },
-		{ .name = VATTRIB_INST_TEXTURE_SIZE,     .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, texsize),     .divisor = 1, .buffer = sprite_buffer },
-		{ .name = VATTRIB_INST_COLOR,            .size = 4, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, color),       .divisor = 1, .buffer = sprite_buffer },
-		{ .name = VATTRIB_INST_CLIP,             .size = 4, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, clip_region), .divisor = 1, .buffer = sprite_buffer },
+		{ .name = sprite_program.attributes[VATTRIB_POSITION], .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex),   .offset = offsetof(SpriteVertex,   position), .buffer = sprite_buffer_gpu },
+		{ .name = sprite_program.attributes[VATTRIB_TEXCOORD], .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex),   .offset = offsetof(SpriteVertex,   texcoord), .buffer = sprite_buffer_gpu },
+		{ .name = sprite_program.attributes[VATTRIB_INST_SPRITE_TYPE],      .size = 1, .type = GL_UNSIGNED_INT, .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, type),        .divisor = 1, .buffer = sprite_buffer },
+		{ .name = sprite_program.attributes[VATTRIB_INST_ROTATION],         .size = 1, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, rotation),    .divisor = 1, .buffer = sprite_buffer },
+		{ .name = sprite_program.attributes[VATTRIB_INST_POSITION],         .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, position),    .divisor = 1, .buffer = sprite_buffer },
+		{ .name = sprite_program.attributes[VATTRIB_INST_SIZE],             .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, half_size),   .divisor = 1, .buffer = sprite_buffer },
+		{ .name = sprite_program.attributes[VATTRIB_INST_TEXTURE_POSITION], .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, texpos),      .divisor = 1, .buffer = sprite_buffer },
+		{ .name = sprite_program.attributes[VATTRIB_INST_TEXTURE_SIZE],     .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, texsize),     .divisor = 1, .buffer = sprite_buffer },
+		{ .name = sprite_program.attributes[VATTRIB_INST_COLOR],            .size = 4, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, color),       .divisor = 1, .buffer = sprite_buffer },
+		{ .name = sprite_program.attributes[VATTRIB_INST_CLIP],             .size = 4, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, clip_region), .divisor = 1, .buffer = sprite_buffer },
 	});
 
 	sprite_buffer_unlock(false);
