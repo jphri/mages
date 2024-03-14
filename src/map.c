@@ -172,7 +172,7 @@ map_set_gfx_scene(Map *map)
 	/* i really need to improve the map layout lol */
 	for(size_t i = 0; i < 64; i++) {
 		int layer_index = i * map->w * map->h;
-		gfx_scene_set_tilemap(i, SPRITE_TERRAIN, map->w, map->h, &map->tiles[layer_index]);
+		gfx_scene_new_tilemap(i, SPRITE_TERRAIN, map->w, map->h, &map->tiles[layer_index]);
 	}
 }
 

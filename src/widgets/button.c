@@ -88,11 +88,11 @@ button_draw(UIObject *obj, UIEvent *event, Rectangle *rect)
 	UI_BUTTON_struct *button = WIDGET(UI_BUTTON, obj);
 
 	if(ui_get_active() == obj) {
-		gfx_draw_texture_rect(gfx_white_texture(), rect->position, rect->half_size, 0.0, (vec4){ 0.4, 0.4, 0.4, 1.0 });
+		gfx_push_texture_rect(gfx_white_texture(), rect->position, rect->half_size, 0.0, (vec4){ 0.4, 0.4, 0.4, 1.0 });
 	} else if(ui_get_hot() == obj) {
-		gfx_draw_texture_rect(gfx_white_texture(), rect->position, rect->half_size, 0.0, (vec4){ 0.8, 0.8, 0.8, 1.0 });
+		gfx_push_texture_rect(gfx_white_texture(), rect->position, rect->half_size, 0.0, (vec4){ 0.8, 0.8, 0.8, 1.0 });
 	} else 
-		gfx_draw_texture_rect(gfx_white_texture(), rect->position, rect->half_size, 0.0, (vec4){ 0.6, 0.6, 0.6, 1.0 });
+		gfx_push_texture_rect(gfx_white_texture(), rect->position, rect->half_size, 0.0, (vec4){ 0.6, 0.6, 0.6, 1.0 });
 
 	gfx_push_clip(rect->position, rect->half_size);
 	if(button->label)

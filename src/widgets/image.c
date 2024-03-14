@@ -43,7 +43,7 @@ UI_IMAGE_event(UIObject *image, UIEvent *event, Rectangle *rect)
 		r.half_size[1] = r.half_size[0] / aspect;
 	}
 
-	gfx_draw_texture_rect(
+	gfx_push_texture_rect(
 		&IMAGE(image)->image_stamp, 
 		r.position, 
 		r.half_size,

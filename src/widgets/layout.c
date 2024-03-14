@@ -85,7 +85,7 @@ UI_LAYOUT_event(UIObject *layout_obj, UIEvent *event, Rectangle *bound)
 
 	for(UIObject *child = ui_child(layout_obj); child; child = ui_child_next(child)) {
 		if(event->event_type == UI_DRAW) {
-			gfx_draw_texture_rect(gfx_white_texture(), bound->position, bound->half_size, 0.0, l->background);
+			gfx_push_texture_rect(gfx_white_texture(), bound->position, bound->half_size, 0.0, l->background);
 			gfx_push_clip(rec.position, rec.half_size);
 		}
 

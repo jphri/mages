@@ -156,11 +156,11 @@ edit_wheel(SDL_Event *event)
 void
 edit_render(void)
 {
-	gfx_draw_begin(NULL);
+	gfx_begin();
 	common_draw_map(current_layer, ui_slider_get_value(after_layer_alpha_slider));
 
 	for(int x = 0; x < editor.map->w + 1; x++) {
-		gfx_draw_line(
+		gfx_push_line(
 			(vec2){ (x - 0.1), (0.0) }, 
 			(vec2){ (x - 0.1), (editor.map->h) },
 			0.05,
@@ -169,7 +169,7 @@ edit_render(void)
 	}
 
 	for(int y = 0; y < editor.map->h + 1; y++) {
-		gfx_draw_line(
+		gfx_push_line(
 			(vec2){ (0.0),           (y - 0.1) }, 
 			(vec2){ (editor.map->w), (y - 0.1) },
 			0.05,
@@ -179,7 +179,8 @@ edit_render(void)
 	if(!ui_is_active()) {
 		draw_preview();
 	}
-	gfx_draw_end();
+	gfx_flush();
+	gfx_end();
 }
 
 void
@@ -354,7 +355,7 @@ pencil_preview(int x, int y)
 	int tile = editor.current_tile - 1;
 	stamp = get_sprite(SPRITE_TERRAIN, tile % cols, tile / cols);
 
-	gfx_draw_texture_rect(
+	gfx_push_texture_rect(
 			&stamp,
 			v,
 			(vec2){ 0.5, 0.5 },
@@ -586,7 +587,7 @@ fill_preview(int x, int y)
 			}
 		};
 		map_info[elem->x + elem->y * editor.map->w] = editor.current_tile;
-		gfx_draw_texture_rect(&stamp, (vec2){ elem->x + 0.5, elem->y + 0.5 }, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 0.5 });
+		gfx_push_texture_rect(&stamp, (vec2){ elem->x + 0.5, elem->y + 0.5 }, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 0.5 });
 
 		/* elem dead here */
 		arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));

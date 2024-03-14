@@ -102,11 +102,11 @@ draw_tileset(UIObject *obj, Rectangle *rect)
 				1.0 / (float)TSET(obj)->rows,
 			}
 		};
-		gfx_draw_texture_rect(&sprite, (vec2){ x, y }, (vec2){ SPRITE_SIZE / 2.0, SPRITE_SIZE / 2.0 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+		gfx_push_texture_rect(&sprite, (vec2){ x, y }, (vec2){ SPRITE_SIZE / 2.0, SPRITE_SIZE / 2.0 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 	}
 
 	for(int x = 0; x <= TSET(obj)->cols; x++) {
-		gfx_draw_line(
+		gfx_push_line(
 				(vec2){ line_min[0] + x * SPRITE_SIZE, line_min[1] }, 
 				(vec2){ line_min[0] + x * SPRITE_SIZE, line_max[1] },
 				1.0, 
@@ -115,7 +115,7 @@ draw_tileset(UIObject *obj, Rectangle *rect)
 	}
 
 	for(int y = 0; y <= TSET(obj)->rows; y++) {
-		gfx_draw_line(
+		gfx_push_line(
 				(vec2){ line_min[0], line_min[1] + y * SPRITE_SIZE }, 
 				(vec2){ line_max[0], line_min[1] + y * SPRITE_SIZE },
 				1.0, 

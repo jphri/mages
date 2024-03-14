@@ -40,6 +40,7 @@ typedef enum {
 	SCENE_OBJECT_TEXT,
 	SCENE_OBJECT_ANIMATED_SPRITE,
 	SCENE_OBJECT_LINE,
+	SCENE_OBJECT_TILEMAP,
 	LAST_SCENE_OBJECT_TYPE,
 } SceneObjectType;
 
@@ -96,8 +97,12 @@ typedef struct {
 	SpriteType terrain;
 } GraphicsTileMap;
 
+typedef struct {
+	GraphicsTileMap tilemap;
+} SceneTileMap;
+
 void gfx_init(void);
-void gfx_end(void);
+void gfx_terminate(void);
 
 void gfx_make_framebuffers(int w, int h);
 void gfx_clear(void);
@@ -110,15 +115,17 @@ void gfx_set_camera(vec2 position, vec2 scale);
 void gfx_pixel_to_world(vec2 pixel, vec2 world_out);
 void gfx_world_to_pixel(vec2 world, vec2 pixel_out);
 
-void gfx_draw_begin(GraphicsTileMap *tmap);
+void gfx_begin(void);
 void gfx_push_clip(vec2 position, vec2 half_size);
 void gfx_pop_clip(void);
-void gfx_draw_texture_rect(TextureStamp *texture, vec2 position, vec2 size, float rotation, vec4 color);
-void gfx_draw_font(Font font, vec2 position, float height, vec4 color, StrView utf_text);
-void gfx_draw_font2(Font font, vec2 position, float height, vec4 color, const char *fmt, ...);
-void gfx_draw_line(vec2 p1, vec2 p2, float thickness, vec4 color);
-void gfx_draw_rect(vec2 position, vec2 half_size, float thickness, vec4 color);
-void gfx_draw_end(void);
+void gfx_draw_tilemap(GraphicsTileMap *tmap);
+void gfx_push_texture_rect(TextureStamp *texture, vec2 position, vec2 size, float rotation, vec4 color);
+void gfx_push_font(Font font, vec2 position, float height, vec4 color, StrView utf_text);
+void gfx_push_font2(Font font, vec2 position, float height, vec4 color, const char *fmt, ...);
+void gfx_push_line(vec2 p1, vec2 p2, float thickness, vec4 color);
+void gfx_push_rect(vec2 position, vec2 half_size, float thickness, vec4 color);
+void gfx_flush(void);
+void gfx_end(void);
 
 void gfx_camera_set_enabled(bool enabled);
 
@@ -136,14 +143,12 @@ typedef void SceneObject;
 SceneObject *gfx_scene_new_obj(int layer, SceneObjectType type);
 void         gfx_scene_del_obj(SceneObject *object);
 void         gfx_scene_update(float delta);
-
-void gfx_scene_set_tilemap(int layer, SpriteType atlas, int w, int h, int *data);
+SceneTileMap *gfx_scene_new_tilemap(int layer, SpriteType terrain, int w, int h, int *data);
 
 TextureStamp get_sprite(SpriteType sprite, int sprite_x, int sprite_y);
 TextureStamp *gfx_white_texture(void);
 
 void gfx_sprite_count_rows_cols(SpriteType type, int *rows_out, int *cols_out);
-
 Rectangle gfx_window_rectangle(void);
 
 void gfx_font_size(vec2 out_size, Font font, float height, const char *fmt, ...);

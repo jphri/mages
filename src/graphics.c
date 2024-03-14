@@ -219,7 +219,6 @@ static mat4 view_matrix;
 
 static GLuint matrix_buffer;
 static GLuint sprite_colrow_inv_buffer;
-static GraphicsTileMap *current_tmap;
 
 static GLuint sprite_buffer, sprite_vao, sprite_count, 
 			  sprite_reserved = 1; /* for initialization, this will be overrided at gfx_init() */
@@ -328,7 +327,7 @@ gfx_init(void)
 }
 
 void
-gfx_end(void)
+gfx_terminate(void)
 {
 	glDeleteBuffers(3, (GLuint[]) {
 		sprite_buffer_gpu,
@@ -347,7 +346,7 @@ gfx_end(void)
 }
 
 void 
-gfx_draw_texture_rect(TextureStamp *stamp, vec2 position, vec2 size, float rotation, vec4 color)
+gfx_push_texture_rect(TextureStamp *stamp, vec2 position, vec2 size, float rotation, vec4 color)
 {
 	SpriteInternal internal;
 
@@ -364,7 +363,7 @@ gfx_draw_texture_rect(TextureStamp *stamp, vec2 position, vec2 size, float rotat
 }
 
 void
-gfx_draw_font2(Font font, vec2 position, float height, vec4 color, const char *fmt, ...)
+gfx_push_font2(Font font, vec2 position, float height, vec4 color, const char *fmt, ...)
 {
 	char buffer[1024];
 	va_list va;
@@ -385,7 +384,7 @@ gfx_draw_font2(Font font, vec2 position, float height, vec4 color, const char *f
 }
 
 void
-gfx_draw_font(Font font, vec2 position, float height, vec4 color, StrView str)
+gfx_push_font(Font font, vec2 position, float height, vec4 color, StrView str)
 {
 	FontRenderParser render;
 
@@ -397,7 +396,7 @@ gfx_draw_font(Font font, vec2 position, float height, vec4 color, StrView str)
 }
 
 void
-gfx_draw_line(vec2 p1, vec2 p2, float thickness, vec4 color)
+gfx_push_line(vec2 p1, vec2 p2, float thickness, vec4 color)
 {
 	vec2 dir;
 	vec2 sprite_pos, sprite_size;
@@ -413,7 +412,7 @@ gfx_draw_line(vec2 p1, vec2 p2, float thickness, vec4 color)
 	sprite_size[1] = thickness;
 	float rotation = atan2f(-dir[1], dir[0]);
 
-	gfx_draw_texture_rect(
+	gfx_push_texture_rect(
 		&(TextureStamp){ .texture = TEXTURE_UI, .position = { 0.0, 0.0 }, .size = { 0.001, 0.001 } },
 		sprite_pos,
 		sprite_size,
@@ -423,13 +422,13 @@ gfx_draw_line(vec2 p1, vec2 p2, float thickness, vec4 color)
 }
 
 void
-gfx_draw_rect(vec2 position, vec2 half_size, float thickness, vec4 color)
+gfx_push_rect(vec2 position, vec2 half_size, float thickness, vec4 color)
 {
 	vec2 min, max;
 	vec2_sub(min, position, half_size);
 	vec2_add(max, position, half_size);
 	
-	#define ADD_LINE(x1, y1, x2, y2) gfx_draw_line((vec2){ x1, y1 }, (vec2){ x2, y2 }, thickness, color)
+	#define ADD_LINE(x1, y1, x2, y2) gfx_push_line((vec2){ x1, y1 }, (vec2){ x2, y2 }, thickness, color)
 	ADD_LINE(min[0], min[1], max[0], min[1]);
 	ADD_LINE(max[0], min[1], max[0], max[1]);
 	ADD_LINE(max[0], max[1], min[0], max[1]);
@@ -477,20 +476,10 @@ gfx_end_draw_framebuffers(void)
 }
 
 void
-gfx_draw_begin(GraphicsTileMap *tmap) 
+gfx_begin(void) 
 {
-	current_tmap = tmap;
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-	clip_id = 1;
-}
-
-void
-gfx_draw_end(void)
-{
-	if((!current_tmap || current_tmap->count_tiles == 0) && sprite_count == 0)
-		return;
 
 	for(int i = 0; i < LAST_TEXTURE_ATLAS; i++) {
 		glActiveTexture(GL_TEXTURE0 + i);
@@ -499,9 +488,21 @@ gfx_draw_end(void)
 
 	glBindBufferBase(GL_UNIFORM_BUFFER, 1, sprite_colrow_inv_buffer);
 	glBindBufferBase(GL_UNIFORM_BUFFER, 0, matrix_buffer);
-	if(current_tmap)
-		draw_tmap(current_tmap);
-	
+	clip_id = 1;
+}
+
+void
+gfx_draw_tilemap(GraphicsTileMap *tmap)
+{
+	draw_tmap(tmap);
+}
+
+void
+gfx_flush(void)
+{
+	if(sprite_count == 0)
+		return;
+
 	sprite_buffer_lock();
 
 	if(sprite_count > 0) {
@@ -511,6 +512,13 @@ gfx_draw_end(void)
 
 	sprite_buffer_unlock(true);
 
+	sprites_rendered += sprite_count;
+	sprite_count = 0;
+}
+
+void
+gfx_end(void)
+{
 	glBindBufferBase(GL_UNIFORM_BUFFER, 0, 0);
 	glBindBufferBase(GL_UNIFORM_BUFFER, 1, 0);
 
@@ -518,9 +526,6 @@ gfx_draw_end(void)
 		glActiveTexture(GL_TEXTURE0 + i);
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
-
-	sprites_rendered += sprite_count;
-	sprite_count = 0;
 	glDisable(GL_BLEND);
 }
 
@@ -1052,7 +1057,7 @@ parser_font_render(struct CharData *char_data, Font font, vec2 char_offset, void
 	vec2_add(pp, p->position, ss);
 	vec2_add_scaled(pp, pp, char_offset, p->height);
 
-	gfx_draw_texture_rect(
+	gfx_push_texture_rect(
 		&(TextureStamp){ 
 			.texture = atlas, 
 			.position = {

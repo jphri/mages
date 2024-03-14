@@ -23,6 +23,7 @@ struct SceneObjectPrivData {
 		SceneText   text;
 		SceneAnimatedSprite anim;
 		SceneLine line;
+		SceneTileMap tmap;
 	} data;
 };
 
@@ -35,6 +36,10 @@ typedef struct {
 	int frame_count;
 	Frame *frames;
 } AnimationData;
+
+typedef void (*ObjectDel)(SceneObject *obj);
+
+static void del_tilemap(SceneObject *);
 
 #define DEFINE_ANIMATION(ANIMATION_NAME, ...) [ANIMATION_NAME] = { \
 		.frame_count = sizeof((Frame[]){ __VA_ARGS__ })/sizeof(Frame), \
@@ -53,6 +58,10 @@ static AnimationData animations[LAST_ANIMATION] = {
 	)
 };
 
+static ObjectDel del_functions[LAST_SCENE_OBJECT_TYPE] = {
+	[SCENE_OBJECT_TILEMAP] = del_tilemap
+};
+
 static inline Frame *calculate_frame_animation(SceneAnimatedSprite *sprite)
 {
 	int    frame = (int)(sprite->time * sprite->fps);
@@ -61,8 +70,6 @@ static inline Frame *calculate_frame_animation(SceneAnimatedSprite *sprite)
 }
 
 static SceneObjectPrivData   *layer_objects[SCENE_LAYERS];
-static GraphicsTileMap layer_tmaps[SCENE_LAYERS];
-static uint64_t        layer_tmap_set;
 static ObjectPool objects;
 
 #define PRIVDATA(ID) ((SceneObjectPrivData*)objalloc_data(&objects, ID))
@@ -111,6 +118,9 @@ static void
 cleanup_callback(ObjectPool *pool, void *ptr) 
 {
 	(void)pool;
+	SceneObjectPrivData *object = ptr;
+	if(del_functions[object->type])
+		del_functions[object->type](&object->data);
 	remove_object_layer(ptr);
 }
 
@@ -125,32 +135,36 @@ gfx_scene_setup(void)
 void
 gfx_scene_reset(void)
 {
-	layer_tmap_set = 0;
-	for(int i = 0; i < SCENE_LAYERS; i++) {
-		layer_objects[i] = 0;
-		gfx_tmap_free(&layer_tmaps[i]);
+	for(SceneObjectPrivData *obj = objpool_begin(&objects);
+		obj;
+		obj = objpool_next(obj))
+	{
+		objpool_free(obj);
 	}
-	objpool_reset(&objects);
+	objpool_clean(&objects);
 }
 
 void 
 gfx_scene_draw(void)
 {
 	objpool_clean(&objects);
+	gfx_begin();
 	for(int i = 0; i < SCENE_LAYERS; i++) {
-		gfx_draw_begin(layer_tmap_set & (1 << i) ? &layer_tmaps[i] : NULL);
 		SceneObjectPrivData *object_id = layer_objects[i];
 		while(object_id) {
 			TextureStamp stamp;
 			Frame *frame;
 
 			switch(object_id->type) {
+			case SCENE_OBJECT_TILEMAP:
+				gfx_draw_tilemap(&object_id->data.tmap.tilemap);
+				break;
 			case SCENE_OBJECT_SPRITE:
 				stamp = get_sprite(object_id->data.sprite.type, object_id->data.sprite.sprite_x, object_id->data.sprite.sprite_y);
-				gfx_draw_texture_rect(&stamp, object_id->data.sprite.position, object_id->data.sprite.half_size, object_id->data.sprite.rotation, object_id->data.sprite.color);
+				gfx_push_texture_rect(&stamp, object_id->data.sprite.position, object_id->data.sprite.half_size, object_id->data.sprite.rotation, object_id->data.sprite.color);
 				break;
 			case SCENE_OBJECT_TEXT:
-				gfx_draw_font2(FONT_ROBOTO,
+				gfx_push_font2(FONT_ROBOTO,
 						object_id->data.text.position,
 						object_id->data.text.char_size[0],
 						object_id->data.text.color,
@@ -160,10 +174,10 @@ gfx_scene_draw(void)
 			case SCENE_OBJECT_ANIMATED_SPRITE:
 				frame = calculate_frame_animation(&object_id->data.anim);
 				stamp = get_sprite(frame->type, frame->sprite_x, frame->sprite_y);
-				gfx_draw_texture_rect(&stamp, object_id->data.anim.position, object_id->data.anim.half_size, object_id->data.anim.rotation, object_id->data.anim.color);
+				gfx_push_texture_rect(&stamp, object_id->data.anim.position, object_id->data.anim.half_size, object_id->data.anim.rotation, object_id->data.anim.color);
 				break;
 			case SCENE_OBJECT_LINE:
-				gfx_draw_line(
+				gfx_push_line(
 					object_id->data.line.p1,
 					object_id->data.line.p2,
 					object_id->data.line.thickness,
@@ -175,8 +189,9 @@ gfx_scene_draw(void)
 			}
 			object_id = object_id->next_layer;
 		}
-		gfx_draw_end();
+		gfx_flush();
 	}
+	gfx_end();
 }
 
 SceneObject *  
@@ -184,6 +199,15 @@ gfx_scene_new_obj(int layer, SceneObjectType type)
 {
 	SceneObjectPrivData *obj = new_object(type, layer);
 	return &obj->data;
+}
+
+SceneTileMap *
+gfx_scene_new_tilemap(int layer, SpriteType terrain, int w, int h, int *data)
+{
+	SceneTileMap *tmap = gfx_scene_new_obj(layer, SCENE_OBJECT_TILEMAP);
+	tmap->tilemap = gfx_tmap_new(terrain, w, h, data);
+	
+	return tmap;
 }
 
 void 
@@ -212,11 +236,8 @@ gfx_scene_update(float delta)
 }
 
 void
-gfx_scene_set_tilemap(int layer, SpriteType atlas, int w, int h, int *data) 
+del_tilemap(SceneObject *obj) 
 {
-	if(layer_tmap_set & (1 << layer))
-		gfx_tmap_free(&layer_tmaps[layer]);
-	layer_tmaps[layer] = gfx_tmap_new(atlas, w, h, data);
-	layer_tmap_set |= (1 << layer);
+	SceneTileMap *tmap = obj;
+	gfx_tmap_free(&tmap->tilemap);
 }
-

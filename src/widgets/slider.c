@@ -123,8 +123,8 @@ slider_draw(UIObject *obj, Rectangle *rect)
 	else if(ui_get_hot() == obj)
 		state = 1;
 
-	gfx_draw_texture_rect(gfx_white_texture(), rect->position, rect->half_size, 0.0, (vec4){ 0.2, 0.2, 0.2, 1.0 });
-	gfx_draw_texture_rect(
+	gfx_push_texture_rect(gfx_white_texture(), rect->position, rect->half_size, 0.0, (vec4){ 0.2, 0.2, 0.2, 1.0 });
+	gfx_push_texture_rect(
 		gfx_white_texture(), 
 		info.handle_rect.position, 
 		info.handle_rect.half_size, 
@@ -135,7 +135,7 @@ slider_draw(UIObject *obj, Rectangle *rect)
 	if(WIDGET(UI_SLIDER, obj)->label) {
 		gfx_font_size(label_position, FONT_ROBOTO, 12/32.0, "%0.2f", ui_slider_get_value(obj));
 		vec2_sub(label_position, rect->position, label_position);
-		gfx_draw_font2(FONT_ROBOTO, label_position, 12/32.0, (vec4){ 1.0, 1.0, 1.0, 1.0 }, "%0.2f", ui_slider_get_value(obj));
+		gfx_push_font2(FONT_ROBOTO, label_position, 12/32.0, (vec4){ 1.0, 1.0, 1.0, 1.0 }, "%0.2f", ui_slider_get_value(obj));
 	}
 }
 
