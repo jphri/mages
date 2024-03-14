@@ -91,17 +91,6 @@ typedef struct {
 	vec4 color;
 } SceneText;
 
-typedef struct {
-	unsigned int vao;
-	unsigned int buffer;
-	unsigned int count_tiles;
-	SpriteType terrain;
-} GraphicsTileMap;
-
-typedef struct {
-	GraphicsTileMap tilemap;
-} SceneTileMap;
-
 void gfx_init(void);
 void gfx_terminate(void);
 
@@ -119,7 +108,6 @@ void gfx_world_to_pixel(vec2 world, vec2 pixel_out);
 void gfx_begin(void);
 void gfx_push_clip(vec2 position, vec2 half_size);
 void gfx_pop_clip(void);
-void gfx_draw_tilemap(GraphicsTileMap *tmap);
 void gfx_push_texture_rect(TextureStamp *texture, vec2 position, vec2 size, vec2 uv_scale, float rotation, vec4 color);
 void gfx_push_font(Font font, vec2 position, float height, vec4 color, StrView utf_text);
 void gfx_push_font2(Font font, vec2 position, float height, vec4 color, const char *fmt, ...);
@@ -129,10 +117,6 @@ void gfx_flush(void);
 void gfx_end(void);
 
 void gfx_camera_set_enabled(bool enabled);
-
-GraphicsTileMap  gfx_tmap_new(SpriteType terrain, int w, int h, int *data);
-void             gfx_tmap_free(GraphicsTileMap *tmap);
-void             gfx_tmap_draw(GraphicsTileMap *tmap);
 
 void gfx_scene_setup(void); 
 void gfx_scene_cleanup(void);
@@ -144,7 +128,6 @@ typedef void SceneObject;
 SceneObject *gfx_scene_new_obj(int layer, SceneObjectType type);
 void         gfx_scene_del_obj(SceneObject *object);
 void         gfx_scene_update(float delta);
-SceneTileMap *gfx_scene_new_tilemap(int layer, SpriteType terrain, int w, int h, int *data);
 
 TextureStamp get_sprite(SpriteType sprite, int sprite_x, int sprite_y);
 TextureStamp *gfx_white_texture(void);

@@ -166,7 +166,6 @@ static void   init_shaders(void);
 static int    load_texture(TextureData *tex, const char *file, TextureFormat format, TextureFilter filter);
 
 static void             end_texture_atlas(TextureData *texture);
-static void             draw_tmap(GraphicsTileMap *tmap);
 static void             draw_post(ShaderProgram *program);
 
 static void             load_font_info(Font font, Texture texture, const char *path);
@@ -496,12 +495,6 @@ gfx_begin(void)
 }
 
 void
-gfx_draw_tilemap(GraphicsTileMap *tmap)
-{
-	draw_tmap(tmap);
-}
-
-void
 gfx_flush(void)
 {
 	if(sprite_count == 0)
@@ -661,64 +654,6 @@ create_texture_buffer(int w, int h)
 	}
 	glDrawBuffers(1, (GLenum[]){ GL_COLOR_ATTACHMENT0 });
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
-GraphicsTileMap
-gfx_tmap_new(SpriteType terrain, int w, int h, int *data) 
-{
-	unsigned int count_tiles = 0;
-	ArrayBuffer buffer;
-	arrbuf_init(&buffer);
-
-	for(int y = 0; y < h; y++) {
-		for(int x = 0; x < w; x++) {
-			int i = x + y * w;
-			if(!data[i])
-				continue;
-
-			int spr = data[i] - 1;
-			TileData info = {
-				.position = { x, y },
-				.tile_data = {
-					(int)(spr % sprite_atlas[terrain].cols),
-					(int)(spr / sprite_atlas[terrain].cols)
-				}
-			};
-			arrbuf_insert(&buffer, sizeof(info), &info);
-			count_tiles ++;
-		}
-	}
-
-	unsigned int gpu_buffer = ugl_create_buffer(GL_STATIC_DRAW, buffer.size, buffer.data);
-	unsigned int gpu_vao    = ugl_create_vao(4, (VaoSpec[]) {
-		{ .name = tile_map_program.attributes[VATTRIB_POSITION], .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex),    .offset = offsetof(SpriteVertex, position), .buffer = sprite_buffer_gpu },
-		{ .name = tile_map_program.attributes[VATTRIB_TEXCOORD], .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex),    .offset = offsetof(SpriteVertex, texcoord), .buffer = sprite_buffer_gpu },
-		{ .name = tile_map_program.attributes[VATTRIB_INST_POSITION],   .size = 2, .type = GL_FLOAT, .stride = sizeof(TileData), .offset = offsetof(TileData, position),  .divisor = 1, .buffer = gpu_buffer },
-		{ .name = tile_map_program.attributes[VATTRIB_INST_SPRITE_ID],  .size = 2, .type = GL_FLOAT, .stride = sizeof(TileData), .offset = offsetof(TileData, tile_data), .divisor = 1, .buffer = gpu_buffer },
-	});
-
-	arrbuf_free(&buffer);
-
-	return (GraphicsTileMap) {
-		.buffer = gpu_buffer,
-		.vao = gpu_vao,
-		.count_tiles = count_tiles,
-		.terrain = terrain,
-	};
-}
-
-void
-gfx_tmap_free(GraphicsTileMap *tmap) 
-{
-	glDeleteBuffers(1, &tmap->buffer);
-	glDeleteVertexArrays(1, &tmap->vao);
-}
-
-void
-draw_tmap(GraphicsTileMap *tmap) 
-{
-	intrend_draw_instanced(&tile_map_program, tmap->vao, GL_TRIANGLES, 6, tmap->count_tiles);
-	draw_count++;
 }
 
 int

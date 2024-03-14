@@ -23,7 +23,6 @@ struct SceneObjectPrivData {
 		SceneText   text;
 		SceneAnimatedSprite anim;
 		SceneLine line;
-		SceneTileMap tmap;
 	} data;
 };
 
@@ -38,8 +37,6 @@ typedef struct {
 } AnimationData;
 
 typedef void (*ObjectDel)(SceneObject *obj);
-
-static void del_tilemap(SceneObject *);
 
 #define DEFINE_ANIMATION(ANIMATION_NAME, ...) [ANIMATION_NAME] = { \
 		.frame_count = sizeof((Frame[]){ __VA_ARGS__ })/sizeof(Frame), \
@@ -59,7 +56,7 @@ static AnimationData animations[LAST_ANIMATION] = {
 };
 
 static ObjectDel del_functions[LAST_SCENE_OBJECT_TYPE] = {
-	[SCENE_OBJECT_TILEMAP] = del_tilemap
+	0
 };
 
 static inline Frame *calculate_frame_animation(SceneAnimatedSprite *sprite)
@@ -156,9 +153,6 @@ gfx_scene_draw(void)
 			Frame *frame;
 
 			switch(object_id->type) {
-			case SCENE_OBJECT_TILEMAP:
-				gfx_draw_tilemap(&object_id->data.tmap.tilemap);
-				break;
 			case SCENE_OBJECT_SPRITE:
 				stamp = get_sprite(object_id->data.sprite.type, object_id->data.sprite.sprite_x, object_id->data.sprite.sprite_y);
 				gfx_push_texture_rect(&stamp, object_id->data.sprite.position, object_id->data.sprite.half_size, object_id->data.sprite.uv_scale, object_id->data.sprite.rotation, object_id->data.sprite.color);
@@ -201,15 +195,6 @@ gfx_scene_new_obj(int layer, SceneObjectType type)
 	return &obj->data;
 }
 
-SceneTileMap *
-gfx_scene_new_tilemap(int layer, SpriteType terrain, int w, int h, int *data)
-{
-	SceneTileMap *tmap = gfx_scene_new_obj(layer, SCENE_OBJECT_TILEMAP);
-	tmap->tilemap = gfx_tmap_new(terrain, w, h, data);
-	
-	return tmap;
-}
-
 void 
 gfx_scene_del_obj(SceneObject *obj) 
 {
@@ -235,9 +220,3 @@ gfx_scene_update(float delta)
 	}
 }
 
-void
-del_tilemap(SceneObject *obj) 
-{
-	SceneTileMap *tmap = obj;
-	gfx_tmap_free(&tmap->tilemap);
-}
