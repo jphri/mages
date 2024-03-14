@@ -189,8 +189,8 @@ gfx_scene_draw(void)
 			}
 			object_id = object_id->next_layer;
 		}
-		gfx_flush();
 	}
+	gfx_flush();
 	gfx_end();
 }
 
