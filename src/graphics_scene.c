@@ -161,7 +161,7 @@ gfx_scene_draw(void)
 				break;
 			case SCENE_OBJECT_SPRITE:
 				stamp = get_sprite(object_id->data.sprite.type, object_id->data.sprite.sprite_x, object_id->data.sprite.sprite_y);
-				gfx_push_texture_rect(&stamp, object_id->data.sprite.position, object_id->data.sprite.half_size, (vec2){ 1.0, 1.0 }, object_id->data.sprite.rotation, object_id->data.sprite.color);
+				gfx_push_texture_rect(&stamp, object_id->data.sprite.position, object_id->data.sprite.half_size, object_id->data.sprite.uv_scale, object_id->data.sprite.rotation, object_id->data.sprite.color);
 				break;
 			case SCENE_OBJECT_TEXT:
 				gfx_push_font2(FONT_ROBOTO,

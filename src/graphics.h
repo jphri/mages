@@ -63,6 +63,7 @@ typedef struct {
 	float rotation;
 	vec2 position;
 	vec2 half_size;
+	vec2 uv_scale;
 	vec4 color;
 } SceneSprite;
 

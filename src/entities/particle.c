@@ -47,7 +47,7 @@ ent_particle_new(vec2 position, vec2 velocity, vec4 color, float time)
 	Particle *self = (Particle*)&ent_new(ENTITY_PARTICLE, &particle_int)->particle;
 
 	self->body = phx_new();
-	self->sprite = gfx_scene_new_obj(0, SCENE_OBJECT_SPRITE);
+	self->sprite = gfx_scene_new_obj(1, SCENE_OBJECT_SPRITE);
 	self->time = time;
 
 	vec2_dup(self->body->position, position);
@@ -69,6 +69,8 @@ ent_particle_new(vec2 position, vec2 velocity, vec4 color, float time)
 	vec4_dup(self->sprite->color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 	self->sprite->rotation = 0.0;
 	self->sprite->sprite_x = 0.0; self->sprite->sprite_y = 0.0;
+	self->sprite->uv_scale[0] = 1.0;
+	self->sprite->uv_scale[1] = 1.0;
 	vec4_dup(self->sprite->color, color);
 	
 	return self;

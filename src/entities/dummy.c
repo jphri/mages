@@ -26,7 +26,7 @@ ent_dummy_new(vec2 position)
 	Entity *entity = ent_new(ENTITY_DUMMY, &dummy_in);
 	Dummy *self = &entity->dummy;
 
-	self->sprite = gfx_scene_new_obj(0, SCENE_OBJECT_SPRITE);
+	self->sprite = gfx_scene_new_obj(1, SCENE_OBJECT_SPRITE);
 	self->body = phx_new();
 
 	vec2_dup(self->body->position, position);
@@ -47,6 +47,8 @@ ent_dummy_new(vec2 position)
 	self->sprite->rotation = 0.0;
 	self->sprite->sprite_x = 0; 
 	self->sprite->sprite_y = 2;
+	self->sprite->uv_scale[0] = 1.0;
+	self->sprite->uv_scale[1] = 1.0;
 	
 	self->mob.health     = 10.0f;
 	self->mob.health_max = 10.0f;
