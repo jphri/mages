@@ -102,7 +102,7 @@ draw_tileset(UIObject *obj, Rectangle *rect)
 				1.0 / (float)TSET(obj)->rows,
 			}
 		};
-		gfx_push_texture_rect(&sprite, (vec2){ x, y }, (vec2){ SPRITE_SIZE / 2.0, SPRITE_SIZE / 2.0 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+		gfx_push_texture_rect(&sprite, (vec2){ x, y }, (vec2){ SPRITE_SIZE / 2.0, SPRITE_SIZE / 2.0 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 	}
 
 	for(int x = 0; x <= TSET(obj)->cols; x++) {

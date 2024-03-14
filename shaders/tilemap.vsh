@@ -15,12 +15,13 @@ layout(std140) uniform u_SpriteDataBlock
 
 in vec2 v_Position; 
 in vec2 v_Texcoord;
-
 in vec2 v_InstPosition;
 in vec2 v_InstSpriteID;
 
 out VS_OUT {
-	vec2 texcoord;
+	vec2 uv;
+	vec2 texpos;
+	vec2 texsize;
 	vec4 color;
 	flat int sprite_type;
 	flat vec4 clip_region;
@@ -32,7 +33,10 @@ void main() {
 	vec4 view_position = u_View * vec4(position.xy, 0.0, 1.0);
 
 	gl_Position     = u_Projection * view_position;
-	vs_out.texcoord = (v_Texcoord + v_InstSpriteID) * u_SpriteInvColRow[1];
+	vs_out.uv        = v_Texcoord;
+	vs_out.texpos    = v_InstSpriteID * u_SpriteInvColRow[1];
+	vs_out.texsize   = u_SpriteInvColRow[1];
+
 	vs_out.color    = vec4(1.0);
 	vs_out.sprite_type = 1;
 	vs_out.position = view_position.xy;

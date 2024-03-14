@@ -358,7 +358,7 @@ pencil_preview(int x, int y)
 	gfx_push_texture_rect(
 			&stamp,
 			v,
-			(vec2){ 0.5, 0.5 },
+			(vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 },
 			0.0,
 			(vec4){ 1.0, 1.0, 1.0, 0.75 }
 	);
@@ -587,7 +587,7 @@ fill_preview(int x, int y)
 			}
 		};
 		map_info[elem->x + elem->y * editor.map->w] = editor.current_tile;
-		gfx_push_texture_rect(&stamp, (vec2){ elem->x + 0.5, elem->y + 0.5 }, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 0.5 });
+		gfx_push_texture_rect(&stamp, (vec2){ elem->x + 0.5, elem->y + 0.5 }, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 0.5 });
 
 		/* elem dead here */
 		arrbuf_poptop(&fill_preview_stack, sizeof(StackElement));

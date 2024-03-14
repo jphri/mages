@@ -123,11 +123,11 @@ slider_draw(UIObject *obj, Rectangle *rect)
 	else if(ui_get_hot() == obj)
 		state = 1;
 
-	gfx_push_texture_rect(gfx_white_texture(), rect->position, rect->half_size, 0.0, (vec4){ 0.2, 0.2, 0.2, 1.0 });
+	gfx_push_texture_rect(gfx_white_texture(), rect->position, rect->half_size, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.2, 0.2, 0.2, 1.0 });
 	gfx_push_texture_rect(
 		gfx_white_texture(), 
 		info.handle_rect.position, 
-		info.handle_rect.half_size, 
+		info.handle_rect.half_size, (vec2){ 1.0, 1.0 }, 
 		0.0, 
 		colors[state]
 	);

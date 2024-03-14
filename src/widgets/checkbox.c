@@ -54,7 +54,7 @@ void
 checkbox_draw(UIObject *obj, Rectangle *rect)
 {
 	TextureStamp stamp = get_sprite(SPRITE_UI, 0 + CHECKBOX(obj)->toggled, 1);
-	gfx_push_texture_rect(&stamp, rect->position, rect->half_size, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+	gfx_push_texture_rect(&stamp, rect->position, rect->half_size, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 }
 
 void

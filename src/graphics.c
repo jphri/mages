@@ -35,6 +35,7 @@ enum VertexAttrib {
 	VATTRIB_INST_TEXTURE_POSITION,
 	VATTRIB_INST_TEXTURE_SIZE,
 	VATTRIB_INST_SPRITE_TYPE,
+	VATTRIB_INST_UV_SCALE,
 	VATTRIB_INST_CLIP,
 	LAST_VATTRIB
 };
@@ -56,6 +57,7 @@ typedef struct {
 	vec2 texsize;
 	vec4 color;
 	vec4 clip_region;
+	vec2 uvscale;
 } SpriteInternal;
 
 typedef struct {
@@ -146,8 +148,7 @@ intrend_bind_attribs(ShaderProgram *shader)
 {
 	intrend_attrib_bind(shader, VATTRIB_POSITION, "v_Position");
 	intrend_attrib_bind(shader, VATTRIB_TEXCOORD, "v_Texcoord");
-	intrend_attrib_bind(shader, VATTRIB_COLOR, "v_Color");
-
+	intrend_attrib_bind(shader, VATTRIB_COLOR,    "v_Color");
 	intrend_attrib_bind(shader, VATTRIB_INST_POSITION,         "v_InstPosition");
 	intrend_attrib_bind(shader, VATTRIB_INST_SIZE,             "v_InstSize");
 	intrend_attrib_bind(shader, VATTRIB_INST_TEXTURE_POSITION, "v_InstTexPosition");
@@ -157,6 +158,7 @@ intrend_bind_attribs(ShaderProgram *shader)
 	intrend_attrib_bind(shader, VATTRIB_INST_COLOR,            "v_InstColor");
 	intrend_attrib_bind(shader, VATTRIB_INST_SPRITE_TYPE,      "v_InstSpriteType");
 	intrend_attrib_bind(shader, VATTRIB_INST_CLIP,             "v_ClipRegion");
+	intrend_attrib_bind(shader, VATTRIB_INST_UV_SCALE,         "v_InstUVScale");
 }
 
 static void   create_texture_buffer(int w, int h);
@@ -346,7 +348,7 @@ gfx_terminate(void)
 }
 
 void 
-gfx_push_texture_rect(TextureStamp *stamp, vec2 position, vec2 size, float rotation, vec4 color)
+gfx_push_texture_rect(TextureStamp *stamp, vec2 position, vec2 size, vec2 uv_scale, float rotation, vec4 color)
 {
 	SpriteInternal internal;
 
@@ -357,6 +359,7 @@ gfx_push_texture_rect(TextureStamp *stamp, vec2 position, vec2 size, float rotat
 	vec2_dup(internal.texpos,      stamp->position);
 	vec2_dup(internal.texsize,     stamp->size);
 	vec4_dup(internal.color,       color);
+	vec2_dup(internal.uvscale,     uv_scale);
 	get_global_clip(internal.clip_region);
 
 	sprite_insert(1, &internal);
@@ -416,6 +419,7 @@ gfx_push_line(vec2 p1, vec2 p2, float thickness, vec4 color)
 		&(TextureStamp){ .texture = TEXTURE_UI, .position = { 0.0, 0.0 }, .size = { 0.001, 0.001 } },
 		sprite_pos,
 		sprite_size,
+		(vec2){ 1.0, 1.0 },
 		rotation,
 		color
 	);
@@ -1071,6 +1075,7 @@ parser_font_render(struct CharData *char_data, Font font, vec2 char_offset, void
 		}, 
 		pp, 
 		ss, 
+		(vec2){ 1.0, 1.0 },
 		0.0, 
 		p->color
 	);
@@ -1109,7 +1114,7 @@ sprite_buffer_reserve(int count_sprites)
 
 	sprite_reserved = new_reserv;
 	sprite_buffer = new_buffer;
-	sprite_vao = ugl_create_vao(10, (VaoSpec[]){
+	sprite_vao = ugl_create_vao(11, (VaoSpec[]){
 		{ .name = sprite_program.attributes[VATTRIB_POSITION], .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex),   .offset = offsetof(SpriteVertex,   position), .buffer = sprite_buffer_gpu },
 		{ .name = sprite_program.attributes[VATTRIB_TEXCOORD], .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex),   .offset = offsetof(SpriteVertex,   texcoord), .buffer = sprite_buffer_gpu },
 		{ .name = sprite_program.attributes[VATTRIB_INST_SPRITE_TYPE],      .size = 1, .type = GL_UNSIGNED_INT, .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, type),        .divisor = 1, .buffer = sprite_buffer },
@@ -1120,6 +1125,7 @@ sprite_buffer_reserve(int count_sprites)
 		{ .name = sprite_program.attributes[VATTRIB_INST_TEXTURE_SIZE],     .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, texsize),     .divisor = 1, .buffer = sprite_buffer },
 		{ .name = sprite_program.attributes[VATTRIB_INST_COLOR],            .size = 4, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, color),       .divisor = 1, .buffer = sprite_buffer },
 		{ .name = sprite_program.attributes[VATTRIB_INST_CLIP],             .size = 4, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, clip_region), .divisor = 1, .buffer = sprite_buffer },
+		{ .name = sprite_program.attributes[VATTRIB_INST_UV_SCALE],         .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, uvscale),     .divisor = 1, .buffer = sprite_buffer },
 	});
 
 	sprite_buffer_unlock(false);

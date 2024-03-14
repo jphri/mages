@@ -46,7 +46,7 @@ UI_IMAGE_event(UIObject *image, UIEvent *event, Rectangle *rect)
 	gfx_push_texture_rect(
 		&IMAGE(image)->image_stamp, 
 		r.position, 
-		r.half_size,
+		r.half_size, (vec2){ 1.0, 1.0 },
 		0.0, 
 		(vec4){ 1.0, 1.0, 1.0, 1.0 });
 }

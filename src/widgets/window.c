@@ -151,10 +151,10 @@ window_draw(UIObject *window, Rectangle *all_window_rect)
 	vec2_sub(rect.half_size, rect.half_size, WINDOW(window)->border);
 
 	/* border */
-	gfx_push_texture_rect(gfx_white_texture(), all_window_rect->position, all_window_rect->half_size, 0.0, (vec4){ 0.3, 0.3, 0.3, 1.0 });
+	gfx_push_texture_rect(gfx_white_texture(), all_window_rect->position, all_window_rect->half_size, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.3, 0.3, 0.3, 1.0 });
 
 	/* content */
-	gfx_push_texture_rect(gfx_white_texture(), rect.position, rect.half_size, 0.0, (vec4){ 0.5, 0.5, 0.5, 1.0 });
+	gfx_push_texture_rect(gfx_white_texture(), rect.position, rect.half_size, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.5, 0.5, 0.5, 1.0 });
 }
 
 //void
