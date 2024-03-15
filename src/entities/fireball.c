@@ -24,7 +24,7 @@ ent_fireball_new(Entity* caster, vec2 position, vec2 vel)
 	Fireball *self = &ent_new(ENTITY_FIREBALL, &fireball_interface)->fireball;
 
 	self->body = phx_new();
-	self->sprite = gfx_scene_new_obj(0, SCENE_OBJECT_SPRITE);
+	self->sprite = gfx_scene_new_obj(1, SCENE_OBJECT_SPRITE);
 	self->caster = caster;
 	self->time = 0;
 
@@ -50,6 +50,8 @@ ent_fireball_new(Entity* caster, vec2 position, vec2 vel)
 	self->sprite->rotation = 0.0;
 	self->sprite->sprite_x = 0; self->sprite->sprite_y = 1;
 	self->sprite->rotation = atan2f(-vel[1], vel[0]);
+	self->sprite->uv_scale[0] = 1.0;
+	self->sprite->uv_scale[1] = 1.0;
 
 	self->damage = -1.0;
 	return self;

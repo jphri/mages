@@ -235,12 +235,12 @@ main(int argc, char *argv[])
 end_loop:
 	state_vtable[current_state].end();
 
-	ui_terminate();
 	phx_end();
 	ent_end();
-	gfx_end();
 	audio_end();
 	event_terminate();
+	ui_terminate();
+	gfx_terminate();
 
 	SDL_DestroyRenderer(GLOBAL.renderer);
 	SDL_DestroyWindow(GLOBAL.window);

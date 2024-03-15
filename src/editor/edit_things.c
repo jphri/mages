@@ -164,14 +164,14 @@ thing_exit(void)
 
 void thing_render(void)
 {
-	gfx_draw_begin(NULL);
+	gfx_begin();
 	common_draw_map(SCENE_LAYERS, 1.0);
 
 	for(Thing *c = editor.map->things; c; c = c->next) {
 		render_thing(c);
 	}
-
-	gfx_draw_end();
+	gfx_flush();
+	gfx_end();
 }
 
 void
@@ -279,10 +279,10 @@ render_thing(Thing *c)
 void
 thing_null_render(Thing *c)
 {
-	gfx_draw_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 1.0, 0.0, 0.0, 1.0 });
+	gfx_push_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 1.0, 0.0, 0.0, 1.0 });
 
 	if(c == selected_thing) {
-		gfx_draw_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
+		gfx_push_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
 	}
 }
 
@@ -290,10 +290,10 @@ void
 thing_player_render(Thing *c)
 {
 	TextureStamp stamp = get_sprite(SPRITE_ENTITIES, 0, 0);
-	gfx_draw_texture_rect(&stamp, c->position, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+	gfx_push_texture_rect(&stamp, c->position, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 
 	if(c == selected_thing) {
-		gfx_draw_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
+		gfx_push_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
 	}
 }
 
@@ -301,10 +301,10 @@ void
 thing_dummy_render(Thing *c)
 {
 	TextureStamp stamp = get_sprite(SPRITE_ENTITIES, 0, 2);
-	gfx_draw_texture_rect(&stamp, c->position, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+	gfx_push_texture_rect(&stamp, c->position, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 
 	if(c == selected_thing) {
-		gfx_draw_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
+		gfx_push_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
 	}
 }
 

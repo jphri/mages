@@ -134,9 +134,9 @@ tinput_draw(UIObject *input, Rectangle *rect)
 	text_position[0] -= WIDGET(UI_TEXT_INPUT, input)->offset;
 
 	gfx_push_clip(rect->position, rect->half_size);
-	gfx_draw_texture_rect(gfx_white_texture(), rect->position, rect->half_size, 0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
-	gfx_draw_font(FONT_ROBOTO, text_position, 12/32.0, (vec4){ 0.0, 0.0, 0.0, 1.0 }, view);
-	gfx_draw_texture_rect(gfx_white_texture(), caret_position, (vec2){ 1.0, 6 }, 0.0, (vec4){ 0.0, 0.0, 0.0, 1.0 });
+	gfx_push_texture_rect(gfx_white_texture(), rect->position, rect->half_size, (vec2){ 1.0, 1.0 }, 0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+	gfx_push_font(FONT_ROBOTO, text_position, 12/32.0, (vec4){ 0.0, 0.0, 0.0, 1.0 }, view);
+	gfx_push_texture_rect(gfx_white_texture(), caret_position, (vec2){ 1.0, 6 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.0, 0.0, 0.0, 1.0 });
 	gfx_pop_clip();
 }
 

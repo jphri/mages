@@ -181,9 +181,10 @@ ui_draw(void)
 
 	event.event_type = UI_DRAW;
 
-	gfx_draw_begin(NULL);
+	gfx_begin();
 	ui_call_event(root, &event, &rect);
-	gfx_draw_end();
+	gfx_flush();
+	gfx_end();
 }
 
 void

@@ -23,7 +23,7 @@ ent_damage_number(vec2 position, float damage)
 {
 	(void)damage;
 	DamageNumber *self = (DamageNumber*)ent_new(ENTITY_DAMAGE_NUMBER, &dn_interface);
-	self->text = gfx_scene_new_obj(0, SCENE_OBJECT_TEXT);
+	self->text = gfx_scene_new_obj(1, SCENE_OBJECT_TEXT);
 
 	vec2_dup(self->position, position);
 

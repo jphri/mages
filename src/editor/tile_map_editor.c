@@ -742,10 +742,10 @@ common_draw_map(int current_layer, float after_layer_alpha)
 
 		stamp = get_sprite(SPRITE_TERRAIN, spr_x, spr_y);
 
-		gfx_draw_texture_rect(
+		gfx_push_texture_rect(
 				&stamp,
 				(vec2){ x, y },
-				(vec2){ 0.5, 0.5 },
+				(vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 },
 				0.0,
 				(vec4){ 1.0, 1.0, 1.0, k <= current_layer ? 1.0 : after_layer_alpha }
 		);

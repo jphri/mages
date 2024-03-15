@@ -61,7 +61,7 @@ label_draw(UIObject *obj, Rectangle *rect)
 		content_pos[0] = rect->position[0] + rect->half_size[0] - content_size[0] * 2;
 		break;
 	}
-	gfx_draw_font2(FONT_ROBOTO, content_pos, 12.0/32.0, label->color, "%s", label->label_ptr);
+	gfx_push_font2(FONT_ROBOTO, content_pos, 12.0/32.0, label->color, "%s", label->label_ptr);
 }
 
 void

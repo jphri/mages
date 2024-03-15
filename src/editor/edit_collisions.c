@@ -263,17 +263,18 @@ collision_wheel(SDL_Event *event)
 void
 collision_render(void)
 {
-	gfx_draw_begin(NULL);
+	gfx_begin();
 	common_draw_map(current_layer, ui_slider_get_value(after_layer_alpha_slider));
 
 	for(CollisionData *c = editor.map->collision; c; c = c->next) {
-		gfx_draw_rect(c->position, c->half_size, 0.15, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+		gfx_push_rect(c->position, c->half_size, 0.15, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 	}
 
 	if(mouse_state == MOUSE_DRAWING) {
 		cursor_draw();
 	}
-	gfx_draw_end();
+	gfx_flush();
+	gfx_end();
 }
 
 void
@@ -369,7 +370,7 @@ rect_end(int x, int y)
 void
 rect_draw(void)
 {
-	gfx_draw_rect(current_collision.position, current_collision.half_size, 0.15, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+	gfx_push_rect(current_collision.position, current_collision.half_size, 0.15, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 }
 
 void

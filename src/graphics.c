@@ -35,6 +35,7 @@ enum VertexAttrib {
 	VATTRIB_INST_TEXTURE_POSITION,
 	VATTRIB_INST_TEXTURE_SIZE,
 	VATTRIB_INST_SPRITE_TYPE,
+	VATTRIB_INST_UV_SCALE,
 	VATTRIB_INST_CLIP,
 	LAST_VATTRIB
 };
@@ -56,6 +57,7 @@ typedef struct {
 	vec2 texsize;
 	vec4 color;
 	vec4 clip_region;
+	vec2 uvscale;
 } SpriteInternal;
 
 typedef struct {
@@ -146,8 +148,7 @@ intrend_bind_attribs(ShaderProgram *shader)
 {
 	intrend_attrib_bind(shader, VATTRIB_POSITION, "v_Position");
 	intrend_attrib_bind(shader, VATTRIB_TEXCOORD, "v_Texcoord");
-	intrend_attrib_bind(shader, VATTRIB_COLOR, "v_Color");
-
+	intrend_attrib_bind(shader, VATTRIB_COLOR,    "v_Color");
 	intrend_attrib_bind(shader, VATTRIB_INST_POSITION,         "v_InstPosition");
 	intrend_attrib_bind(shader, VATTRIB_INST_SIZE,             "v_InstSize");
 	intrend_attrib_bind(shader, VATTRIB_INST_TEXTURE_POSITION, "v_InstTexPosition");
@@ -157,6 +158,7 @@ intrend_bind_attribs(ShaderProgram *shader)
 	intrend_attrib_bind(shader, VATTRIB_INST_COLOR,            "v_InstColor");
 	intrend_attrib_bind(shader, VATTRIB_INST_SPRITE_TYPE,      "v_InstSpriteType");
 	intrend_attrib_bind(shader, VATTRIB_INST_CLIP,             "v_ClipRegion");
+	intrend_attrib_bind(shader, VATTRIB_INST_UV_SCALE,         "v_InstUVScale");
 }
 
 static void   create_texture_buffer(int w, int h);
@@ -164,7 +166,6 @@ static void   init_shaders(void);
 static int    load_texture(TextureData *tex, const char *file, TextureFormat format, TextureFilter filter);
 
 static void             end_texture_atlas(TextureData *texture);
-static void             draw_tmap(GraphicsTileMap *tmap);
 static void             draw_post(ShaderProgram *program);
 
 static void             load_font_info(Font font, Texture texture, const char *path);
@@ -219,7 +220,6 @@ static mat4 view_matrix;
 
 static GLuint matrix_buffer;
 static GLuint sprite_colrow_inv_buffer;
-static GraphicsTileMap *current_tmap;
 
 static GLuint sprite_buffer, sprite_vao, sprite_count, 
 			  sprite_reserved = 1; /* for initialization, this will be overrided at gfx_init() */
@@ -328,7 +328,7 @@ gfx_init(void)
 }
 
 void
-gfx_end(void)
+gfx_terminate(void)
 {
 	glDeleteBuffers(3, (GLuint[]) {
 		sprite_buffer_gpu,
@@ -347,7 +347,7 @@ gfx_end(void)
 }
 
 void 
-gfx_draw_texture_rect(TextureStamp *stamp, vec2 position, vec2 size, float rotation, vec4 color)
+gfx_push_texture_rect(TextureStamp *stamp, vec2 position, vec2 size, vec2 uv_scale, float rotation, vec4 color)
 {
 	SpriteInternal internal;
 
@@ -358,13 +358,14 @@ gfx_draw_texture_rect(TextureStamp *stamp, vec2 position, vec2 size, float rotat
 	vec2_dup(internal.texpos,      stamp->position);
 	vec2_dup(internal.texsize,     stamp->size);
 	vec4_dup(internal.color,       color);
+	vec2_dup(internal.uvscale,     uv_scale);
 	get_global_clip(internal.clip_region);
 
 	sprite_insert(1, &internal);
 }
 
 void
-gfx_draw_font2(Font font, vec2 position, float height, vec4 color, const char *fmt, ...)
+gfx_push_font2(Font font, vec2 position, float height, vec4 color, const char *fmt, ...)
 {
 	char buffer[1024];
 	va_list va;
@@ -385,7 +386,7 @@ gfx_draw_font2(Font font, vec2 position, float height, vec4 color, const char *f
 }
 
 void
-gfx_draw_font(Font font, vec2 position, float height, vec4 color, StrView str)
+gfx_push_font(Font font, vec2 position, float height, vec4 color, StrView str)
 {
 	FontRenderParser render;
 
@@ -397,7 +398,7 @@ gfx_draw_font(Font font, vec2 position, float height, vec4 color, StrView str)
 }
 
 void
-gfx_draw_line(vec2 p1, vec2 p2, float thickness, vec4 color)
+gfx_push_line(vec2 p1, vec2 p2, float thickness, vec4 color)
 {
 	vec2 dir;
 	vec2 sprite_pos, sprite_size;
@@ -413,23 +414,24 @@ gfx_draw_line(vec2 p1, vec2 p2, float thickness, vec4 color)
 	sprite_size[1] = thickness;
 	float rotation = atan2f(-dir[1], dir[0]);
 
-	gfx_draw_texture_rect(
+	gfx_push_texture_rect(
 		&(TextureStamp){ .texture = TEXTURE_UI, .position = { 0.0, 0.0 }, .size = { 0.001, 0.001 } },
 		sprite_pos,
 		sprite_size,
+		(vec2){ 1.0, 1.0 },
 		rotation,
 		color
 	);
 }
 
 void
-gfx_draw_rect(vec2 position, vec2 half_size, float thickness, vec4 color)
+gfx_push_rect(vec2 position, vec2 half_size, float thickness, vec4 color)
 {
 	vec2 min, max;
 	vec2_sub(min, position, half_size);
 	vec2_add(max, position, half_size);
 	
-	#define ADD_LINE(x1, y1, x2, y2) gfx_draw_line((vec2){ x1, y1 }, (vec2){ x2, y2 }, thickness, color)
+	#define ADD_LINE(x1, y1, x2, y2) gfx_push_line((vec2){ x1, y1 }, (vec2){ x2, y2 }, thickness, color)
 	ADD_LINE(min[0], min[1], max[0], min[1]);
 	ADD_LINE(max[0], min[1], max[0], max[1]);
 	ADD_LINE(max[0], max[1], min[0], max[1]);
@@ -477,20 +479,10 @@ gfx_end_draw_framebuffers(void)
 }
 
 void
-gfx_draw_begin(GraphicsTileMap *tmap) 
+gfx_begin(void) 
 {
-	current_tmap = tmap;
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-	clip_id = 1;
-}
-
-void
-gfx_draw_end(void)
-{
-	if((!current_tmap || current_tmap->count_tiles == 0) && sprite_count == 0)
-		return;
 
 	for(int i = 0; i < LAST_TEXTURE_ATLAS; i++) {
 		glActiveTexture(GL_TEXTURE0 + i);
@@ -499,9 +491,15 @@ gfx_draw_end(void)
 
 	glBindBufferBase(GL_UNIFORM_BUFFER, 1, sprite_colrow_inv_buffer);
 	glBindBufferBase(GL_UNIFORM_BUFFER, 0, matrix_buffer);
-	if(current_tmap)
-		draw_tmap(current_tmap);
-	
+	clip_id = 1;
+}
+
+void
+gfx_flush(void)
+{
+	if(sprite_count == 0)
+		return;
+
 	sprite_buffer_lock();
 
 	if(sprite_count > 0) {
@@ -511,6 +509,13 @@ gfx_draw_end(void)
 
 	sprite_buffer_unlock(true);
 
+	sprites_rendered += sprite_count;
+	sprite_count = 0;
+}
+
+void
+gfx_end(void)
+{
 	glBindBufferBase(GL_UNIFORM_BUFFER, 0, 0);
 	glBindBufferBase(GL_UNIFORM_BUFFER, 1, 0);
 
@@ -518,9 +523,6 @@ gfx_draw_end(void)
 		glActiveTexture(GL_TEXTURE0 + i);
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
-
-	sprites_rendered += sprite_count;
-	sprite_count = 0;
 	glDisable(GL_BLEND);
 }
 
@@ -569,6 +571,13 @@ gfx_world_to_pixel(vec2 world, vec2 pixel_out)
 }
 
 void
+gfx_world_scale_to_pixel_scale(vec2 in, vec2 out)
+{
+	out[0] = in[0] * view_matrix[0][0];
+	out[1] = in[1] * view_matrix[1][1];
+}
+
+void
 init_shaders(void)
 {
 	#define SHADER_PROGRAM(symbol, ...) \
@@ -592,7 +601,7 @@ init_shaders(void)
 	SHADER_PROGRAM(sprite_program, default_vertex, default_fragment);
 	SHADER_PROGRAM(tile_map_program, tilemap_vertex, default_fragment);
 	SHADER_PROGRAM(post_clean, post_vertex, post_clean_fsh);
-	SHADER_PROGRAM(debug_program, debug_vertex, debug_fragment);
+	//SHADER_PROGRAM(debug_program, debug_vertex, debug_fragment);
 
 	#define SHADER(shader_name, shader_path, shader_type) \
 		glDeleteShader(shader_name);
@@ -652,64 +661,6 @@ create_texture_buffer(int w, int h)
 	}
 	glDrawBuffers(1, (GLenum[]){ GL_COLOR_ATTACHMENT0 });
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
-GraphicsTileMap
-gfx_tmap_new(SpriteType terrain, int w, int h, int *data) 
-{
-	unsigned int count_tiles = 0;
-	ArrayBuffer buffer;
-	arrbuf_init(&buffer);
-
-	for(int y = 0; y < h; y++) {
-		for(int x = 0; x < w; x++) {
-			int i = x + y * w;
-			if(!data[i])
-				continue;
-
-			int spr = data[i] - 1;
-			TileData info = {
-				.position = { x, y },
-				.tile_data = {
-					(int)(spr % sprite_atlas[terrain].cols),
-					(int)(spr / sprite_atlas[terrain].cols)
-				}
-			};
-			arrbuf_insert(&buffer, sizeof(info), &info);
-			count_tiles ++;
-		}
-	}
-
-	unsigned int gpu_buffer = ugl_create_buffer(GL_STATIC_DRAW, buffer.size, buffer.data);
-	unsigned int gpu_vao    = ugl_create_vao(4, (VaoSpec[]) {
-		{ .name = VATTRIB_POSITION, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex),    .offset = offsetof(SpriteVertex, position), .buffer = sprite_buffer_gpu },
-		{ .name = VATTRIB_TEXCOORD, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex),    .offset = offsetof(SpriteVertex, texcoord), .buffer = sprite_buffer_gpu },
-		{ .name = VATTRIB_INST_POSITION,   .size = 2, .type = GL_FLOAT, .stride = sizeof(TileData), .offset = offsetof(TileData, position),  .divisor = 1, .buffer = gpu_buffer },
-		{ .name = VATTRIB_INST_SPRITE_ID,  .size = 2, .type = GL_FLOAT, .stride = sizeof(TileData), .offset = offsetof(TileData, tile_data), .divisor = 1, .buffer = gpu_buffer },
-	});
-
-	arrbuf_free(&buffer);
-
-	return (GraphicsTileMap) {
-		.buffer = gpu_buffer,
-		.vao = gpu_vao,
-		.count_tiles = count_tiles,
-		.terrain = terrain,
-	};
-}
-
-void
-gfx_tmap_free(GraphicsTileMap *tmap) 
-{
-	glDeleteBuffers(1, &tmap->buffer);
-	glDeleteVertexArrays(1, &tmap->vao);
-}
-
-void
-draw_tmap(GraphicsTileMap *tmap) 
-{
-	intrend_draw_instanced(&tile_map_program, tmap->vao, GL_TRIANGLES, 6, tmap->count_tiles);
-	draw_count++;
 }
 
 int
@@ -1052,7 +1003,7 @@ parser_font_render(struct CharData *char_data, Font font, vec2 char_offset, void
 	vec2_add(pp, p->position, ss);
 	vec2_add_scaled(pp, pp, char_offset, p->height);
 
-	gfx_draw_texture_rect(
+	gfx_push_texture_rect(
 		&(TextureStamp){ 
 			.texture = atlas, 
 			.position = {
@@ -1066,6 +1017,7 @@ parser_font_render(struct CharData *char_data, Font font, vec2 char_offset, void
 		}, 
 		pp, 
 		ss, 
+		(vec2){ 1.0, 1.0 },
 		0.0, 
 		p->color
 	);
@@ -1104,18 +1056,18 @@ sprite_buffer_reserve(int count_sprites)
 
 	sprite_reserved = new_reserv;
 	sprite_buffer = new_buffer;
-	sprite_vao = ugl_create_vao(10, (VaoSpec[]){
-		{ .name = VATTRIB_POSITION, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex),   .offset = offsetof(SpriteVertex,   position), .buffer = sprite_buffer_gpu },
-		{ .name = VATTRIB_TEXCOORD, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex),   .offset = offsetof(SpriteVertex,   texcoord), .buffer = sprite_buffer_gpu },
-
-		{ .name = VATTRIB_INST_SPRITE_TYPE,      .size = 1, .type = GL_UNSIGNED_INT, .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, type),        .divisor = 1, .buffer = sprite_buffer },
-		{ .name = VATTRIB_INST_ROTATION,         .size = 1, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, rotation),    .divisor = 1, .buffer = sprite_buffer },
-		{ .name = VATTRIB_INST_POSITION,         .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, position),    .divisor = 1, .buffer = sprite_buffer },
-		{ .name = VATTRIB_INST_SIZE,             .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, half_size),   .divisor = 1, .buffer = sprite_buffer },
-		{ .name = VATTRIB_INST_TEXTURE_POSITION, .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, texpos),      .divisor = 1, .buffer = sprite_buffer },
-		{ .name = VATTRIB_INST_TEXTURE_SIZE,     .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, texsize),     .divisor = 1, .buffer = sprite_buffer },
-		{ .name = VATTRIB_INST_COLOR,            .size = 4, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, color),       .divisor = 1, .buffer = sprite_buffer },
-		{ .name = VATTRIB_INST_CLIP,             .size = 4, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, clip_region), .divisor = 1, .buffer = sprite_buffer },
+	sprite_vao = ugl_create_vao(11, (VaoSpec[]){
+		{ .name = sprite_program.attributes[VATTRIB_POSITION], .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex),   .offset = offsetof(SpriteVertex,   position), .buffer = sprite_buffer_gpu },
+		{ .name = sprite_program.attributes[VATTRIB_TEXCOORD], .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex),   .offset = offsetof(SpriteVertex,   texcoord), .buffer = sprite_buffer_gpu },
+		{ .name = sprite_program.attributes[VATTRIB_INST_SPRITE_TYPE],      .size = 1, .type = GL_UNSIGNED_INT, .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, type),        .divisor = 1, .buffer = sprite_buffer },
+		{ .name = sprite_program.attributes[VATTRIB_INST_ROTATION],         .size = 1, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, rotation),    .divisor = 1, .buffer = sprite_buffer },
+		{ .name = sprite_program.attributes[VATTRIB_INST_POSITION],         .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, position),    .divisor = 1, .buffer = sprite_buffer },
+		{ .name = sprite_program.attributes[VATTRIB_INST_SIZE],             .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, half_size),   .divisor = 1, .buffer = sprite_buffer },
+		{ .name = sprite_program.attributes[VATTRIB_INST_TEXTURE_POSITION], .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, texpos),      .divisor = 1, .buffer = sprite_buffer },
+		{ .name = sprite_program.attributes[VATTRIB_INST_TEXTURE_SIZE],     .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, texsize),     .divisor = 1, .buffer = sprite_buffer },
+		{ .name = sprite_program.attributes[VATTRIB_INST_COLOR],            .size = 4, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, color),       .divisor = 1, .buffer = sprite_buffer },
+		{ .name = sprite_program.attributes[VATTRIB_INST_CLIP],             .size = 4, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, clip_region), .divisor = 1, .buffer = sprite_buffer },
+		{ .name = sprite_program.attributes[VATTRIB_INST_UV_SCALE],         .size = 2, .type = GL_FLOAT,        .stride = sizeof(SpriteInternal), .offset = offsetof(SpriteInternal, uvscale),     .divisor = 1, .buffer = sprite_buffer },
 	});
 
 	sprite_buffer_unlock(false);

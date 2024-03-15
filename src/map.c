@@ -15,6 +15,10 @@ static void thing_player(Thing *c);
 static void thing_dummy(Thing *c);
 static void thing_door(Thing *c);
 
+static void create_sprite(int layer, int x, int y, int w, int h, int tile);
+static void find_sprite(int layer, int x, int y, int w, int h, int *tiles);
+static void setup_layer(int layers, int w, int h, int *tiles);
+
 static int size_command(Map **map, StrView *tokenview);
 static int tile_command(Map **map, StrView *tokenview);
 static int collision_command(Map **map, StrView *tokenview);
@@ -169,10 +173,9 @@ map_export(Map *map, size_t *out_data_size)
 void
 map_set_gfx_scene(Map *map) 
 {
-	/* i really need to improve the map layout lol */
 	for(size_t i = 0; i < 64; i++) {
 		int layer_index = i * map->w * map->h;
-		gfx_scene_set_tilemap(i, SPRITE_TERRAIN, map->w, map->h, &map->tiles[layer_index]);
+		setup_layer(i, map->w, map->h, &map->tiles[layer_index]);
 	}
 }
 
@@ -364,4 +367,89 @@ void
 thing_door(Thing *c)
 {
 	ent_door_new(c->position, c->direction);
+}
+
+void
+setup_layer(int layer, int w, int h, int *tiles)
+{
+	int *dup = malloc(sizeof(*tiles) * w * h);
+	memcpy(dup, tiles, sizeof(*tiles) * w * h);
+
+	for(int y = 0; y < h; y++)
+	for(int x = 0; x < w; x++) {
+		if(dup[x + y * w] > 0) {
+			find_sprite(layer, x, y, w, h, dup);
+		}
+	}
+	
+	free(dup);
+}
+
+void
+find_sprite(int layer, int x, int y, int w, int h, int *tiles)
+{
+	int x_end, y_end;
+	int reference_tile = tiles[x + y * w];
+
+	/* first find where x ends */
+	for(x_end = x; x_end < w; x_end++) {
+		if(tiles[x_end + y * w] != reference_tile) {
+			break;
+		}
+	}
+
+	/* now, find y where the size does not fit x_end */
+	for(y_end = y + 1; y_end < h; y_end++) {
+		for(int xx = x; xx < x_end; xx++) {
+			if(tiles[xx + y_end * w] != reference_tile) {
+				goto produce_rect;
+			}
+		}
+	}
+
+produce_rect:
+	if(x_end - x == 0 || y_end - y == 0)
+		return;
+
+	for(int yy = y; yy < y_end; yy++)
+	for(int xx = x; xx < x_end; xx++) {
+		tiles[xx + yy * w] = 0;
+	}
+	
+	create_sprite(layer, x, y, (x_end - x), (y_end - y), reference_tile - 1);
+}
+
+void
+create_sprite(int layer, int x, int y, int w, int h, int tile)
+{
+	int rows, cols;
+	if(tile != 4) {
+		SceneTiles *sprite = gfx_scene_new_obj(layer, SCENE_OBJECT_TILES);
+
+		gfx_sprite_count_rows_cols(SPRITE_TERRAIN, &rows, &cols);
+		sprite->half_size[0] = (float)w * ENTITY_SCALE;
+		sprite->half_size[1] = (float)h * ENTITY_SCALE;
+		vec2_add_scaled(sprite->position, sprite->half_size, (vec2){ x, y }, 1.0);
+
+		sprite->type = SPRITE_TERRAIN;
+		sprite->sprite_x = tile % rows;
+		sprite->sprite_y = tile / rows;
+		sprite->uv_scale[0] = w;
+		sprite->uv_scale[1] = h;
+	} else {
+		SceneAnimatedTiles *sprite = gfx_scene_new_obj(layer, SCENE_OBJECT_ANIMATED_TILES);
+
+		gfx_sprite_count_rows_cols(SPRITE_TERRAIN, &rows, &cols);
+		sprite->half_size[0] = (float)w * ENTITY_SCALE;
+		sprite->half_size[1] = (float)h * ENTITY_SCALE;
+		vec2_add_scaled(sprite->position, sprite->half_size, (vec2){ x, y }, 1.0);
+
+		sprite->type = SPRITE_TERRAIN;
+		sprite->sprite_x = tile % rows;
+		sprite->sprite_y = tile / rows;
+		sprite->uv_scale[0] = w;
+		sprite->uv_scale[1] = h;
+		sprite->animation = ANIMATION_WATER_TILE;
+		sprite->fps = 1.0;
+	}
 }

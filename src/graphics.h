@@ -32,6 +32,7 @@ typedef enum {
 	ANIMATION_NULL,
 	ANIMATION_PLAYER_IDLE,
 	ANIMATION_PLAYER_MOVEMENT,
+	ANIMATION_WATER_TILE,
 	LAST_ANIMATION
 } Animation;
 
@@ -40,6 +41,8 @@ typedef enum {
 	SCENE_OBJECT_TEXT,
 	SCENE_OBJECT_ANIMATED_SPRITE,
 	SCENE_OBJECT_LINE,
+	SCENE_OBJECT_TILES,
+	SCENE_OBJECT_ANIMATED_TILES,
 	LAST_SCENE_OBJECT_TYPE,
 } SceneObjectType;
 
@@ -62,8 +65,30 @@ typedef struct {
 	float rotation;
 	vec2 position;
 	vec2 half_size;
+	vec2 uv_scale;
 	vec4 color;
 } SceneSprite;
+
+typedef struct {
+	SpriteType type;
+	int sprite_x, sprite_y;
+
+	vec2 position;
+	vec2 half_size;
+	vec2 uv_scale;
+} SceneTiles;
+
+typedef struct {
+	SpriteType type;
+	int sprite_x, sprite_y;
+
+	Animation animation;
+	float fps;
+
+	vec2 position;
+	vec2 half_size;
+	vec2 uv_scale;
+} SceneAnimatedTiles;
 
 typedef struct {
 	vec2 p1, p2;
@@ -89,15 +114,8 @@ typedef struct {
 	vec4 color;
 } SceneText;
 
-typedef struct {
-	unsigned int vao;
-	unsigned int buffer;
-	unsigned int count_tiles;
-	SpriteType terrain;
-} GraphicsTileMap;
-
 void gfx_init(void);
-void gfx_end(void);
+void gfx_terminate(void);
 
 void gfx_make_framebuffers(int w, int h);
 void gfx_clear(void);
@@ -109,22 +127,20 @@ void gfx_render_present(void);
 void gfx_set_camera(vec2 position, vec2 scale);
 void gfx_pixel_to_world(vec2 pixel, vec2 world_out);
 void gfx_world_to_pixel(vec2 world, vec2 pixel_out);
+void gfx_world_scale_to_pixel_scale(vec2 in, vec2 out);
 
-void gfx_draw_begin(GraphicsTileMap *tmap);
+void gfx_begin(void);
 void gfx_push_clip(vec2 position, vec2 half_size);
 void gfx_pop_clip(void);
-void gfx_draw_texture_rect(TextureStamp *texture, vec2 position, vec2 size, float rotation, vec4 color);
-void gfx_draw_font(Font font, vec2 position, float height, vec4 color, StrView utf_text);
-void gfx_draw_font2(Font font, vec2 position, float height, vec4 color, const char *fmt, ...);
-void gfx_draw_line(vec2 p1, vec2 p2, float thickness, vec4 color);
-void gfx_draw_rect(vec2 position, vec2 half_size, float thickness, vec4 color);
-void gfx_draw_end(void);
+void gfx_push_texture_rect(TextureStamp *texture, vec2 position, vec2 size, vec2 uv_scale, float rotation, vec4 color);
+void gfx_push_font(Font font, vec2 position, float height, vec4 color, StrView utf_text);
+void gfx_push_font2(Font font, vec2 position, float height, vec4 color, const char *fmt, ...);
+void gfx_push_line(vec2 p1, vec2 p2, float thickness, vec4 color);
+void gfx_push_rect(vec2 position, vec2 half_size, float thickness, vec4 color);
+void gfx_flush(void);
+void gfx_end(void);
 
 void gfx_camera_set_enabled(bool enabled);
-
-GraphicsTileMap  gfx_tmap_new(SpriteType terrain, int w, int h, int *data);
-void             gfx_tmap_free(GraphicsTileMap *tmap);
-void             gfx_tmap_draw(GraphicsTileMap *tmap);
 
 void gfx_scene_setup(void); 
 void gfx_scene_cleanup(void);
@@ -137,13 +153,10 @@ SceneObject *gfx_scene_new_obj(int layer, SceneObjectType type);
 void         gfx_scene_del_obj(SceneObject *object);
 void         gfx_scene_update(float delta);
 
-void gfx_scene_set_tilemap(int layer, SpriteType atlas, int w, int h, int *data);
-
 TextureStamp get_sprite(SpriteType sprite, int sprite_x, int sprite_y);
 TextureStamp *gfx_white_texture(void);
 
 void gfx_sprite_count_rows_cols(SpriteType type, int *rows_out, int *cols_out);
-
 Rectangle gfx_window_rectangle(void);
 
 void gfx_font_size(vec2 out_size, Font font, float height, const char *fmt, ...);

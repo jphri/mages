@@ -5,7 +5,9 @@ precision mediump float;
 uniform sampler2D u_ImageTexture[8];
 
 in VS_OUT {
-	vec2 texcoord;
+	vec2 uv;
+	vec2 texpos;
+	vec2 texsize;
 	vec4 color;
 	flat int sprite_type;
 	flat vec4 clip_region;
@@ -37,7 +39,8 @@ float rectdist(vec2 pixel, vec2 position, vec2 half_size)
 void main() {
 	vec2 clip_position = fs_in.clip_region.xy;
 	vec2 clip_size     = fs_in.clip_region.zw;
+	vec2 texcoord = fract(fs_in.uv) * fs_in.texsize + fs_in.texpos;
 	float d = rectdist(fs_in.position, clip_position, clip_size);
 	d = 1.0 - step(0.0, d);
-	out_FragColor = fs_in.color * getTextureCoords(fs_in.sprite_type, fs_in.texcoord) * vec4(1.0, 1.0, 1.0, d);
+	out_FragColor = fs_in.color * getTextureCoords(fs_in.sprite_type, texcoord) * vec4(1.0, 1.0, 1.0, d);
 }

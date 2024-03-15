@@ -28,7 +28,7 @@ ent_player_new(vec2 position)
 	Player *self = (Player*)&ent_new(ENTITY_PLAYER, &player_interface)->player;
 	
 	self->body = phx_new();
-	self->sprite = gfx_scene_new_obj(0, SCENE_OBJECT_ANIMATED_SPRITE);
+	self->sprite = gfx_scene_new_obj(1, SCENE_OBJECT_ANIMATED_SPRITE);
 	vec2_dup(self->body->position, position);
 	vec2_dup(self->body->half_size, (vec2){ ENTITY_SCALE, ENTITY_SCALE });
 	vec2_dup(self->body->velocity, (vec2){ 0.0, 0.0 });
