@@ -94,16 +94,6 @@ GAME_STATE_LEVEL_update(float delta)
 void
 GAME_STATE_LEVEL_render(void)
 {
-	TextureStamp stamp = get_sprite(SPRITE_ENTITIES, 0, 0);
-	gfx_begin();
-	gfx_push_texture_rect(&stamp, 
-			(vec2){ 0.0, 0.0 },
-			(vec2){ 1.0, 1.0 }, 
-			(vec2){ 4.0, 1.0 },
-			0.0,
-			(vec4){ 1.0, 1.0, 1.0, 1.0 });
-	gfx_flush();
-	gfx_end();
 }
 
 void
