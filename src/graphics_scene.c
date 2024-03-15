@@ -24,6 +24,7 @@ struct SceneObjectPrivData {
 		SceneAnimatedSprite anim;
 		SceneLine line;
 		SceneTiles tiles;
+		SceneAnimatedTiles animtil;
 	} data;
 };
 
@@ -53,6 +54,10 @@ static AnimationData animations[LAST_ANIMATION] = {
 
 	DEFINE_ANIMATION(ANIMATION_PLAYER_IDLE,
 		{ SPRITE_ENTITIES, 0, 0 },
+	),
+	DEFINE_ANIMATION(ANIMATION_WATER_TILE,
+		{ SPRITE_TERRAIN, 4, 0 },
+		{ SPRITE_TERRAIN, 5, 0 },
 	)
 };
 
@@ -60,15 +65,16 @@ static ObjectDel del_functions[LAST_SCENE_OBJECT_TYPE] = {
 	0
 };
 
-static inline Frame *calculate_frame_animation(SceneAnimatedSprite *sprite)
+static inline Frame *calculate_frame_animation(Animation animation, float time, float fps)
 {
-	int    frame = (int)(sprite->time * sprite->fps);
-	       frame %= animations[sprite->animation].frame_count;
-	return &animations[sprite->animation].frames[frame];
+	int    frame = (int)(time * fps);
+	       frame %= animations[animation].frame_count;
+	return &animations[animation].frames[frame];
 }
 
 static SceneObjectPrivData   *layer_objects[SCENE_LAYERS];
 static ObjectPool objects;
+static double global_time;
 
 #define PRIVDATA(ID) ((SceneObjectPrivData*)objalloc_data(&objects, ID))
 #define OBJECT_DATA(ID) ((SceneObjectPrivData*)objalloc_data(&objects, ID))
@@ -156,6 +162,18 @@ gfx_scene_draw(void)
 			Frame *frame;
 
 			switch(object_id->type) {
+			case SCENE_OBJECT_ANIMATED_TILES:
+				frame = calculate_frame_animation(object_id->data.animtil.animation, global_time, object_id->data.animtil.fps);
+				graphics_rect = gfx_window_rectangle();
+
+				gfx_world_to_pixel(object_id->data.animtil.position, tiles_rect.position);
+				gfx_world_scale_to_pixel_scale(object_id->data.animtil.half_size, tiles_rect.half_size);
+				vec2_add(graphics_rect.half_size, graphics_rect.half_size, tiles_rect.half_size);
+				if(rect_contains_point(&graphics_rect, tiles_rect.position)) {
+					stamp = get_sprite(frame->type, frame->sprite_x, frame->sprite_y);
+					gfx_push_texture_rect(&stamp, object_id->data.animtil.position, object_id->data.animtil.half_size, object_id->data.animtil.uv_scale, 0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+				}
+				break;
 			case SCENE_OBJECT_TILES:
 				graphics_rect = gfx_window_rectangle();
 
@@ -180,7 +198,7 @@ gfx_scene_draw(void)
 						object_id->data.text.text_ptr);
 				break;
 			case SCENE_OBJECT_ANIMATED_SPRITE:
-				frame = calculate_frame_animation(&object_id->data.anim);
+				frame = calculate_frame_animation(object_id->data.anim.animation, object_id->data.anim.time, object_id->data.anim.fps);
 				stamp = get_sprite(frame->type, frame->sprite_x, frame->sprite_y);
 				gfx_push_texture_rect(&stamp, object_id->data.anim.position, object_id->data.anim.half_size, (vec2){ 1.0, 1.0 }, object_id->data.anim.rotation, object_id->data.anim.color);
 				break;
@@ -218,6 +236,7 @@ gfx_scene_del_obj(SceneObject *obj)
 void
 gfx_scene_update(float delta)
 {
+	global_time += delta;
 	for(int i = 0; i < SCENE_LAYERS; i++) {
 		SceneObjectPrivData *object_id = layer_objects[i];
 

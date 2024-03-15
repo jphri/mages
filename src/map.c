@@ -423,16 +423,34 @@ void
 create_sprite(int layer, int x, int y, int w, int h, int tile)
 {
 	int rows, cols;
-	SceneTiles *sprite = gfx_scene_new_obj(layer, SCENE_OBJECT_TILES);
+	if(tile != 4) {
+		SceneTiles *sprite = gfx_scene_new_obj(layer, SCENE_OBJECT_TILES);
 
-	gfx_sprite_count_rows_cols(SPRITE_TERRAIN, &rows, &cols);
-	sprite->half_size[0] = (float)w * ENTITY_SCALE;
-	sprite->half_size[1] = (float)h * ENTITY_SCALE;
-	vec2_add_scaled(sprite->position, sprite->half_size, (vec2){ x, y }, 1.0);
+		gfx_sprite_count_rows_cols(SPRITE_TERRAIN, &rows, &cols);
+		sprite->half_size[0] = (float)w * ENTITY_SCALE;
+		sprite->half_size[1] = (float)h * ENTITY_SCALE;
+		vec2_add_scaled(sprite->position, sprite->half_size, (vec2){ x, y }, 1.0);
 
-	sprite->type = SPRITE_TERRAIN;
-	sprite->sprite_x = tile % rows;
-	sprite->sprite_y = tile / rows;
-	sprite->uv_scale[0] = w;
-	sprite->uv_scale[1] = h;
+		sprite->type = SPRITE_TERRAIN;
+		sprite->sprite_x = tile % rows;
+		sprite->sprite_y = tile / rows;
+		sprite->uv_scale[0] = w;
+		sprite->uv_scale[1] = h;
+	} else {
+		SceneAnimatedTiles *sprite = gfx_scene_new_obj(layer, SCENE_OBJECT_ANIMATED_TILES);
+		printf("Animated!\n");
+
+		gfx_sprite_count_rows_cols(SPRITE_TERRAIN, &rows, &cols);
+		sprite->half_size[0] = (float)w * ENTITY_SCALE;
+		sprite->half_size[1] = (float)h * ENTITY_SCALE;
+		vec2_add_scaled(sprite->position, sprite->half_size, (vec2){ x, y }, 1.0);
+
+		sprite->type = SPRITE_TERRAIN;
+		sprite->sprite_x = tile % rows;
+		sprite->sprite_y = tile / rows;
+		sprite->uv_scale[0] = w;
+		sprite->uv_scale[1] = h;
+		sprite->animation = ANIMATION_WATER_TILE;
+		sprite->fps = 1.0;
+	}
 }

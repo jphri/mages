@@ -32,6 +32,7 @@ typedef enum {
 	ANIMATION_NULL,
 	ANIMATION_PLAYER_IDLE,
 	ANIMATION_PLAYER_MOVEMENT,
+	ANIMATION_WATER_TILE,
 	LAST_ANIMATION
 } Animation;
 
@@ -41,6 +42,7 @@ typedef enum {
 	SCENE_OBJECT_ANIMATED_SPRITE,
 	SCENE_OBJECT_LINE,
 	SCENE_OBJECT_TILES,
+	SCENE_OBJECT_ANIMATED_TILES,
 	LAST_SCENE_OBJECT_TYPE,
 } SceneObjectType;
 
@@ -75,6 +77,18 @@ typedef struct {
 	vec2 half_size;
 	vec2 uv_scale;
 } SceneTiles;
+
+typedef struct {
+	SpriteType type;
+	int sprite_x, sprite_y;
+
+	Animation animation;
+	float fps;
+
+	vec2 position;
+	vec2 half_size;
+	vec2 uv_scale;
+} SceneAnimatedTiles;
 
 typedef struct {
 	vec2 p1, p2;
