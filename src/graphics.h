@@ -40,7 +40,7 @@ typedef enum {
 	SCENE_OBJECT_TEXT,
 	SCENE_OBJECT_ANIMATED_SPRITE,
 	SCENE_OBJECT_LINE,
-	SCENE_OBJECT_TILEMAP,
+	SCENE_OBJECT_TILES,
 	LAST_SCENE_OBJECT_TYPE,
 } SceneObjectType;
 
@@ -66,6 +66,15 @@ typedef struct {
 	vec2 uv_scale;
 	vec4 color;
 } SceneSprite;
+
+typedef struct {
+	SpriteType type;
+	int sprite_x, sprite_y;
+
+	vec2 position;
+	vec2 half_size;
+	vec2 uv_scale;
+} SceneTiles;
 
 typedef struct {
 	vec2 p1, p2;
@@ -104,6 +113,7 @@ void gfx_render_present(void);
 void gfx_set_camera(vec2 position, vec2 scale);
 void gfx_pixel_to_world(vec2 pixel, vec2 world_out);
 void gfx_world_to_pixel(vec2 world, vec2 pixel_out);
+void gfx_world_scale_to_pixel_scale(vec2 in, vec2 out);
 
 void gfx_begin(void);
 void gfx_push_clip(vec2 position, vec2 half_size);

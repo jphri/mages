@@ -423,7 +423,7 @@ void
 create_sprite(int layer, int x, int y, int w, int h, int tile)
 {
 	int rows, cols;
-	SceneSprite *sprite = gfx_scene_new_obj(layer, SCENE_OBJECT_SPRITE);
+	SceneTiles *sprite = gfx_scene_new_obj(layer, SCENE_OBJECT_TILES);
 
 	gfx_sprite_count_rows_cols(SPRITE_TERRAIN, &rows, &cols);
 	sprite->half_size[0] = (float)w * ENTITY_SCALE;
@@ -433,8 +433,6 @@ create_sprite(int layer, int x, int y, int w, int h, int tile)
 	sprite->type = SPRITE_TERRAIN;
 	sprite->sprite_x = tile % rows;
 	sprite->sprite_y = tile / rows;
-	sprite->rotation = 0;
 	sprite->uv_scale[0] = w;
 	sprite->uv_scale[1] = h;
-	vec4_dup(sprite->color, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 }

@@ -23,6 +23,7 @@ struct SceneObjectPrivData {
 		SceneText   text;
 		SceneAnimatedSprite anim;
 		SceneLine line;
+		SceneTiles tiles;
 	} data;
 };
 
@@ -144,6 +145,8 @@ gfx_scene_reset(void)
 void 
 gfx_scene_draw(void)
 {
+	Rectangle tiles_rect, graphics_rect;
+
 	objpool_clean(&objects);
 	gfx_begin();
 	for(int i = 0; i < SCENE_LAYERS; i++) {
@@ -153,6 +156,17 @@ gfx_scene_draw(void)
 			Frame *frame;
 
 			switch(object_id->type) {
+			case SCENE_OBJECT_TILES:
+				graphics_rect = gfx_window_rectangle();
+
+				gfx_world_to_pixel(object_id->data.tiles.position, tiles_rect.position);
+				gfx_world_scale_to_pixel_scale(object_id->data.tiles.half_size, tiles_rect.half_size);
+				vec2_add(graphics_rect.half_size, graphics_rect.half_size, tiles_rect.half_size);
+				if(rect_contains_point(&graphics_rect, tiles_rect.position)) {
+					stamp = get_sprite(object_id->data.tiles.type, object_id->data.tiles.sprite_x, object_id->data.tiles.sprite_y);
+					gfx_push_texture_rect(&stamp, object_id->data.tiles.position, object_id->data.tiles.half_size, object_id->data.tiles.uv_scale, 0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+				}
+				break;
 			case SCENE_OBJECT_SPRITE:
 				stamp = get_sprite(object_id->data.sprite.type, object_id->data.sprite.sprite_x, object_id->data.sprite.sprite_y);
 				gfx_push_texture_rect(&stamp, object_id->data.sprite.position, object_id->data.sprite.half_size, object_id->data.sprite.uv_scale, object_id->data.sprite.rotation, object_id->data.sprite.color);
