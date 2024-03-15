@@ -438,7 +438,6 @@ create_sprite(int layer, int x, int y, int w, int h, int tile)
 		sprite->uv_scale[1] = h;
 	} else {
 		SceneAnimatedTiles *sprite = gfx_scene_new_obj(layer, SCENE_OBJECT_ANIMATED_TILES);
-		printf("Animated!\n");
 
 		gfx_sprite_count_rows_cols(SPRITE_TERRAIN, &rows, &cols);
 		sprite->half_size[0] = (float)w * ENTITY_SCALE;
