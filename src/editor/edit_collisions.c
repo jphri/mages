@@ -13,6 +13,8 @@
 
 #define MAX_LAYERS 64
 
+typedef struct MapBrush MapBrush;
+
 typedef enum CursorMode {
 	CURSOR_RECTANGLE,
 	CURSOR_FILL,
@@ -25,6 +27,14 @@ typedef struct {
 	void (*end)(int x, int y);
 	void (*draw)(void);
 } Cursor;
+
+struct MapBrush{
+	int tile;
+	int collidable;
+	vec2 position, half_size;
+
+	MapBrush *next, *prev;
+};
 
 static void cursor_begin(int x, int y);
 static void cursor_drag(int x, int y);
@@ -68,7 +78,7 @@ static bool  ctrl_pressed = false;
 static vec2  begin_offset, move_offset, offset;
 static int current_layer = 0;
 static MouseState mouse_state;
-static CollisionData current_collision;
+static MapBrush current_collision;
 static CursorMode current_cursor;
 
 static ArrayBuffer fill_stack;
@@ -79,6 +89,7 @@ static UIObject *after_layer_alpha_slider;
 static UIObject *cursors_ui;
 
 static UIObject *cursor_checkboxes[LAST_CURSOR_MODE];
+static MapBrush *brush_list, *end_list;
 
 void
 collision_init(void)
@@ -231,7 +242,7 @@ collision_mouse_button(SDL_Event *event)
 		case SDL_BUTTON_MIDDLE:
 			gfx_pixel_to_world((vec2){ event->button.x, event->button.y }, pos);
 			
-			for(CollisionData *c = editor.map->collision, *bef = NULL; c; bef = c, c = c->next) {
+			for(MapBrush *c = end_list; c; c = c->prev) {
 				vec2 min, max;
 
 				vec2_add(max, c->position, c->half_size);
@@ -239,11 +250,19 @@ collision_mouse_button(SDL_Event *event)
 				
 				if(pos[0] < min[0] || pos[0] > max[0] || pos[1] < min[1] || pos[1] > max[1])
 					continue;
+				
+				
+				if(c->prev)
+					c->prev->next = c->next;
+				
+				if(c->next)
+					c->next->prev = c->prev;
+				
+				if(c == end_list)
+					end_list = c->prev;
 
-				if(bef) 
-					bef->next = c->next;
-				if(editor.map->collision == c)
-					editor.map->collision = c->next;
+				if(brush_list == c)
+					brush_list = c->next;
 				
 				break;
 			}
@@ -264,10 +283,21 @@ void
 collision_render(void)
 {
 	gfx_begin();
-	common_draw_map(current_layer, ui_slider_get_value(after_layer_alpha_slider));
+	//common_draw_map(current_layer, ui_slider_get_value(after_layer_alpha_slider));
 
-	for(CollisionData *c = editor.map->collision; c; c = c->next) {
-		gfx_push_rect(c->position, c->half_size, 0.15, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+	int rows, cols;
+	gfx_sprite_count_rows_cols(SPRITE_TERRAIN, &rows, &cols);
+
+	for(MapBrush *brush = brush_list; brush; brush = brush->next) {
+		int tile = brush->tile - 1;
+		TextureStamp stamp = get_sprite(SPRITE_TERRAIN, tile % cols, tile / cols);
+		gfx_push_texture_rect(
+			&stamp, 
+			brush->position, 
+			brush->half_size,
+			(vec2){ brush->half_size[0] * 2.0, brush->half_size[1] * 2.0 }, 
+			0.0, 
+			(vec4){ 1.0, 1.0, 1.0, 1.0});
 	}
 
 	if(mouse_state == MOUSE_DRAWING) {
@@ -327,6 +357,7 @@ void
 rect_begin(int x, int y)
 {
 	gfx_pixel_to_world((vec2){ x, y }, begin_offset);
+	current_collision.tile = editor.current_tile;
 }
 
 void
@@ -361,16 +392,34 @@ rect_end(int x, int y)
 	(void)x;
 	(void)y;
 
-	CollisionData *data = malloc(sizeof(*data));
+	MapBrush *data = malloc(sizeof(*data));
+
 	*data = current_collision;
-	data->next = editor.map->collision;
-	editor.map->collision = data;
+	if(end_list)
+		end_list->next = data;
+	if(!brush_list)
+		brush_list = data;
+
+	data->next = NULL;
+	data->prev = end_list;
+	end_list = data;
 }
 
 void
 rect_draw(void)
 {
-	gfx_push_rect(current_collision.position, current_collision.half_size, 0.15, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+	int rows, cols, tile;
+	gfx_sprite_count_rows_cols(SPRITE_TERRAIN, &rows, &cols);
+
+	tile = current_collision.tile - 1;
+	TextureStamp stamp = get_sprite(SPRITE_TERRAIN, tile % cols, tile / cols);
+	gfx_push_texture_rect(
+		&stamp, 
+		current_collision.position, 
+		current_collision.half_size, 
+		(vec2){ current_collision.half_size[0] * 2.0, current_collision.half_size[1] * 2.0 }, 
+		0.0, 
+		(vec4){ 1.0, 1.0, 1.0, 1.0 });
 }
 
 void
