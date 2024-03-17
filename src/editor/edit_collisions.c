@@ -309,6 +309,8 @@ collision_render(void)
 			(vec2){ brush->half_size[0] * 2.0, brush->half_size[1] * 2.0 }, 
 			0.0, 
 			(vec4){ 1.0, 1.0, 1.0, 1.0});
+
+		gfx_push_rect(brush->position, brush->half_size, 0.5/(editor_get_zoom()), (vec4){ 1.0, 1.0, 1.0, 1.0 });
 	}
 
 	if(mouse_state == MOUSE_DRAWING) {
@@ -436,6 +438,8 @@ rect_draw(void)
 		(vec2){ current_collision.half_size[0] * 2.0, current_collision.half_size[1] * 2.0 }, 
 		0.0, 
 		(vec4){ 1.0, 1.0, 1.0, 1.0 });
+		gfx_push_rect(current_collision.position, current_collision.half_size, 0.5/(editor_get_zoom()), (vec4){ 1.0, 1.0, 1.0, 1.0 });
+	
 }
 
 void
