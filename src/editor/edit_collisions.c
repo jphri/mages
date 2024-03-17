@@ -60,6 +60,10 @@ static int *fill_find_elements_from(int x, int y);
 static void fill_find_rect(int x, int y, int *tileset);
 static void fill_new_rect(int x, int y, int w, int h);
 
+static void insert_brush_before(MapBrush *node, MapBrush *bef);
+static void insert_brush_after(MapBrush *node, MapBrush *aft);
+static void remove_brush(MapBrush *node);
+
 static void integer_round_cbk(UIObject *obj, void *userptr);
 
 static Cursor cursor[] = {
@@ -207,10 +211,37 @@ collision_exit(void)
 void
 collision_keyboard(SDL_Event *event)
 {
+	MapBrush *current_next, *current_prev;
+
 	if(event->type == SDL_KEYDOWN) {
 		switch(event->key.keysym.sym) {
 		case SDLK_LCTRL: ctrl_pressed = true; break;
+		case SDLK_UP:
+			if(!selected_brush)
+				break;
+
+			if(selected_brush == end_list)
+				break;
+			
+			current_next = selected_brush->next;
+			remove_brush(selected_brush);
+			insert_brush_after(selected_brush, current_next);
+
+			break;
+		case SDLK_DOWN:
+			if(!selected_brush)
+				break;
+
+			if(selected_brush == brush_list)
+				break;
+
+			current_prev = selected_brush->prev;
+			remove_brush(selected_brush);
+			insert_brush_before(selected_brush, current_prev);
+
+			break;
 		}
+		
 	} else {
 		switch(event->key.keysym.sym) {
 		case SDLK_LCTRL: ctrl_pressed = false; break;
@@ -642,4 +673,43 @@ select_end(int x, int y)
 {
 	(void)x;
 	(void)y;
+}
+
+void
+insert_brush_after(MapBrush *b, MapBrush *aft)
+{
+	b->next = aft->next;
+	if(aft->next)
+		aft->next->prev = b;
+	else
+		end_list = b;
+
+	b->prev = aft;
+	aft->next = b;
+}
+
+void
+insert_brush_before(MapBrush *b, MapBrush *bef)
+{
+	b->prev = bef->prev;
+	if(bef->prev)
+		bef->prev->next = b;
+	else
+		brush_list = b;
+	b->next = bef;
+	bef->prev = b;
+}
+
+void
+remove_brush(MapBrush *brush)
+{
+	if(brush->prev)
+		brush->prev->next = brush->next;
+	else
+	 	brush_list = brush->next;
+
+	if(brush->next)
+		brush->next->prev = brush->prev;
+	else
+	 	end_list = brush->prev;
 }
