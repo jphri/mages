@@ -55,6 +55,8 @@ static int *fill_find_elements_from(int x, int y);
 static void fill_find_rect(int x, int y, int *tileset);
 static void fill_new_rect(int x, int y, int w, int h);
 
+static void integer_round_cbk(UIObject *obj, void *userptr);
+
 static Cursor cursor[] = {
 	[CURSOR_RECTANGLE] = {
 		.begin = rect_begin,
@@ -87,6 +89,7 @@ static ArrayBuffer fill_layer_helper;
 static UIObject *general_root;
 static UIObject *after_layer_alpha_slider;
 static UIObject *cursors_ui;
+static UIObject *integer_round;
 
 static UIObject *cursor_checkboxes[LAST_CURSOR_MODE];
 static MapBrush *brush_list, *end_list;
@@ -134,6 +137,14 @@ collision_init(void)
 				ui_slider_set_precision(after_layer_alpha_slider, 1024);
 
 				ui_layout_append(sublayout, after_layer_alpha_slider);
+			} END_SUB;
+
+			BEGIN_SUB("Integer round:") {
+				integer_round = ui_checkbox_new();
+				ui_checkbox_set_toggled(integer_round, false);
+				ui_checkbox_set_callback(integer_round, NULL, integer_round_cbk);
+
+				ui_layout_append(sublayout, integer_round);
 			} END_SUB;
 		}
 		ui_child_append(general_root, general_layout);
@@ -357,6 +368,9 @@ void
 rect_begin(int x, int y)
 {
 	gfx_pixel_to_world((vec2){ x, y }, begin_offset);
+	if(ui_checkbox_get_toggled(integer_round))
+		vec2_round(begin_offset, begin_offset);
+
 	current_collision.tile = editor.current_tile;
 }
 
@@ -367,6 +381,8 @@ rect_drag(int x, int y)
 	vec2 v;
 
 	gfx_pixel_to_world((vec2){ x, y }, v);
+	if(ui_checkbox_get_toggled(integer_round))
+		vec2_round(v, v);
 
 	vec2_sub(full_size, v, begin_offset);
 	vec2_div(current_collision.half_size, full_size, (vec2){ 2.0, 2.0 });
@@ -553,4 +569,11 @@ fill_new_rect(int x, int y, int w, int h)
 
 	coll->next = editor.map->collision;
 	editor.map->collision = coll;
+}
+
+void
+integer_round_cbk(UIObject *obj, void *userptr)
+{
+	(void)userptr;
+	ui_checkbox_set_toggled(obj, !ui_checkbox_get_toggled(obj));
 }

@@ -88,7 +88,21 @@ MATH_FUNC void vec##SIZE##_floor(vec##SIZE r, vec##SIZE const a)\
 	for(int i = 0; i < SIZE; i++) {\
 		r[i] = floorf(a[i]); \
 	}\
-}
+}\
+MATH_FUNC void vec##SIZE##_ceil(vec##SIZE r, vec##SIZE const a)\
+{\
+	for(int i = 0; i < SIZE; i++) {\
+		r[i] = ceilf(a[i]); \
+	}\
+}\
+MATH_FUNC void vec##SIZE##_round(vec##SIZE r, vec##SIZE const a)\
+{\
+	for(int i = 0; i < SIZE; i++) {\
+		r[i] = roundf(a[i]); \
+	}\
+}\
+
+
 
 #define VEC2_DUP(v) (vec2){ v[0], v[1] }
 #define VEC3_DUP(v) (vec3){ v[0], v[1], v[2] }
