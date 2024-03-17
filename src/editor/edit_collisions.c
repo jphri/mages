@@ -415,6 +415,9 @@ rect_begin(int x, int y)
 	if(ui_checkbox_get_toggled(integer_round))
 		vec2_round(begin_offset, begin_offset);
 
+	current_collision.half_size[0] = 0;
+	current_collision.half_size[1] = 0;
+	vec2_dup(current_collision.position, begin_offset);
 	current_collision.tile = editor.current_tile;
 }
 
@@ -451,6 +454,10 @@ rect_end(int x, int y)
 {
 	(void)x;
 	(void)y;
+
+	if(current_collision.half_size[0] < 1.0 / 64.0 || current_collision.half_size[1] < 1.0 / 64.0) {
+		return;
+	}
 
 	MapBrush *data = malloc(sizeof(*data));
 
