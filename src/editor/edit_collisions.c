@@ -16,6 +16,7 @@
 typedef struct MapBrush MapBrush;
 
 typedef enum CursorMode {
+	CURSOR_SELECT,
 	CURSOR_RECTANGLE,
 	CURSOR_FILL,
 	LAST_CURSOR_MODE
@@ -49,6 +50,10 @@ static void rect_drag(int x, int y);
 static void rect_end(int x, int y);
 static void rect_draw(void);
 
+static void select_begin(int x, int y);
+static void select_end(int x, int y);
+static void select_drag(int x, int y);
+
 static void fill_end(int x, int y);
 
 static int *fill_find_elements_from(int x, int y);
@@ -66,6 +71,11 @@ static Cursor cursor[] = {
 	},
 	[CURSOR_FILL] = {
 		.end = fill_end
+	},
+	[CURSOR_SELECT] = {
+		.begin = select_begin,
+		.drag = select_drag,
+		.end = select_end
 	}
 };
 
@@ -74,6 +84,7 @@ static struct {
 } cursor_info[] = {
 	[CURSOR_RECTANGLE] = { .image = { .texture = TEXTURE_UI, .position = { 3 * 8.0 / 256.0, 0.0 / 256.0 }, .size = { 8.0 / 256.0, 8.0 / 256.0 } } },
 	[CURSOR_FILL] = { .image = { .texture = TEXTURE_UI, .position = { 1 * 8.0 / 256.0, 2 * 8.0 / 256.0 }, .size = { 8.0 / 256.0, 8.0 / 256.0 } } },
+	[CURSOR_SELECT] = { .image = { .texture = TEXTURE_UI, .position = { 0.0 * 8.0 / 256, 0 * 8.0 / 256, }, .size = { 8.0 / 256.0, 8.0 / 256.0 } } }
 };
 
 static bool  ctrl_pressed = false;
@@ -92,7 +103,7 @@ static UIObject *cursors_ui;
 static UIObject *integer_round;
 
 static UIObject *cursor_checkboxes[LAST_CURSOR_MODE];
-static MapBrush *brush_list, *end_list;
+static MapBrush *brush_list, *end_list, *selected_brush;
 
 void
 collision_init(void)
@@ -580,4 +591,55 @@ integer_round_cbk(UIObject *obj, void *userptr)
 {
 	(void)userptr;
 	ui_checkbox_set_toggled(obj, !ui_checkbox_get_toggled(obj));
+}
+
+void
+select_begin(int x, int y)
+{
+	vec2 p;
+	gfx_pixel_to_world((vec2){ x, y }, p);
+	
+	
+	selected_brush = NULL;
+	for(MapBrush *b = end_list; b; b = b->prev) {
+		Rectangle rect = {
+			.position = { b->position[0], b->position[1] },
+			.half_size = { b->half_size[0], b->half_size[1] }
+		};
+
+		if(rect_contains_point(&rect, p)) {
+			selected_brush = b;
+			break;
+		}
+	}
+	if(!selected_brush)
+		return;
+
+	gfx_pixel_to_world((vec2){ x, y }, begin_offset);
+	if(ui_checkbox_get_toggled(integer_round))
+		vec2_round(begin_offset, begin_offset);
+}
+
+void
+select_drag(int x, int y)
+{
+	if(!selected_brush)
+		return;
+
+	vec2 v, p;
+	gfx_pixel_to_world((vec2){ x, y }, v);
+	if(ui_checkbox_get_toggled(integer_round))
+		vec2_round(v, v);
+
+	vec2_sub(p, begin_offset, v);
+	vec2_dup(begin_offset, v);
+	vec2_sub(selected_brush->position, selected_brush->position, p);
+	
+}
+
+void
+select_end(int x, int y)
+{
+	(void)x;
+	(void)y;
 }
