@@ -38,8 +38,6 @@ typedef struct {
 	int current_tile;
 	SpriteType map_atlas;
 
-	Thing *layers[64];
-
 	UIObject *controls_ui;
 	UIObject *context_window;
 	UIObject *general_window;
@@ -47,19 +45,6 @@ typedef struct {
 
 int export_map(const char *map_file);
 void load_map(const char *map_file);
-
-void thing_render(void);
-void thing_keyboard(SDL_Event *event);
-void thing_mouse_motion(SDL_Event *event);
-void thing_mouse_button(SDL_Event *event);
-void thing_keyboard(SDL_Event *event);
-void thing_wheel(SDL_Event *event);
-void thing_enter(void);
-void thing_exit(void);
-void thing_init(void);
-void thing_terminate(void);
-
-void common_draw_map(int current_layer, float alpha_after_layer);
 
 extern EditorGlobal editor;
 

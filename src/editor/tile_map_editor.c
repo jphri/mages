@@ -62,7 +62,7 @@ static void thing_player_render(Thing *thing);
 static void thing_dummy_render(Thing *thing);
 static void render_thing(Thing *thing);
 
-static ThingRender renders[] = {
+static ThingRender renders[LAST_THING] = {
 	[THING_NULL] = thing_null_render,
 	[THING_PLAYER] = thing_player_render,
 	[THING_DUMMY] = thing_dummy_render
@@ -121,6 +121,7 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	type_string[THING_PLAYER] = to_strview("THING_PLAYER");
 	type_string[THING_DUMMY]  = to_strview("THING_DUMMY");
 	type_string[THING_DOOR]   = to_strview("THING_DOOR");
+	type_string[THING_WORLD_MAP] = to_strview("THING_WORLD_MAP");
 
 	tileset_window = ui_window_new();
 	ui_window_set_decorated(tileset_window, false);
@@ -154,7 +155,7 @@ GAME_STATE_LEVEL_EDIT_init(void)
 
 	UIObject *cursor_position_window = ui_window_new();
 	ui_window_set_size(cursor_position_window, (vec2){ 50, 15 });
-	ui_window_set_position(cursor_position_window, UI_ORIGIN_TOP_LEFT, (vec2){ 50, 60 + 15 });
+	ui_window_set_position(cursor_position_window, UI_ORIGIN_TOP_LEFT, (vec2){ 50, 15 });
 	ui_window_set_decorated(cursor_position_window, false);
 	{
 		cursor_position = ui_label_new();
@@ -566,13 +567,6 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	editor.map_atlas = SPRITE_TERRAIN;
 	if(editor.map == NULL) {
 		editor.map = map_alloc(16, 16);
-		for(int i = 0; i < 64; i++) {
-			Thing *thing = calloc(1, sizeof(*thing));
-			thing->type = THING_WORLD_MAP;
-			thing->layer = i;
-			map_insert_thing(editor.map, thing);
-			editor.layers[i] = thing;
-		}
 	}
 	ui_window_append_child(editor.general_window, general_root);
 
@@ -703,7 +697,7 @@ GAME_STATE_LEVEL_EDIT_keyboard(SDL_Event *event)
 			if(!selected_brush)
 				break;
 
-			if(selected_brush == editor.layers[current_layer]->brush_list_end)
+			if(selected_brush == selected_thing->brush_list_end)
 				break;
 			
 			if(ctrl_pressed) {
@@ -712,14 +706,14 @@ GAME_STATE_LEVEL_EDIT_keyboard(SDL_Event *event)
 			}
 
 			current_next = selected_brush->next;
-			map_thing_remove_brush(editor.layers[current_layer], selected_brush);
-			map_thing_insert_brush_after(editor.layers[current_layer], selected_brush, current_next);
+			map_thing_remove_brush(selected_thing, selected_brush);
+			map_thing_insert_brush_after(selected_thing, selected_brush, current_next);
 			break;
 		case SDLK_DELETE:
 			if(!ctrl_pressed) {
 				if(!selected_brush)
 					break;
-				map_thing_remove_brush(editor.layers[current_layer], selected_brush);
+				map_thing_remove_brush(selected_thing, selected_brush);
 				free(selected_brush);
 				selected_brush = NULL;
 			} else {
@@ -742,7 +736,7 @@ GAME_STATE_LEVEL_EDIT_keyboard(SDL_Event *event)
 			if(!selected_brush)
 				break;
 
-			if(selected_brush == editor.layers[current_layer]->brush_list)
+			if(selected_brush == selected_thing->brush_list)
 				break;
 
 			if(ctrl_pressed) {
@@ -751,8 +745,8 @@ GAME_STATE_LEVEL_EDIT_keyboard(SDL_Event *event)
 			}
 
 			current_prev = selected_brush->prev;
-			map_thing_remove_brush(editor.layers[current_layer], selected_brush);
-			map_thing_insert_brush_before(editor.layers[current_layer], selected_brush, current_prev);
+			map_thing_remove_brush(selected_thing, selected_brush);
+			map_thing_insert_brush_before(selected_thing, selected_brush, current_prev);
 			break;
 		}
 		
@@ -874,12 +868,6 @@ loadbtn_load_cbk(UIObject *obj, void *userptr)
 
 	map_free(editor.map);
 	editor.map = n_map;
-	Thing *layer = editor.map->things;
-	for(int i = 0; i < 64; i++) {
-		editor.layers[i] = layer;
-		layer = layer->next;
-	}
-
 	free(fixed_path);
 	ui_deparent(load_window);
 	ui_text_input_clear(load_path);
@@ -1047,6 +1035,11 @@ tileselect_cbk(UIObject *obj, void *userptr)
 void
 rect_begin(int x, int y)
 {
+	if(!selected_thing) {
+		selected_brush = NULL;
+		return;
+	}
+
 	gfx_pixel_to_world((vec2){ x, y }, begin_offset);
 	if(ui_checkbox_get_toggled(integer_round))
 		vec2_round(begin_offset, begin_offset);
@@ -1060,7 +1053,7 @@ rect_begin(int x, int y)
 		selected_brush->prev = NULL;
 		vec2_dup(selected_brush->position, begin_offset);
 
-		map_thing_insert_brush(editor.layers[current_layer], selected_brush);
+		map_thing_insert_brush(selected_thing, selected_brush);
 	}
 }
 
@@ -1069,6 +1062,9 @@ rect_drag(int x, int y)
 {
 	vec2 delta;
 	vec2 v;
+
+	if(!selected_brush)
+		return;
 
 	gfx_pixel_to_world((vec2){ x, y }, v);
 	if(ui_checkbox_get_toggled(integer_round))
@@ -1088,11 +1084,14 @@ rect_end(int x, int y)
 	(void)x;
 	(void)y;
 
+	if(!selected_brush)
+		return;
+
 	selected_brush->half_size[0] = fabsf(selected_brush->half_size[0]);
 	selected_brush->half_size[1] = fabsf(selected_brush->half_size[1]);
 
 	if(selected_brush->half_size[0] < 1.0 / 64.0 || selected_brush->half_size[1] < 1.0 / 64.0) {
-		map_thing_remove_brush(editor.layers[current_layer], selected_brush);
+		map_thing_remove_brush(selected_thing, selected_brush);
 		free(selected_brush);
 		selected_brush = NULL;
 	}
@@ -1102,6 +1101,9 @@ void
 rect_draw(void)
 {
 	int rows, cols, tile;
+	if(!selected_brush)
+		return;
+
 	gfx_sprite_count_rows_cols(SPRITE_TERRAIN, &rows, &cols);
 
 	tile = selected_brush->tile - 1;
@@ -1132,12 +1134,20 @@ select_begin(int x, int y)
 
 	selected_thing = NULL;
 	selected_brush = NULL;
-	for(Thing *thing = editor.map->things; thing; thing = thing->next) {
+	for(Thing *thing = editor.map->things_end; thing; thing = thing->prev) {
 		Rectangle rect;
 
 		switch(thing->type) {
 		case THING_WORLD_MAP: 
-			for(MapBrush *b = editor.layers[current_layer]->brush_list_end; b; b = b->prev) {
+			vec2_dup(rect.position, thing->position);
+			vec2_dup(rect.half_size, (vec2){ 0.5, 0.5 });
+
+			if(rect_contains_point(&rect, p)) {
+				selected_thing = thing;
+				goto end_search;
+			}
+
+			for(MapBrush *b = thing->brush_list_end; b; b = b->prev) {
 				Rectangle rect = {
 					.position = { b->position[0], b->position[1] },
 					.half_size = { b->half_size[0], b->half_size[1] }
@@ -1147,20 +1157,23 @@ select_begin(int x, int y)
 					selected_brush = b;
 					selected_thing = thing;
 					update_inputs();
-					break;
+					goto end_search;
 				}
 			}
 			break;
-
 		default:
 			vec2_dup(rect.position, thing->position);
 			vec2_dup(rect.half_size, (vec2){ 0.5, 0.5 });
 			
 			if(rect_contains_point(&rect, p)) {
 				selected_thing = thing;
+				goto end_search;
 			}
-		};
+		}
+
 	}
+
+end_search:
 	update_thing_context();
 
 	gfx_pixel_to_world((vec2){ x, y }, begin_offset);
