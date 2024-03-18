@@ -115,7 +115,7 @@ collision_init(void)
 
 	#undef BEGIN_SUB
 	#undef END_SUB
-
+	selected_brush = NULL;
 }
 
 void
@@ -320,38 +320,40 @@ rect_begin(int x, int y)
 	if(ui_checkbox_get_toggled(integer_round))
 		vec2_round(begin_offset, begin_offset);
 
-	current_collision.half_size[0] = 0;
-	current_collision.half_size[1] = 0;
-	vec2_dup(current_collision.position, begin_offset);
-	current_collision.tile = editor.current_tile;
+	if(!selected_brush) {
+		selected_brush = malloc(sizeof(MapBrush));
+		selected_brush->half_size[0] = 0;
+		selected_brush->half_size[1] = 0;
+		selected_brush->tile = editor.current_tile;
+		selected_brush->next = NULL;
+		selected_brush->prev = NULL;
+		vec2_dup(selected_brush->position, begin_offset);
+
+		if(brush_list)
+			insert_brush_after(selected_brush, end_list);
+		else {
+			brush_list = selected_brush;
+			end_list = selected_brush;
+		}
+	}
 }
 
 void
 rect_drag(int x, int y)
 {
-	vec2 full_size, begin_position;
+	vec2 delta;
 	vec2 v;
 
 	gfx_pixel_to_world((vec2){ x, y }, v);
 	if(ui_checkbox_get_toggled(integer_round))
 		vec2_round(v, v);
 
-	vec2_sub(full_size, v, begin_offset);
-	vec2_div(current_collision.half_size, full_size, (vec2){ 2.0, 2.0 });
-	current_collision.half_size[0] = fabs(current_collision.half_size[0]);
-	current_collision.half_size[1] = fabs(current_collision.half_size[1]);
+	vec2_sub(delta, v, begin_offset);
+	vec2_add_scaled(selected_brush->position, selected_brush->position, delta, 0.5);
+	vec2_add_scaled(selected_brush->half_size, selected_brush->half_size, delta, 0.5);
 
-	if(full_size[0] > 0)
-		begin_position[0] = begin_offset[0];
-	else
-		begin_position[0] = begin_offset[0] + full_size[0];
+	vec2_dup(begin_offset, v);
 
-	if(full_size[1] > 0)
-		begin_position[1] = begin_offset[1];
-	else
-		begin_position[1] = begin_offset[1] + full_size[1];
-
-	vec2_add(current_collision.position, begin_position, current_collision.half_size);
 }
 
 void
@@ -360,21 +362,14 @@ rect_end(int x, int y)
 	(void)x;
 	(void)y;
 
-	if(current_collision.half_size[0] < 1.0 / 64.0 || current_collision.half_size[1] < 1.0 / 64.0) {
-		return;
+	selected_brush->half_size[0] = fabsf(selected_brush->half_size[0]);
+	selected_brush->half_size[1] = fabsf(selected_brush->half_size[1]);
+
+	if(selected_brush->half_size[0] < 1.0 / 64.0 || selected_brush->half_size[1] < 1.0 / 64.0) {
+		remove_brush(selected_brush);
+		free(selected_brush);
+		selected_brush = NULL;
 	}
-
-	MapBrush *data = malloc(sizeof(*data));
-
-	*data = current_collision;
-	if(end_list)
-		end_list->next = data;
-	if(!brush_list)
-		brush_list = data;
-
-	data->next = NULL;
-	data->prev = end_list;
-	end_list = data;
 }
 
 void
