@@ -14,7 +14,6 @@
 
 #define MAX_LAYERS 64
 
-typedef struct MapBrush MapBrush;
 
 typedef struct {
 	void (*begin)(int x, int y);
@@ -22,14 +21,6 @@ typedef struct {
 	void (*end)(int x, int y);
 	void (*draw)(void);
 } Cursor;
-
-struct MapBrush{
-	int tile;
-	int collidable;
-	vec2 position, half_size;
-
-	MapBrush *next, *prev;
-};
 
 static void layer_slider_cbk(UIObject *obj, void *userptr);
 
@@ -42,23 +33,17 @@ static void select_begin(int x, int y);
 static void select_end(int x, int y);
 static void select_drag(int x, int y);
 
-static void insert_brush_before(MapBrush *node, MapBrush *bef);
-static void insert_brush_after(MapBrush *node, MapBrush *aft);
-static void remove_brush(MapBrush *node);
-
 static void integer_round_cbk(UIObject *obj, void *userptr);
 
 static bool  ctrl_pressed = false;
 static vec2  begin_offset, move_offset, offset;
 static int current_layer = 0;
 static MouseState mouse_state;
-static MapBrush current_collision;
 
 static UIObject *general_root;
 static UIObject *after_layer_alpha_slider;
 static UIObject *integer_round;
-
-static MapBrush *brush_list, *end_list, *selected_brush;
+static MapBrush *selected_brush;
 
 void
 collision_init(void)
@@ -148,7 +133,7 @@ collision_keyboard(SDL_Event *event)
 			if(!selected_brush)
 				break;
 
-			if(selected_brush == end_list)
+			if(selected_brush == editor.layers[current_layer]->brush_list_end)
 				break;
 			
 			if(ctrl_pressed) {
@@ -157,13 +142,13 @@ collision_keyboard(SDL_Event *event)
 			}
 
 			current_next = selected_brush->next;
-			remove_brush(selected_brush);
-			insert_brush_after(selected_brush, current_next);
+			map_thing_remove_brush(editor.layers[current_layer], selected_brush);
+			map_thing_insert_brush_after(editor.layers[current_layer], selected_brush, current_next);
 			break;
 		case SDLK_DELETE:
 			if(!selected_brush)
 				break;
-			remove_brush(selected_brush);
+			map_thing_remove_brush(editor.layers[current_layer], selected_brush);
 			free(selected_brush);
 			selected_brush = NULL;
 			break;
@@ -171,7 +156,7 @@ collision_keyboard(SDL_Event *event)
 			if(!selected_brush)
 				break;
 
-			if(selected_brush == brush_list)
+			if(selected_brush == editor.layers[current_layer]->brush_list)
 				break;
 
 			if(ctrl_pressed) {
@@ -180,8 +165,8 @@ collision_keyboard(SDL_Event *event)
 			}
 
 			current_prev = selected_brush->prev;
-			remove_brush(selected_brush);
-			insert_brush_before(selected_brush, current_prev);
+			map_thing_remove_brush(editor.layers[current_layer], selected_brush);
+			map_thing_insert_brush_before(editor.layers[current_layer], selected_brush, current_prev);
 			break;
 		}
 		
@@ -267,7 +252,7 @@ collision_render(void)
 	int rows, cols;
 	gfx_sprite_count_rows_cols(SPRITE_TERRAIN, &rows, &cols);
 
-	for(MapBrush *brush = brush_list; brush; brush = brush->next) {
+	for(MapBrush *brush = editor.layers[current_layer]->brush_list; brush; brush = brush->next) {
 		int tile = brush->tile - 1;
 		TextureStamp stamp = get_sprite(SPRITE_TERRAIN, tile % cols, tile / cols);
 		vec4 color = { 1.0, 1.0, 1.0, 1.0 };
@@ -329,12 +314,7 @@ rect_begin(int x, int y)
 		selected_brush->prev = NULL;
 		vec2_dup(selected_brush->position, begin_offset);
 
-		if(brush_list)
-			insert_brush_after(selected_brush, end_list);
-		else {
-			brush_list = selected_brush;
-			end_list = selected_brush;
-		}
+		map_thing_insert_brush(editor.layers[current_layer], selected_brush);
 	}
 }
 
@@ -366,7 +346,7 @@ rect_end(int x, int y)
 	selected_brush->half_size[1] = fabsf(selected_brush->half_size[1]);
 
 	if(selected_brush->half_size[0] < 1.0 / 64.0 || selected_brush->half_size[1] < 1.0 / 64.0) {
-		remove_brush(selected_brush);
+		map_thing_remove_brush(editor.layers[current_layer], selected_brush);
 		free(selected_brush);
 		selected_brush = NULL;
 	}
@@ -378,16 +358,16 @@ rect_draw(void)
 	int rows, cols, tile;
 	gfx_sprite_count_rows_cols(SPRITE_TERRAIN, &rows, &cols);
 
-	tile = current_collision.tile - 1;
+	tile = selected_brush->tile - 1;
 	TextureStamp stamp = get_sprite(SPRITE_TERRAIN, tile % cols, tile / cols);
 	gfx_push_texture_rect(
 		&stamp, 
-		current_collision.position, 
-		current_collision.half_size, 
-		(vec2){ current_collision.half_size[0] * 2.0, current_collision.half_size[1] * 2.0 }, 
+		selected_brush->position, 
+		selected_brush->half_size, 
+		(vec2){ selected_brush->half_size[0] * 2.0, selected_brush->half_size[1] * 2.0 }, 
 		0.0, 
 		(vec4){ 1.0, 1.0, 1.0, 1.0 });
-		gfx_push_rect(current_collision.position, current_collision.half_size, 0.5/(editor_get_zoom()), (vec4){ 1.0, 1.0, 1.0, 1.0 });
+		gfx_push_rect(selected_brush->position, selected_brush->half_size, 0.5/(editor_get_zoom()), (vec4){ 1.0, 1.0, 1.0, 1.0 });
 	
 }
 
@@ -405,7 +385,7 @@ select_begin(int x, int y)
 	gfx_pixel_to_world((vec2){ x, y }, p);
 
 	selected_brush = NULL;
-	for(MapBrush *b = end_list; b; b = b->prev) {
+	for(MapBrush *b = editor.layers[current_layer]->brush_list_end; b; b = b->prev) {
 		Rectangle rect = {
 			.position = { b->position[0], b->position[1] },
 			.half_size = { b->half_size[0], b->half_size[1] }
@@ -446,43 +426,4 @@ select_end(int x, int y)
 {
 	(void)x;
 	(void)y;
-}
-
-void
-insert_brush_after(MapBrush *b, MapBrush *aft)
-{
-	b->next = aft->next;
-	if(aft->next)
-		aft->next->prev = b;
-	else
-		end_list = b;
-
-	b->prev = aft;
-	aft->next = b;
-}
-
-void
-insert_brush_before(MapBrush *b, MapBrush *bef)
-{
-	b->prev = bef->prev;
-	if(bef->prev)
-		bef->prev->next = b;
-	else
-		brush_list = b;
-	b->next = bef;
-	bef->prev = b;
-}
-
-void
-remove_brush(MapBrush *brush)
-{
-	if(brush->prev)
-		brush->prev->next = brush->next;
-	else
-	 	brush_list = brush->next;
-
-	if(brush->next)
-		brush->next->prev = brush->prev;
-	else
-	 	end_list = brush->prev;
 }

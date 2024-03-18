@@ -124,6 +124,10 @@ map_free(Map *map)
 	}
 	for(Thing *c = map->things, *next; c; c = next) {
 		next = c->next;
+		for(MapBrush *brush = c->brush_list, *next; brush; brush = next) {
+			next = brush->next;
+			free(brush);
+		}
 		free(c);
 	}
 	free(map);
@@ -464,4 +468,80 @@ create_sprite(int layer, int x, int y, int w, int h, int tile)
 		sprite->animation = ANIMATION_WATER_TILE;
 		sprite->fps = 1.0;
 	}
+}
+
+void
+map_insert_thing(Map *map, Thing *thing)
+{
+	if(map->things) {
+		map_insert_thing_after(map, thing, map->things_end);
+	} else {
+		map->things = thing;
+		map->things_end = thing;
+	}
+}
+
+void
+map_insert_thing_after(Map *map, Thing *thing, Thing *after)
+{
+	thing->next = after->next;
+	if(after->next)
+		after->next->prev = thing;
+	else
+	 	map->things_end = thing;
+
+	thing->prev = after;
+	after->next = thing;
+}
+
+void
+map_thing_insert_brush(Thing *thing, MapBrush *brush)
+{
+	if(thing->brush_list) {
+		map_thing_insert_brush_after(thing, brush, thing->brush_list_end);
+	} else {
+		thing->brush_list = brush;
+		thing->brush_list_end = brush;
+	}
+}
+
+void
+map_thing_remove_brush(Thing *thing, MapBrush *brush)
+{
+	if(brush->prev)
+		brush->prev->next = brush->next;
+	if(brush->next)
+		brush->next->prev = brush->prev;
+
+	if(thing->brush_list == brush)
+		thing->brush_list = brush->next;
+
+	if(thing->brush_list_end == brush)
+	 	thing->brush_list_end = brush->prev;
+}
+
+void
+map_thing_insert_brush_after(Thing *thing, MapBrush *brush, MapBrush *after)
+{
+	brush->next = after->next;
+	if(after->next)
+		after->next->prev = brush;
+	else
+	 	thing->brush_list_end = brush;
+
+	brush->prev = after;
+	after->next = brush;
+}
+
+void
+map_thing_insert_brush_before(Thing *thing, MapBrush *brush, MapBrush *before)
+{
+	brush->prev = before->prev;
+	if(before->prev)
+		before->prev->next = brush;
+	else
+	 	thing->brush_list = brush;
+	
+	brush->next = before;
+	before->prev = brush;
 }

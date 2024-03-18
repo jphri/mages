@@ -445,10 +445,16 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	ui_window_set_position(editor.general_window, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 90, - 30 - 60 });
 	ui_window_set_decorated(editor.general_window, false);
 
-
 	editor.map_atlas = SPRITE_TERRAIN;
-	if(editor.map == NULL)
+	if(editor.map == NULL) {
 		editor.map = map_alloc(16, 16);
+		for(int i = 0; i < 64; i++) {
+			Thing *thing = calloc(1, sizeof(*thing));
+			thing->type = THING_WORLD_MAP;
+			map_insert_thing(editor.map, thing);
+			editor.layers[i] = thing;
+		}
+	}
 
 	for(int i = 0; i < LAST_EDITOR_STATE; i++) {
 		if(state_vtable[i].init)
@@ -643,11 +649,15 @@ loadbtn_load_cbk(UIObject *obj, void *userptr)
 
 	map_free(editor.map);
 	editor.map = n_map;
+	Thing *layer = editor.map->things;
+	for(int i = 0; i < 64; i++) {
+		editor.layers[i] = layer;
+		layer = layer->next;
+	}
 
 	free(fixed_path);
 	ui_deparent(load_window);
 	ui_text_input_clear(load_path);
-	
 	editor_change_state(editor.editor_state);
 }
 

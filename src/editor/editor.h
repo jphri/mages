@@ -39,6 +39,8 @@ typedef struct {
 	int current_tile;
 	SpriteType map_atlas;
 
+	Thing *layers[64];
+
 	UIObject *controls_ui;
 	UIObject *context_window;
 	UIObject *general_window;
