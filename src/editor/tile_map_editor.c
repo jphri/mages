@@ -19,17 +19,6 @@
 
 EditorGlobal editor;
 static State state_vtable[] = {
-	[EDITOR_EDIT_MAP] = {
-		.render = edit_render,
-		.wheel = edit_wheel,
-		.keyboard = edit_keyboard,
-		.mouse_button = edit_mouse_button,
-		.mouse_motion = edit_mouse_motion,
-		.enter = edit_enter,
-		.exit = edit_exit,
-		.init = edit_init,
-		.terminate = edit_terminate,
-	},
 	[EDITOR_EDIT_COLLISION] = {
 		.render       = collision_render,
 		.wheel        = collision_wheel,
@@ -121,7 +110,6 @@ GAME_STATE_LEVEL_EDIT_init(void)
 		ui_layout_append(layout, btn); \
 	}
 
-	BUTTON_MODE(EDITOR_EDIT_MAP, 2 * 8, 0 * 8);
 	BUTTON_MODE(EDITOR_EDIT_COLLISION, 3 * 8, 0 * 8);
 	BUTTON_MODE(EDITOR_EDIT_THINGS, 5 * 8, 0 * 8);
 
