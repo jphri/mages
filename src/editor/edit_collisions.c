@@ -344,15 +344,32 @@ collision_render(void)
 	for(MapBrush *brush = brush_list; brush; brush = brush->next) {
 		int tile = brush->tile - 1;
 		TextureStamp stamp = get_sprite(SPRITE_TERRAIN, tile % cols, tile / cols);
+		vec4 color = { 1.0, 1.0, 1.0, 1.0 };
+
+		if(selected_brush && selected_brush != brush) {
+			Rectangle test_rect;
+			vec2_dup(test_rect.position, brush->position);
+			vec2_add(test_rect.half_size, brush->half_size, selected_brush->half_size);
+
+			if(rect_contains_point(&test_rect, selected_brush->position)) {
+				color[3] = 0.25;
+			}
+		}
+
+		if(selected_brush == brush) {
+			color[1] = 0.0;
+			color[2] = 0.0;
+		}
+
 		gfx_push_texture_rect(
 			&stamp, 
 			brush->position, 
 			brush->half_size,
 			(vec2){ brush->half_size[0] * 2.0, brush->half_size[1] * 2.0 }, 
 			0.0, 
-			(vec4){ 1.0, 1.0, 1.0, 1.0});
+			(vec4){ 1.0, 1.0, 1.0, color[3] });
 
-		gfx_push_rect(brush->position, brush->half_size, 0.5/(editor_get_zoom()), (vec4){ 1.0, 1.0, 1.0, 1.0 });
+		gfx_push_rect(brush->position, brush->half_size, 0.5/(editor_get_zoom()), color);
 	}
 
 	if(mouse_state == MOUSE_DRAWING) {
