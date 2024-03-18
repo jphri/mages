@@ -650,7 +650,6 @@ GAME_STATE_LEVEL_EDIT_init(void)
 		editor.map = map_alloc(16, 16);
 	}
 	ui_window_append_child(editor.general_window, general_root);
-	ui_window_append_child(editor.brush_window, ui_brush_root);
 
 	ui_child_append(ui_root(), extra_window);
 	gfx_set_camera(camera_offset, (vec2){ camera_zoom, camera_zoom });
@@ -1297,8 +1296,8 @@ select_drag(int x, int y)
 		vec2_sub(selected_brush->position, selected_brush->position, p);
 	} else {
 		vec2_sub(selected_thing->position, selected_thing->position, p);
-		update_inputs();
 	}
+	update_inputs();
 }
 
 void
@@ -1433,6 +1432,9 @@ update_inputs(void)
 	arrbuf_clear(&helper_print); \
 	arrbuf_printf(&helper_print, FORMAT, COMPONENT); \
 	ui_text_input_set_text(INPUT, to_strview_buffer(helper_print.data, helper_print.size));
+
+	if(!selected_thing)
+		return;
 	
 	SETINPUT(uiposition_x, "%0.2f", selected_thing->position[0]);
 	SETINPUT(uiposition_y, "%0.2f", selected_thing->position[1]);
@@ -1444,6 +1446,16 @@ update_inputs(void)
 	} else {
 		SETINPUT(uidirection, "%s", "");
 	}
+
+	if(!selected_brush)
+		return;
+
+	SETINPUT(ui_brush_pos_x, "%0.2f", selected_brush->position[0]);
+	SETINPUT(ui_brush_pos_y, "%0.2f", selected_brush->position[1]);
+	SETINPUT(ui_brush_size_x, "%0.2f", selected_brush->half_size[0]);
+	SETINPUT(ui_brush_size_y, "%0.2f", selected_brush->half_size[1]);
+	SETINPUT(ui_brush_tile, "%d", selected_brush->tile);
+	ui_checkbox_set_toggled(ui_brush_collidable, selected_brush->collidable);
 }
 
 void
@@ -1452,10 +1464,17 @@ update_thing_context(void)
 	if(selected_thing) {
 		ui_text_input_set_text(thing_type_name, type_string[selected_thing->type]);
 		ui_window_append_child(editor.thing_window, thing_context);
-		update_inputs();
 	} else {
 		ui_deparent(thing_context);
 	}
+	
+	if(selected_brush) {
+		ui_window_append_child(editor.brush_window, ui_brush_root);
+	} else {
+		ui_deparent(ui_brush_root);
+	}
+
+	update_inputs();
 }
 
 void
