@@ -35,6 +35,11 @@ static void select_end(int x, int y);
 static void select_drag(int x, int y);
 
 static void integer_round_cbk(UIObject *obj, void *userptr);
+static void thing_type_name_cbk(UIObject *obj, void *userptr);
+static void thing_float(UIObject *obj, void *userptr);
+static void thing_direction(UIObject *obj, void *userptr);
+static void update_inputs(void);
+static void update_thing_context(void);
 
 static void open_cbk(UIObject *obj, void (*userptr));
 static void play_cbk(UIObject *obj, void (*userptr));
@@ -87,12 +92,35 @@ static MouseState mouse_state;
 static UIObject *general_root;
 static UIObject *after_layer_alpha_slider;
 static UIObject *integer_round;
+
 static MapBrush *selected_brush;
+static Thing *selected_thing;
+
+static StrView type_string[LAST_THING];
+static UIObject *thing_context, *thing_type_name;
+static UIObject *uiposition_x, *uiposition_y;
+static UIObject *uihealth, *uihealth_max;
+static UIObject *uidirection;
+
+static ArrayBuffer helper_print;
+
+static const char *direction_str[] = {
+	[DIR_UP] = "up",
+	[DIR_LEFT] = "left",
+	[DIR_DOWN] = "down",
+	[DIR_RIGHT] = "right"
+};
 
 void
 GAME_STATE_LEVEL_EDIT_init(void)
 {
 	arrbuf_init(&cursor_pos_str);
+
+	arrbuf_init(&helper_print);
+	type_string[THING_NULL]   = to_strview("");
+	type_string[THING_PLAYER] = to_strview("THING_PLAYER");
+	type_string[THING_DUMMY]  = to_strview("THING_DUMMY");
+	type_string[THING_DOOR]   = to_strview("THING_DOOR");
 
 	tileset_window = ui_window_new();
 	ui_window_set_decorated(tileset_window, false);
@@ -439,6 +467,83 @@ GAME_STATE_LEVEL_EDIT_init(void)
 		ui_child_append(general_root, general_layout);
 	}
 
+	thing_context = ui_new_object(0, UI_ROOT);
+	UIObject *layout = ui_layout_new();
+	ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
+	ui_layout_set_border(layout, 2.0, 2.0, 2.0, 2.0);
+	ui_layout_set_fixed_size(layout, 10.0); \
+	{
+		UIObject *sublayout, *label;
+
+		#define BEGIN_LAYOUT(NAME) \
+		sublayout = ui_layout_new(); \
+		ui_layout_set_order(sublayout, UI_LAYOUT_HORIZONTAL); \
+		ui_layout_set_border(sublayout, 2.0, 2.0, 2.0, 2.0); \
+		label = ui_label_new(); \
+		ui_label_set_text(label, NAME); \
+		ui_label_set_alignment(label, UI_LABEL_ALIGN_LEFT); \
+		ui_layout_append(sublayout, label);
+
+		#define END_LAYOUT \
+		ui_layout_append(layout, sublayout);
+
+
+		BEGIN_LAYOUT("type"); {
+			thing_type_name = ui_text_input_new();
+			ui_text_input_set_cbk(thing_type_name, NULL, thing_type_name_cbk);
+			ui_layout_append(sublayout, thing_type_name);
+		} END_LAYOUT;
+
+		BEGIN_LAYOUT("position"); {
+			UIObject *retarded = ui_layout_new(); 
+			ui_layout_set_order(retarded, UI_LAYOUT_HORIZONTAL);
+			{
+				uiposition_x = ui_text_input_new();
+				ui_text_input_set_cbk(uiposition_x, (void*)(offsetof(Thing, position[0])), thing_float);
+				ui_layout_append(retarded, uiposition_x);
+
+				uiposition_y = ui_text_input_new();
+				ui_text_input_set_cbk(uiposition_y, (void*)(offsetof(Thing, position[1])), thing_float);
+				ui_layout_append(retarded, uiposition_y);
+			}
+			ui_layout_append(sublayout, retarded);
+		} END_LAYOUT;
+
+		BEGIN_LAYOUT("health"); {
+			UIObject *retarded = ui_layout_new(); 
+			ui_layout_set_order(retarded, UI_LAYOUT_HORIZONTAL);
+			{
+				uihealth = ui_text_input_new();
+				ui_text_input_set_cbk(uihealth, (void*)(offsetof(Thing, health)), thing_float);
+				ui_layout_append(retarded, uihealth);
+			}
+			ui_layout_append(sublayout, retarded);
+		} END_LAYOUT;
+
+		BEGIN_LAYOUT("health_max"); {
+			UIObject *retarded = ui_layout_new(); 
+			ui_layout_set_order(retarded, UI_LAYOUT_HORIZONTAL);
+			{
+				uihealth_max = ui_text_input_new();
+				ui_text_input_set_cbk(uihealth_max, (void*)(offsetof(Thing, health_max)), thing_float);
+				ui_layout_append(retarded, uihealth_max);
+			}
+			ui_layout_append(sublayout, retarded);
+		} END_LAYOUT;
+
+		BEGIN_LAYOUT("direction"); {
+			UIObject *retarded = ui_layout_new(); 
+			ui_layout_set_order(retarded, UI_LAYOUT_HORIZONTAL);
+			{
+				uidirection = ui_text_input_new();
+				ui_text_input_set_cbk(uidirection, (void*)(offsetof(Thing, direction)), thing_direction);
+				ui_layout_append(retarded, uidirection);
+			}
+			ui_layout_append(sublayout, retarded);
+		} END_LAYOUT;
+	}
+	ui_child_append(thing_context, layout);
+
 	#undef BEGIN_SUB
 	#undef END_SUB
 	selected_brush = NULL;
@@ -498,6 +603,8 @@ GAME_STATE_LEVEL_EDIT_render(void)
 void
 GAME_STATE_LEVEL_EDIT_mouse_button(SDL_Event *event)
 {
+	Thing *thing;
+
 	if(ui_is_active())
 		return;
 	vec2 v;
@@ -517,9 +624,16 @@ GAME_STATE_LEVEL_EDIT_mouse_button(SDL_Event *event)
 	if(event->type == SDL_MOUSEBUTTONDOWN && mouse_state == MOUSE_NOTHING) {
 		switch(event->button.button) {
 		case SDL_BUTTON_RIGHT: 
-			rect_begin(event->button.x, event->button.y);
-			mouse_state = MOUSE_DRAWING; 
-			break;
+			if(!ctrl_pressed) {
+				rect_begin(event->button.x, event->button.y);
+				mouse_state = MOUSE_DRAWING; 
+			} else {
+				thing = calloc(1, sizeof(*thing));
+				thing->type = THING_NULL;
+				vec2_dup(thing->position, v);
+				map_insert_thing(editor.map, thing);
+			}
+	 		break;
 		case SDL_BUTTON_MIDDLE: 
 			move_offset[0] = event->button.x; 
 			move_offset[1] = event->button.y; 
@@ -602,11 +716,27 @@ GAME_STATE_LEVEL_EDIT_keyboard(SDL_Event *event)
 			map_thing_insert_brush_after(editor.layers[current_layer], selected_brush, current_next);
 			break;
 		case SDLK_DELETE:
-			if(!selected_brush)
-				break;
-			map_thing_remove_brush(editor.layers[current_layer], selected_brush);
-			free(selected_brush);
-			selected_brush = NULL;
+			if(!ctrl_pressed) {
+				if(!selected_brush)
+					break;
+				map_thing_remove_brush(editor.layers[current_layer], selected_brush);
+				free(selected_brush);
+				selected_brush = NULL;
+			} else {
+				if(!selected_thing)
+					break;
+
+				map_remove_thing(editor.map, selected_thing);
+				for(MapBrush *brush = selected_thing->brush_list, *next;
+					brush;
+					brush = next)
+				{
+					next = brush->next;
+					free(brush);
+				}
+				free(selected_thing);
+				selected_thing = NULL;
+			}
 			break;
 		case SDLK_DOWN:
 			if(!selected_brush)
@@ -644,7 +774,9 @@ void
 GAME_STATE_LEVEL_EDIT_end(void) 
 {
 	ui_del_object(general_root);
+	ui_del_object(thing_context);
 	arrbuf_free(&cursor_pos_str);
+	arrbuf_free(&helper_print);
 	ui_reset();
 }
 
@@ -998,20 +1130,38 @@ select_begin(int x, int y)
 	vec2 p;
 	gfx_pixel_to_world((vec2){ x, y }, p);
 
+	selected_thing = NULL;
 	selected_brush = NULL;
-	for(MapBrush *b = editor.layers[current_layer]->brush_list_end; b; b = b->prev) {
-		Rectangle rect = {
-			.position = { b->position[0], b->position[1] },
-			.half_size = { b->half_size[0], b->half_size[1] }
-		};
+	for(Thing *thing = editor.map->things; thing; thing = thing->next) {
+		Rectangle rect;
 
-		if(rect_contains_point(&rect, p)) {
-			selected_brush = b;
+		switch(thing->type) {
+		case THING_WORLD_MAP: 
+			for(MapBrush *b = editor.layers[current_layer]->brush_list_end; b; b = b->prev) {
+				Rectangle rect = {
+					.position = { b->position[0], b->position[1] },
+					.half_size = { b->half_size[0], b->half_size[1] }
+				};
+
+				if(rect_contains_point(&rect, p)) {
+					selected_brush = b;
+					selected_thing = thing;
+					update_inputs();
+					break;
+				}
+			}
 			break;
-		}
+
+		default:
+			vec2_dup(rect.position, thing->position);
+			vec2_dup(rect.half_size, (vec2){ 0.5, 0.5 });
+			
+			if(rect_contains_point(&rect, p)) {
+				selected_thing = thing;
+			}
+		};
 	}
-	if(!selected_brush)
-		return;
+	update_thing_context();
 
 	gfx_pixel_to_world((vec2){ x, y }, begin_offset);
 	if(ui_checkbox_get_toggled(integer_round))
@@ -1021,9 +1171,9 @@ select_begin(int x, int y)
 void
 select_drag(int x, int y)
 {
-	if(!selected_brush)
+	if(!selected_thing)
 		return;
-
+	
 	vec2 v, p;
 	gfx_pixel_to_world((vec2){ x, y }, v);
 	if(ui_checkbox_get_toggled(integer_round))
@@ -1031,8 +1181,13 @@ select_drag(int x, int y)
 
 	vec2_sub(p, begin_offset, v);
 	vec2_dup(begin_offset, v);
-	vec2_sub(selected_brush->position, selected_brush->position, p);
-	
+
+	if(selected_brush) {
+		vec2_sub(selected_brush->position, selected_brush->position, p);
+	} else {
+		vec2_sub(selected_thing->position, selected_thing->position, p);
+		update_inputs();
+	}
 }
 
 void
@@ -1123,4 +1278,71 @@ thing_dummy_render(Thing *c)
 	//if(c == selected_thing) {
 	//	gfx_push_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
 	//}
+}
+
+void
+thing_type_name_cbk(UIObject *obj, void *userptr)
+{
+	(void)userptr;
+	selected_thing->type = THING_NULL;
+	StrView v = ui_text_input_get_str(obj);
+	
+	for(int i = 0; i < LAST_THING; i++) {
+		if(strview_cmpstr(v, type_string[i]) == 0) {
+			selected_thing->type = i;
+			update_inputs();
+			return;
+		}
+	}
+}
+
+void
+thing_float(UIObject *obj, void *userptr)
+{
+	float *ptr = (void*)((uintptr_t)selected_thing + (uintptr_t)userptr);
+	strview_float(ui_text_input_get_str(obj), ptr);
+}
+
+void
+thing_direction(UIObject *obj, void *userptr)
+{
+	Direction *dir = (void*)((uintptr_t)selected_thing + (uintptr_t)userptr);
+	for(size_t i = 0; i < LENGTH(direction_str); i++) {
+		if(strview_cmp(ui_text_input_get_str(obj), direction_str[i]) == 0) {
+			*dir = i;
+			return;
+		}
+	}
+}
+
+void
+update_inputs(void)
+{
+	#define SETINPUT(INPUT, FORMAT, COMPONENT) \
+	arrbuf_clear(&helper_print); \
+	arrbuf_printf(&helper_print, FORMAT, COMPONENT); \
+	ui_text_input_set_text(INPUT, to_strview_buffer(helper_print.data, helper_print.size));
+	
+	SETINPUT(uiposition_x, "%0.2f", selected_thing->position[0]);
+	SETINPUT(uiposition_y, "%0.2f", selected_thing->position[1]);
+	SETINPUT(uihealth, "%0.2f", selected_thing->health);
+	SETINPUT(uihealth_max, "%0.2f", selected_thing->health_max);
+
+	if(selected_thing->direction >= 0 && selected_thing->direction <= 3) {
+		SETINPUT(uidirection, "%s", direction_str[selected_thing->direction]);
+	} else {
+		SETINPUT(uidirection, "%s", "");
+	}
+}
+
+void
+update_thing_context(void)
+{
+	if(selected_thing) {
+		ui_text_input_set_text(thing_type_name, type_string[selected_thing->type]);
+		ui_window_append_child(editor.context_window, thing_context);
+		update_inputs();
+	} else {
+		ui_deparent(thing_context);
+	}
 }

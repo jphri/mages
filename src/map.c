@@ -515,6 +515,21 @@ map_insert_thing(Map *map, Thing *thing)
 }
 
 void
+map_remove_thing(Map *map, Thing *thing)
+{
+	if(thing->next)
+		thing->next->prev = thing->prev;
+	if(thing->prev)
+		thing->prev->next = thing->next;
+
+	if(map->things_end == thing)
+		map->things_end = thing->prev;
+
+	if(map->things == thing)
+		map->things = thing->next;
+}
+
+void
 map_insert_thing_after(Map *map, Thing *thing, Thing *after)
 {
 	thing->next = after->next;
