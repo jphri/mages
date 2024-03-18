@@ -394,9 +394,9 @@ thing_world_map(Thing *c)
 	SceneAnimatedTiles *anim_tiles;
 	int rows, cols;
 
-	for(MapBrush *brush = c->brush_list; brush; brush = brush->next) {
+	for(MapBrush *brush = c->brush_list_end; brush; brush = brush->prev) {
 		switch(brush->tile) {
-		case 4:
+		case 5:
 			anim_tiles = gfx_scene_new_obj(c->layer, SCENE_OBJECT_ANIMATED_TILES);
 			vec2_dup(anim_tiles->position, brush->position);
 			vec2_dup(anim_tiles->half_size, brush->half_size);
