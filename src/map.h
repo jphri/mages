@@ -23,6 +23,7 @@ struct CollisionData {
 
 struct Thing {
 	int type;
+	int layer;
 	vec2 position;
 	float health, health_max;
 	Direction direction;

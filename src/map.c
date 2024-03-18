@@ -29,6 +29,7 @@ static int thing_position_command(Map **map, StrView *tokenview);
 static int thing_health_command(Map **map, StrView *tokenview);
 static int thing_health_max_command(Map **map, StrView *tokenview);
 static int thing_direction_command(Map **map, StrView *tokenview);
+static int thing_layer_command(Map **map, StrView *tokenview);
 
 static ThingFunc thing_pc[LAST_THING] = {
 	[THING_PLAYER]    = thing_player,
@@ -57,7 +58,8 @@ static struct {
 	{ "thing_position", thing_position_command },
 	{ "thing_health", thing_health_command },
 	{ "thing_max_health", thing_health_max_command },
-	{ "thing_direction", thing_direction_command }
+	{ "thing_direction", thing_direction_command },
+	{ "thing_layer", thing_layer_command },
 };
 
 
@@ -346,6 +348,16 @@ thing_direction_command(Map **map, StrView *tokenview)
 	} else if(strview_cmp(tok, "left") == 0) {
 		thing->direction = DIR_LEFT;
 	} else {
+		return 1;
+	}
+	return 0;
+}
+
+int
+thing_layer_command(Map **map, StrView *tokenview)
+{
+	Thing *thing = (*map)->things;
+	if(!strview_int(strview_token(tokenview, " "), &thing->layer)) {
 		return 1;
 	}
 	return 0;
