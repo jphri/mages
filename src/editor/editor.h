@@ -59,17 +59,6 @@ void thing_exit(void);
 void thing_init(void);
 void thing_terminate(void);
 
-void collision_render(void);
-void collision_keyboard(SDL_Event *event);
-void collision_mouse_motion(SDL_Event *event);
-void collision_mouse_button(SDL_Event *event);
-void collision_keyboard(SDL_Event *event);
-void collision_wheel(SDL_Event *event);
-void collision_init(void);
-void collision_terminate(void);
-void collision_enter(void);
-void collision_exit(void);
-
 void common_draw_map(int current_layer, float alpha_after_layer);
 
 extern EditorGlobal editor;
