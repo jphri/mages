@@ -14,6 +14,7 @@ typedef void (*ThingFunc)(Thing *c);
 static void thing_player(Thing *c);
 static void thing_dummy(Thing *c);
 static void thing_door(Thing *c);
+static void thing_world_map(Thing *c);
 
 static void create_sprite(int layer, int x, int y, int w, int h, int tile);
 static void find_sprite(int layer, int x, int y, int w, int h, int *tiles);
@@ -34,7 +35,8 @@ static int thing_layer_command(Map **map, StrView *tokenview);
 static ThingFunc thing_pc[LAST_THING] = {
 	[THING_PLAYER]    = thing_player,
 	[THING_DUMMY]     = thing_dummy,
-	[THING_DOOR]      = thing_door
+	[THING_DOOR]      = thing_door,
+	[THING_WORLD_MAP] = thing_world_map
 };
 
 static struct {
@@ -383,6 +385,37 @@ void
 thing_door(Thing *c)
 {
 	ent_door_new(c->position, c->direction);
+}
+
+void
+thing_world_map(Thing *c)
+{
+	SceneTiles *tiles;
+	SceneAnimatedTiles *anim_tiles;
+	int rows, cols;
+
+	for(MapBrush *brush = c->brush_list; brush; brush = brush->next) {
+		switch(brush->tile) {
+		case 4:
+			anim_tiles = gfx_scene_new_obj(c->layer, SCENE_OBJECT_ANIMATED_TILES);
+			vec2_dup(anim_tiles->position, brush->position);
+			vec2_dup(anim_tiles->half_size, brush->half_size);
+			vec2_mul(anim_tiles->uv_scale, anim_tiles->half_size, (vec2){ 2.0, 2.0 });
+			anim_tiles->animation = ANIMATION_WATER_TILE;
+			anim_tiles->fps = 1.0;
+			break;
+		default:
+			tiles = gfx_scene_new_obj(c->layer, SCENE_OBJECT_TILES);
+			gfx_sprite_count_rows_cols(SPRITE_TERRAIN, &rows, &cols);
+			vec2_dup(tiles->position, brush->position);
+			vec2_dup(tiles->half_size, brush->half_size);
+			vec2_mul(tiles->uv_scale, brush->half_size, (vec2){ 2.0, 2.0 });
+			tiles->type = SPRITE_TERRAIN;
+			tiles->sprite_x = (brush->tile - 1) % cols;
+			tiles->sprite_y = (brush->tile - 1) / cols;
+			break;
+		}
+	}
 }
 
 void

@@ -451,6 +451,7 @@ GAME_STATE_LEVEL_EDIT_init(void)
 		for(int i = 0; i < 64; i++) {
 			Thing *thing = calloc(1, sizeof(*thing));
 			thing->type = THING_WORLD_MAP;
+			thing->layer = i;
 			map_insert_thing(editor.map, thing);
 			editor.layers[i] = thing;
 		}
