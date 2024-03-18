@@ -61,7 +61,6 @@ static vec2 mouse_position;
 static UIObject *cursor_layout;
 static UIObject *context_root, *context_layout;
 static UIObject *general_root;
-static UIObject *tileset_window;
 static UIObject *after_layer_alpha_slider;
 static CursorMode cursor_mode;
 static float cursor_mode_size;
@@ -76,9 +75,7 @@ static ArrayBuffer fill_layer_helper;
 static void layer_slider_cbk(UIObject *slider, void *userptr);
 static void cursor_size_cbk(UIObject *obj, void *userptr);
 static void cursorchb_cbk(UIObject *obj, void *userptr);
-static void tileselect_cbk(UIObject *obj, void *userptr);
 
-static void tileset_btn_cbk(UIObject *obj, void *ptr);
 
 static void draw_preview(void);
 static void apply_cursor(int x, int y);
@@ -238,35 +235,6 @@ edit_init(void)
 	}
 	ui_child_append(context_root, context_layout);
 
-	tileset_window = ui_window_new();
-	ui_window_set_decorated(tileset_window, false);
-	ui_window_set_size(tileset_window, (vec2){ 150, 150 });
-	ui_window_set_position(tileset_window, UI_ORIGIN_BOTTOM_RIGHT, (vec2){ - 150, - 150 });
-	{
-		UIObject *tileset = ui_tileset_sel_new();
-		ui_tileset_sel_set_cbk(tileset, NULL, tileselect_cbk);
-
-		ui_window_append_child(tileset_window, tileset);
-	}
-
-	UIObject *tileset_btn_window = ui_window_new();
-	ui_window_set_decorated(tileset_btn_window, false);
-	ui_window_set_size(tileset_btn_window, (vec2){ 30, 10 });
-	ui_window_set_position(tileset_btn_window, UI_ORIGIN_BOTTOM_RIGHT, (vec2){ -30, - 10 });
-	{
-		UIObject *tileset_btn = ui_button_new();
-		ui_button_set_callback(tileset_btn, NULL, tileset_btn_cbk);
-		{
-			UIObject *tileset_lbl = ui_label_new();
-
-			ui_label_set_color(tileset_lbl, (vec4){ 1.0, 1.0, 0.0, 1.0 });
-			ui_label_set_text(tileset_lbl, "Tiles");
-			ui_label_set_alignment(tileset_lbl, UI_LABEL_ALIGN_CENTER);
-			ui_button_set_label(tileset_btn, tileset_lbl);
-		}
-		ui_window_append_child(tileset_btn_window, tileset_btn);
-	}
-
 	cursor_layout = ui_layout_new();
 	ui_layout_set_order(cursor_layout, UI_LAYOUT_HORIZONTAL);
 	{
@@ -323,9 +291,6 @@ edit_init(void)
 		} END_SUB;
 	}
 	ui_child_append(general_root, general_layout);
-
-	(void)tileset_btn_cbk;
-	ui_child_append(tiles_root, tileset_btn_window);
 }
 
 void
@@ -484,28 +449,7 @@ layer_slider_cbk(UIObject *slider, void *ptr)
 	current_layer = ui_slider_get_value(slider);
 }
 
-void
-tileset_btn_cbk(UIObject *obj, void *ptr)
-{
-	(void)ptr;
-	obj = ui_get_parent(ui_get_parent(obj));
 
-	if(ui_get_parent(tileset_window) == 0) {
-		ui_child_append(tiles_root, tileset_window);
-		ui_window_set_position(obj, UI_ORIGIN_BOTTOM_RIGHT, (vec2){ -30, -10 - 300 });
-	} else {
-		ui_deparent(tileset_window);
-		ui_window_set_position(obj,UI_ORIGIN_BOTTOM_RIGHT, (vec2){ -30, -10 });
-	}
-}
-
-void 
-tileselect_cbk(UIObject *obj, void *userptr)
-{
-	(void)userptr;
-
-	editor.current_tile = ui_tileset_sel_get_selected(obj);
-}
 
 void
 fill_preview(int x, int y)

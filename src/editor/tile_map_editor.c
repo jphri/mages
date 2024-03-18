@@ -67,6 +67,8 @@ static UIObject *save_window, *save_path;
 static UIObject *extra_window;
 static UIObject *cursor_position;
 
+static UIObject *tileset_window;
+
 static ArrayBuffer cursor_pos_str;
 
 static vec2 camera_offset;
@@ -78,6 +80,9 @@ static void cancel_cbk(UIObject *btn, void *userptr);
 static void newbtn_new_cbk(UIObject *btn, void *userptr);
 static void loadbtn_load_cbk(UIObject *btn, void *userptr);
 static void save_btn_cbk(UIObject *btn, void *userptr);
+
+static void tileselect_cbk(UIObject *obj, void *userptr);
+static void tileset_btn_cbk(UIObject *obj, void *ptr);
 
 static void context_btn_cbk(UIObject *btn, void *userptr);
 static void general_btn_cbk(UIObject *btn, void *userptr);
@@ -121,6 +126,36 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	BUTTON_MODE(EDITOR_EDIT_THINGS, 5 * 8, 0 * 8);
 
 	#undef BUTTON_MODE
+
+	tileset_window = ui_window_new();
+	ui_window_set_decorated(tileset_window, false);
+	ui_window_set_size(tileset_window, (vec2){ 150, 150 });
+	ui_window_set_position(tileset_window, UI_ORIGIN_BOTTOM_RIGHT, (vec2){ - 150, - 150 });
+	{
+		UIObject *tileset = ui_tileset_sel_new();
+		ui_tileset_sel_set_cbk(tileset, NULL, tileselect_cbk);
+
+		ui_window_append_child(tileset_window, tileset);
+	}
+
+	UIObject *tileset_btn_window = ui_window_new();
+	ui_window_set_decorated(tileset_btn_window, false);
+	ui_window_set_size(tileset_btn_window, (vec2){ 30, 10 });
+	ui_window_set_position(tileset_btn_window, UI_ORIGIN_BOTTOM_RIGHT, (vec2){ -30, - 10 });
+	{
+		UIObject *tileset_btn = ui_button_new();
+		ui_button_set_callback(tileset_btn, NULL, tileset_btn_cbk);
+		{
+			UIObject *tileset_lbl = ui_label_new();
+
+			ui_label_set_color(tileset_lbl, (vec4){ 1.0, 1.0, 0.0, 1.0 });
+			ui_label_set_text(tileset_lbl, "Tiles");
+			ui_label_set_alignment(tileset_lbl, UI_LABEL_ALIGN_CENTER);
+			ui_button_set_label(tileset_btn, tileset_lbl);
+		}
+		ui_window_append_child(tileset_btn_window, tileset_btn);
+	}
+	ui_child_append(ui_root(), tileset_btn_window);
 
 	UIObject *window = ui_window_new();
 	ui_window_set_size(window, (vec2){ 80, 30 });
@@ -750,4 +785,27 @@ common_draw_map(int current_layer, float after_layer_alpha)
 				(vec4){ 1.0, 1.0, 1.0, k <= current_layer ? 1.0 : after_layer_alpha }
 		);
 	}
+}
+
+void
+tileset_btn_cbk(UIObject *obj, void *ptr)
+{
+	(void)ptr;
+	obj = ui_get_parent(ui_get_parent(obj));
+
+	if(ui_get_parent(tileset_window) == 0) {
+		ui_child_append(ui_root(), tileset_window);
+		ui_window_set_position(obj, UI_ORIGIN_BOTTOM_RIGHT, (vec2){ -30, -10 - 300 });
+	} else {
+		ui_deparent(tileset_window);
+		ui_window_set_position(obj,UI_ORIGIN_BOTTOM_RIGHT, (vec2){ -30, -10 });
+	}
+}
+
+void 
+tileselect_cbk(UIObject *obj, void *userptr)
+{
+	(void)userptr;
+
+	editor.current_tile = ui_tileset_sel_get_selected(obj);
 }
