@@ -14,20 +14,9 @@
 #include "../ui.h"
 #include "editor.h"
 
+typedef void (*ThingRender)(Thing *thing);
+
 EditorGlobal editor;
-static State state_vtable[] = {
-	[EDITOR_EDIT_THINGS] = {
-		.render = thing_render,
-		.wheel = thing_wheel,
-		.keyboard = thing_keyboard,
-		.mouse_button = thing_mouse_button,
-		.mouse_motion = thing_mouse_motion,
-		.enter = thing_enter,
-		.exit = thing_exit,
-		.init = thing_init,
-		.terminate = thing_terminate,
-	}
-};
 
 enum {
 	CONTEXT_MENU = 0x01,
@@ -63,6 +52,17 @@ static void general_btn_cbk(UIObject *btn, void *userptr);
 static void process_open_menu(void);
 static void update_cursor_pos(vec2 v);
 
+static void thing_null_render(Thing *thing);
+static void thing_player_render(Thing *thing);
+static void thing_dummy_render(Thing *thing);
+static void render_thing(Thing *thing);
+
+static ThingRender renders[] = {
+	[THING_NULL] = thing_null_render,
+	[THING_PLAYER] = thing_player_render,
+	[THING_DUMMY] = thing_dummy_render
+};
+
 static int menu_shown;
 
 static UIObject *new_window, *new_width, *new_height;
@@ -89,41 +89,10 @@ static UIObject *after_layer_alpha_slider;
 static UIObject *integer_round;
 static MapBrush *selected_brush;
 
-static void select_mode_cbk(UIObject *obj, void *ptr)
-{
-	(void)obj;
-
-	EditorState mode = (State*)ptr - state_vtable;
-	editor_change_state(mode);
-}
-
 void
 GAME_STATE_LEVEL_EDIT_init(void)
 {
 	arrbuf_init(&cursor_pos_str);
-
-	UIObject *layout = ui_layout_new();
-	ui_layout_set_order(layout, UI_LAYOUT_HORIZONTAL);
-
-	#define BUTTON_MODE(MODE, ICON_X, ICON_Y) \
-	{ \
-		UIObject *btn = ui_button_new(); \
-		UIObject *img = ui_image_new();  \
-		ui_image_set_stamp(img, &(TextureStamp){   \
-			.texture = TEXTURE_UI, \
-			.position = { (ICON_X) / 256.0, (ICON_Y) / 256.0 }, \
-			.size     = { 8.0 / 256.0, 8.0 / 256.0 } \
-		}); \
-		ui_image_set_keep_aspect(img, true); \
-		ui_button_set_label(btn, img); \
-		ui_button_set_callback(btn, &state_vtable[MODE], select_mode_cbk); \
-		ui_layout_append(layout, btn); \
-	}
-
-	BUTTON_MODE(EDITOR_EDIT_COLLISION, 3 * 8, 0 * 8);
-	BUTTON_MODE(EDITOR_EDIT_THINGS, 5 * 8, 0 * 8);
-
-	#undef BUTTON_MODE
 
 	tileset_window = ui_window_new();
 	ui_window_set_decorated(tileset_window, false);
@@ -154,14 +123,6 @@ GAME_STATE_LEVEL_EDIT_init(void)
 		ui_window_append_child(tileset_btn_window, tileset_btn);
 	}
 	ui_child_append(ui_root(), tileset_btn_window);
-
-	UIObject *window = ui_window_new();
-	ui_window_set_size(window, (vec2){ 80, 30 });
-	ui_window_set_position(window, UI_ORIGIN_TOP_LEFT, (vec2){ 80, 30 });
-	ui_window_set_border(window, (vec2){ 2, 2 });
-	ui_window_set_decorated(window, false);
-	ui_window_append_child(window, layout);
-	ui_child_append(ui_root(), window);
 
 	UIObject *cursor_position_window = ui_window_new();
 	ui_window_set_size(cursor_position_window, (vec2){ 50, 15 });
@@ -519,44 +480,17 @@ void
 GAME_STATE_LEVEL_EDIT_render(void)
 {
 	gfx_begin();
-
-	int rows, cols;
-	gfx_sprite_count_rows_cols(SPRITE_TERRAIN, &rows, &cols);
-
-	for(MapBrush *brush = editor.layers[current_layer]->brush_list; brush; brush = brush->next) {
-		int tile = brush->tile - 1;
-		TextureStamp stamp = get_sprite(SPRITE_TERRAIN, tile % cols, tile / cols);
-		vec4 color = { 1.0, 1.0, 1.0, 1.0 };
-
-		if(selected_brush && selected_brush != brush) {
-			Rectangle test_rect;
-			vec2_dup(test_rect.position, brush->position);
-			vec2_add(test_rect.half_size, brush->half_size, selected_brush->half_size);
-
-			if(rect_contains_point(&test_rect, selected_brush->position)) {
-				color[3] = 0.25;
-			}
-		}
-
-		if(selected_brush == brush) {
-			color[1] = 0.0;
-			color[2] = 0.0;
-		}
-
-		gfx_push_texture_rect(
-			&stamp, 
-			brush->position, 
-			brush->half_size,
-			(vec2){ brush->half_size[0] * 2.0, brush->half_size[1] * 2.0 }, 
-			0.0, 
-			(vec4){ 1.0, 1.0, 1.0, color[3] });
-
-		gfx_push_rect(brush->position, brush->half_size, 0.5/(editor_get_zoom()), color);
+	for(Thing *c = editor.map->things; c; c = c->next) {
+		render_thing(c);
 	}
+	gfx_flush();
+	gfx_end();
+
 
 	if(mouse_state == MOUSE_DRAWING) {
 		rect_draw();
 	}
+
 	gfx_flush();
 	gfx_end();
 }
@@ -750,20 +684,6 @@ load_map(const char *map_file)
 }
 
 void
-editor_change_state(EditorState state)
-{
-	if(state_vtable[editor.editor_state].exit) {
-		state_vtable[editor.editor_state].exit();
-	}
-
-	if(state_vtable[state].enter) {
-		state_vtable[state].enter();
-	}
-	editor.editor_state = state;
-	
-}
-
-void
 open_cbk(UIObject *btn, void *userptr)
 {
 	(void)btn;
@@ -802,8 +722,6 @@ newbtn_new_cbk(UIObject *obj, void *userptr)
 	ui_deparent(new_window);
 	ui_text_input_clear(new_width);
 	ui_text_input_clear(new_height);
-
-	editor_change_state(editor.editor_state);
 }
 
 void
@@ -833,7 +751,6 @@ loadbtn_load_cbk(UIObject *obj, void *userptr)
 	free(fixed_path);
 	ui_deparent(load_window);
 	ui_text_input_clear(load_path);
-	editor_change_state(editor.editor_state);
 }
 
 void
@@ -1130,4 +1047,80 @@ layer_slider_cbk(UIObject *obj, void *userptr)
 {
 	(void)userptr;
 	current_layer = ui_slider_get_value(obj);
+}
+
+void 
+render_thing(Thing *thing)
+{
+	int rows, cols;
+	gfx_sprite_count_rows_cols(SPRITE_TERRAIN, &rows, &cols);
+
+	if(renders[thing->type]) {
+		renders[thing->type](thing);
+	} else {
+		thing_null_render(thing);
+	}
+
+	for(MapBrush *brush = thing->brush_list; brush; brush = brush->next) {
+		int tile = brush->tile - 1;
+		TextureStamp stamp = get_sprite(SPRITE_TERRAIN, tile % cols, tile / cols);
+		vec4 color = { 1.0, 1.0, 1.0, 1.0 };
+
+		if(selected_brush && selected_brush != brush) {
+			Rectangle test_rect;
+			vec2_dup(test_rect.position, brush->position);
+			vec2_add(test_rect.half_size, brush->half_size, selected_brush->half_size);
+
+			if(rect_contains_point(&test_rect, selected_brush->position)) {
+				color[3] = 0.25;
+			}
+		}
+
+		if(selected_brush == brush) {
+			color[1] = 0.0;
+			color[2] = 0.0;
+		}
+
+		gfx_push_texture_rect(
+			&stamp, 
+			brush->position, 
+			brush->half_size,
+			(vec2){ brush->half_size[0] * 2.0, brush->half_size[1] * 2.0 }, 
+			0.0, 
+			(vec4){ 1.0, 1.0, 1.0, color[3] });
+
+		gfx_push_rect(brush->position, brush->half_size, 0.5/(editor_get_zoom()), color);
+	}
+}
+
+void
+thing_null_render(Thing *c)
+{
+	gfx_push_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 1.0, 0.0, 0.0, 1.0 });
+
+	//if(c == selected_thing) {
+	//	gfx_push_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
+	//}
+}
+
+void
+thing_player_render(Thing *c)
+{
+	TextureStamp stamp = get_sprite(SPRITE_ENTITIES, 0, 0);
+	gfx_push_texture_rect(&stamp, c->position, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+
+	//if(c == selected_thing) {
+	//	gfx_push_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
+	//}
+}
+
+void
+thing_dummy_render(Thing *c)
+{
+	TextureStamp stamp = get_sprite(SPRITE_ENTITIES, 0, 2);
+	gfx_push_texture_rect(&stamp, c->position, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
+
+	//if(c == selected_thing) {
+	//	gfx_push_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
+	//}
 }

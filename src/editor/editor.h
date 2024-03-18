@@ -63,8 +63,6 @@ void common_draw_map(int current_layer, float alpha_after_layer);
 
 extern EditorGlobal editor;
 
-void editor_change_state(EditorState state);
-
 void editor_move_camera(vec2 delta);
 void editor_delta_zoom(float delta);
 float editor_get_zoom(void);
