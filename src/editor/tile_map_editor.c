@@ -19,8 +19,9 @@ typedef void (*ThingRender)(Thing *thing);
 EditorGlobal editor;
 
 enum {
-	CONTEXT_MENU = 0x01,
-	GENERAL_MENU = 0x02
+	THING_MENU = 0x01,
+	BRUSH_MENU = 0x02,
+	GENERAL_MENU = 0x04,
 };
 
 static void layer_slider_cbk(UIObject *obj, void *userptr);
@@ -40,6 +41,11 @@ static void thing_float(UIObject *obj, void *userptr);
 static void thing_direction(UIObject *obj, void *userptr);
 static void update_inputs(void);
 static void update_thing_context(void);
+
+static void brush_float_cbk(UIObject *object, void *userptr);
+static void brush_check_cbk(UIObject *object, void *userptr);
+static void brush_int_cbk(UIObject *object, void *userptr);
+static void brush_btn_cbk(UIObject *object, void *userptr);
 
 static void open_cbk(UIObject *obj, void (*userptr));
 static void play_cbk(UIObject *obj, void (*userptr));
@@ -101,6 +107,12 @@ static UIObject *thing_context, *thing_type_name;
 static UIObject *uiposition_x, *uiposition_y;
 static UIObject *uihealth, *uihealth_max;
 static UIObject *uidirection;
+
+static UIObject *ui_brush_root;
+static UIObject *ui_brush_tile;
+static UIObject *ui_brush_collidable;
+static UIObject *ui_brush_pos_x, *ui_brush_pos_y;
+static UIObject *ui_brush_size_x, *ui_brush_size_y;
 
 static ArrayBuffer helper_print;
 
@@ -388,21 +400,32 @@ GAME_STATE_LEVEL_EDIT_init(void)
 
 	extra_window = ui_window_new();
 	ui_window_set_decorated(extra_window, false);
-	ui_window_set_size(extra_window, (vec2){ 60, 10 });
-	ui_window_set_position(extra_window, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 60, - 30 - 10 });
+	ui_window_set_size(extra_window, (vec2){ 90, 10 });
+	ui_window_set_position(extra_window, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 90, - 30 - 10 });
 	{
 		UIObject *layout = ui_layout_new();
 		{
 			UIObject *context_btn = ui_button_new();
 			{
 				UIObject *context_lbl = ui_label_new();
-				ui_label_set_text(context_lbl, "ctx");
+				ui_label_set_text(context_lbl, "thing");
 				ui_label_set_color(context_lbl, (vec4){ 1.0, 1.0, 0.0, 1.0 });
 				ui_label_set_alignment(context_lbl, UI_LABEL_ALIGN_CENTER);
 				ui_button_set_label(context_btn, context_lbl);
 			}
 			ui_button_set_callback(context_btn, NULL, context_btn_cbk);
 			ui_layout_append(layout, context_btn);
+
+			UIObject *brush_btn = ui_button_new();
+			{
+				UIObject *brush_lbl = ui_label_new();
+				ui_label_set_text(brush_lbl, "brush");
+				ui_label_set_color(brush_lbl, (vec4){ 1.0, 1.0, 0.0, 1.0 });
+				ui_label_set_alignment(brush_lbl, UI_LABEL_ALIGN_CENTER);
+				ui_button_set_label(brush_btn, brush_lbl);
+			}
+			ui_button_set_callback(brush_btn, NULL, brush_btn_cbk);
+			ui_layout_append(layout, brush_btn);
 
 			UIObject *general_btn = ui_button_new();
 			{
@@ -543,25 +566,83 @@ GAME_STATE_LEVEL_EDIT_init(void)
 			ui_layout_append(sublayout, retarded);
 		} END_LAYOUT;
 	}
-	ui_child_append(thing_context, layout);
 
+	ui_child_append(thing_context, layout);
+	#undef BEGIN_LAYOUT
+	#undef END_LAYOUT
+
+	ui_brush_root = ui_new_object(0, UI_ROOT);
+	layout = ui_layout_new();
+	ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
+	ui_layout_set_border(layout, 2.0, 2.0, 2.0, 2.0);
+	ui_layout_set_fixed_size(layout, 10.0); \
+	{
+		UIObject *sublayout, *label, *sub;
+
+		#define BEGIN_LAYOUT(NAME) \
+		sublayout = ui_layout_new(); \
+		ui_layout_set_order(sublayout, UI_LAYOUT_HORIZONTAL); \
+		ui_layout_set_border(sublayout, 2.0, 2.0, 2.0, 2.0); \
+		label = ui_label_new(); \
+		ui_label_set_text(label, NAME); \
+		ui_label_set_alignment(label, UI_LABEL_ALIGN_LEFT); \
+		ui_layout_append(sublayout, label); \
+		sub = ui_layout_new();\
+		ui_layout_set_order(sub, UI_LAYOUT_HORIZONTAL); \
+		ui_layout_append(sublayout, sub); \
+		ui_layout_append(layout, sublayout);
+
+		BEGIN_LAYOUT("position") {
+			ui_brush_pos_x = ui_text_input_new();
+			ui_text_input_set_cbk(ui_brush_pos_x, (void*)(offsetof(MapBrush, position[0])), brush_float_cbk);
+			ui_layout_append(sub, ui_brush_pos_x);
+
+			ui_brush_pos_y = ui_text_input_new();
+			ui_text_input_set_cbk(ui_brush_pos_y, (void*)(offsetof(MapBrush, position[1])), brush_float_cbk);
+			ui_layout_append(sub, ui_brush_pos_y);
+		}
+
+		BEGIN_LAYOUT("half_size") {
+			ui_brush_size_x = ui_text_input_new();
+			ui_text_input_set_cbk(ui_brush_size_x, (void*)(offsetof(MapBrush, half_size[0])), brush_float_cbk);
+			ui_layout_append(sub, ui_brush_size_x);
+
+			ui_brush_size_y = ui_text_input_new();
+			ui_text_input_set_cbk(ui_brush_size_y, (void*)(offsetof(MapBrush, half_size[1])), brush_float_cbk);
+			ui_layout_append(sub, ui_brush_size_y);
+		}
+
+		BEGIN_LAYOUT("tile") {
+			ui_brush_tile = ui_text_input_new();
+			ui_text_input_set_cbk(ui_brush_tile, (void*)(offsetof(MapBrush, tile)), brush_int_cbk);
+			ui_layout_append(sub, ui_brush_tile);
+		}
+		
+		BEGIN_LAYOUT("collidable") {
+			ui_brush_collidable = ui_checkbox_new();
+			ui_checkbox_set_callback(ui_brush_collidable, (void*)(offsetof(MapBrush, collidable)), brush_check_cbk);
+			ui_layout_append(sub, ui_brush_collidable);
+		}
+	}
+	ui_child_append(ui_brush_root, layout);
+	
 	#undef BEGIN_SUB
 	#undef END_SUB
 	selected_brush = NULL;
 
-	editor.controls_ui = ui_window_new();
-	ui_window_set_size(editor.controls_ui, (vec2){ 90, 15 });
-	ui_window_set_position(editor.controls_ui, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 0 + 90, - 15 });
-	ui_window_set_decorated(editor.controls_ui, false);
-	
-	editor.context_window = ui_window_new();
-	ui_window_set_size(editor.context_window, (vec2){ 90, 60 });
-	ui_window_set_position(editor.context_window, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 90, - 30 - 60 });
-	ui_window_set_decorated(editor.context_window, false);
+	editor.thing_window = ui_window_new();
+	ui_window_set_size(editor.thing_window, (vec2){ 90, 60 });
+	ui_window_set_position(editor.thing_window, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 90, - 60 });
+	ui_window_set_decorated(editor.thing_window, false);
+
+	editor.brush_window = ui_window_new();
+	ui_window_set_size(editor.brush_window, (vec2){ 90, 60 });
+	ui_window_set_position(editor.brush_window, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 90, - 60 });
+	ui_window_set_decorated(editor.brush_window, false);
 
 	editor.general_window = ui_window_new();
 	ui_window_set_size(editor.general_window, (vec2){ 90, 60 });
-	ui_window_set_position(editor.general_window, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 90, - 30 - 60 });
+	ui_window_set_position(editor.general_window, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 90, - 60 });
 	ui_window_set_decorated(editor.general_window, false);
 
 	editor.map_atlas = SPRITE_TERRAIN;
@@ -569,8 +650,8 @@ GAME_STATE_LEVEL_EDIT_init(void)
 		editor.map = map_alloc(16, 16);
 	}
 	ui_window_append_child(editor.general_window, general_root);
+	ui_window_append_child(editor.brush_window, ui_brush_root);
 
-	ui_child_append(ui_root(), editor.controls_ui);
 	ui_child_append(ui_root(), extra_window);
 	gfx_set_camera(camera_offset, (vec2){ camera_zoom, camera_zoom });
 }
@@ -894,10 +975,23 @@ context_btn_cbk(UIObject *obj, void *ptr)
 {
 	(void)obj;
 	(void)ptr;
-	if(menu_shown == CONTEXT_MENU) {
+	if(menu_shown == THING_MENU) {
 		menu_shown = 0;
 	} else {
-		menu_shown = CONTEXT_MENU;
+		menu_shown = THING_MENU;
+	}
+	process_open_menu();
+}
+
+void
+brush_btn_cbk(UIObject *obj, void *ptr)
+{
+	(void)obj;
+	(void)ptr;
+	if(menu_shown == BRUSH_MENU) {
+		menu_shown = 0;
+	} else {
+		menu_shown = BRUSH_MENU;
 	}
 	process_open_menu();
 }
@@ -919,20 +1013,24 @@ void
 process_open_menu(void)
 {
 	if(menu_shown) {
-		ui_window_set_position(extra_window, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 60, - 30 - 120 - 10 });
+		ui_window_set_position(extra_window, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 90, -120 - 10 });
 	} else {
-		ui_window_set_position(extra_window, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 60, - 30 - 10 });
+		ui_window_set_position(extra_window, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 90, -10 });
 	}
 
-	ui_deparent(editor.context_window);
+	ui_deparent(editor.thing_window);
 	ui_deparent(editor.general_window);
+	ui_deparent(editor.brush_window);
 	
 	switch(menu_shown) {
-	case CONTEXT_MENU:
-		ui_child_append(ui_root(), editor.context_window);
+	case THING_MENU:
+		ui_child_append(ui_root(), editor.thing_window);
 		break;
 	case GENERAL_MENU:
 		ui_child_append(ui_root(), editor.general_window);
+		break;
+	case BRUSH_MENU:
+		ui_child_append(ui_root(), editor.brush_window);
 		break;
 	default:
 		break;
@@ -1353,9 +1451,32 @@ update_thing_context(void)
 {
 	if(selected_thing) {
 		ui_text_input_set_text(thing_type_name, type_string[selected_thing->type]);
-		ui_window_append_child(editor.context_window, thing_context);
+		ui_window_append_child(editor.thing_window, thing_context);
 		update_inputs();
 	} else {
 		ui_deparent(thing_context);
 	}
+}
+
+void
+brush_float_cbk(UIObject *obj, void *userptr)
+{
+	float *ptr = (void*)((uintptr_t)selected_brush + (uintptr_t)userptr);
+	strview_float(ui_text_input_get_str(obj), ptr);
+}
+
+void
+brush_int_cbk(UIObject *obj, void *userptr)
+{
+	int *ptr = (void*)((uintptr_t)selected_brush + (uintptr_t)userptr);
+	strview_int(ui_text_input_get_str(obj), ptr);
+}
+
+void
+brush_check_cbk(UIObject *obj, void *userptr)
+{
+	int *ptr = (void*)((uintptr_t)selected_brush + (uintptr_t)userptr);
+	*ptr = !*ptr;
+
+	ui_checkbox_set_toggled(obj, *ptr);
 }

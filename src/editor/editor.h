@@ -39,7 +39,7 @@ typedef struct {
 	SpriteType map_atlas;
 
 	UIObject *controls_ui;
-	UIObject *context_window;
+	UIObject *thing_window, *brush_window;
 	UIObject *general_window;
 } EditorGlobal;
 
