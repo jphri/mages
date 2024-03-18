@@ -1,4 +1,4 @@
-size 64 48
+new_tilemap 64 48 0
 tile 0 5
 tile 1 5
 tile 2 5

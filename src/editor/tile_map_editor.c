@@ -1253,9 +1253,9 @@ thing_null_render(Thing *c)
 {
 	gfx_push_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 1.0, 0.0, 0.0, 1.0 });
 
-	//if(c == selected_thing) {
-	//	gfx_push_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
-	//}
+	if(c == selected_thing) {
+		gfx_push_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
+	}
 }
 
 void
@@ -1264,9 +1264,9 @@ thing_player_render(Thing *c)
 	TextureStamp stamp = get_sprite(SPRITE_ENTITIES, 0, 0);
 	gfx_push_texture_rect(&stamp, c->position, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 
-	//if(c == selected_thing) {
-	//	gfx_push_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
-	//}
+	if(c == selected_thing) {
+		gfx_push_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
+	}
 }
 
 void
@@ -1275,9 +1275,9 @@ thing_dummy_render(Thing *c)
 	TextureStamp stamp = get_sprite(SPRITE_ENTITIES, 0, 2);
 	gfx_push_texture_rect(&stamp, c->position, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 1.0, 1.0, 1.0, 1.0 });
 
-	//if(c == selected_thing) {
-	//	gfx_push_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
-	//}
+	if(c == selected_thing) {
+		gfx_push_texture_rect(gfx_white_texture(), c->position, (vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 }, 0.0, (vec4){ 0.0, 0.0, 1.0, 0.5 });
+	}
 }
 
 void
