@@ -674,6 +674,8 @@ GAME_STATE_LEVEL_EDIT_mouse_button(SDL_Event *event)
 		return;
 	vec2 v;
 	gfx_pixel_to_world((vec2){ event->button.x, event->button.y }, v);
+	if(ui_checkbox_get_toggled(integer_round))
+		vec2_round(v, v);
 
 	vec2 pos;
 	if(event->type == SDL_MOUSEBUTTONUP) {
