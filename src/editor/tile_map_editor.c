@@ -655,14 +655,9 @@ GAME_STATE_LEVEL_EDIT_render(void)
 	for(Thing *c = editor.map->things; c; c = c->next) {
 		render_thing(c);
 	}
-	gfx_flush();
-	gfx_end();
-
-
 	if(mouse_state == MOUSE_DRAWING) {
 		rect_draw();
 	}
-
 	gfx_flush();
 	gfx_end();
 }
