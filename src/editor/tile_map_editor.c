@@ -76,7 +76,7 @@ static ThingRender renders[LAST_THING] = {
 
 static int menu_shown;
 
-static UIObject *new_window, *new_width, *new_height;
+static UIObject *new_window;
 static UIObject *load_window, *load_path;
 static UIObject *save_window, *save_path;
 static UIObject *extra_window;
@@ -220,7 +220,7 @@ GAME_STATE_LEVEL_EDIT_init(void)
 		ui_layout_set_order(layout, UI_LAYOUT_VERTICAL);
 		ui_layout_set_fixed_size(layout, 20.0);
 		{
-			UIObject *subv, *lbl;
+			UIObject *subv;
 			
 			#define SUBV(NAME_FIELD)\
 				subv = ui_layout_new(); \
@@ -234,17 +234,10 @@ GAME_STATE_LEVEL_EDIT_init(void)
 
 			#define END_SUBV ui_layout_append(layout, subv)
 			
-			SUBV("Width: ") {
-				new_width = ui_text_input_new();
-				ui_text_input_set_filter(new_width, isdigit);
-				ui_child_append(subv, new_width);
-			} END_SUBV;
-
-			SUBV("Height: ") {
-				new_height = ui_text_input_new();
-				ui_text_input_set_filter(new_height, isdigit);
-				ui_child_append(subv, new_height);
-			} END_SUBV;
+			UIObject *lbl_sure = ui_label_new();
+			ui_label_set_text(lbl_sure, "Are you sure?");
+			ui_label_set_alignment(lbl_sure, UI_LABEL_ALIGN_CENTER);
+			ui_layout_append(layout, lbl_sure);
 
 			subv = ui_layout_new();
 			ui_layout_set_order(subv, UI_LAYOUT_HORIZONTAL); \
@@ -912,22 +905,9 @@ newbtn_new_cbk(UIObject *obj, void *userptr)
 	(void)obj;
 	(void)userptr;
 
-	int width, height;
-
-	StrView width_text = ui_text_input_get_str(new_width);
-	StrView height_text = ui_text_input_get_str(new_height);
-
-	if(!strview_int(width_text, &width))
-		return;
-
-	if(!strview_int(height_text, &height))
-		return;
-	
 	map_free(editor.map);
 	editor.map = map_alloc();
 	ui_deparent(new_window);
-	ui_text_input_clear(new_width);
-	ui_text_input_clear(new_height);
 }
 
 void
