@@ -646,6 +646,7 @@ GAME_STATE_LEVEL_EDIT_init(void)
 
 	ui_child_append(ui_root(), extra_window);
 	gfx_set_camera(camera_offset, (vec2){ camera_zoom, camera_zoom });
+	ui_checkbox_set_toggled(integer_round, true);
 }
 
 void
