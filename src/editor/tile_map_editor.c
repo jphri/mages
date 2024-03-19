@@ -1074,7 +1074,6 @@ void
 tileselect_cbk(UIObject *obj, void *userptr)
 {
 	(void)userptr;
-
 	editor.current_tile = ui_tileset_sel_get_selected(obj);
 }
 
@@ -1082,25 +1081,24 @@ void
 rect_begin(int x, int y)
 {
 	if(!selected_thing) {
-		selected_brush = NULL;
-		return;
+		selected_thing = calloc(1, sizeof(*selected_thing));
+		selected_thing->type = THING_WORLD_MAP;
+		map_insert_thing(editor.map, selected_thing);
 	}
 
 	gfx_pixel_to_world((vec2){ x, y }, begin_offset);
 	if(ui_checkbox_get_toggled(integer_round))
 		vec2_round(begin_offset, begin_offset);
 
-	if(!selected_brush) {
-		selected_brush = malloc(sizeof(MapBrush));
-		selected_brush->half_size[0] = 0;
-		selected_brush->half_size[1] = 0;
-		selected_brush->tile = editor.current_tile;
-		selected_brush->next = NULL;
-		selected_brush->prev = NULL;
-		vec2_dup(selected_brush->position, begin_offset);
+	selected_brush = malloc(sizeof(MapBrush));
+	selected_brush->half_size[0] = 0;
+	selected_brush->half_size[1] = 0;
+	selected_brush->tile = editor.current_tile;
+	selected_brush->next = NULL;
+	selected_brush->prev = NULL;
+	vec2_dup(selected_brush->position, begin_offset);
 
-		map_thing_insert_brush(selected_thing, selected_brush);
-	}
+	map_thing_insert_brush(selected_thing, selected_brush);
 }
 
 void
@@ -1121,7 +1119,6 @@ rect_drag(int x, int y)
 	vec2_add_scaled(selected_brush->half_size, selected_brush->half_size, delta, 0.5);
 
 	vec2_dup(begin_offset, v);
-
 }
 
 void
@@ -1277,10 +1274,12 @@ render_thing(Thing *thing)
 			if(rect_contains_point(&test_rect, selected_brush->position)) {
 				color[3] = 0.25;
 			}
-		}
+		} 
 
 		if(selected_brush == brush) {
 			color[1] = 0.0;
+			color[2] = 0.0;
+		} else if(selected_thing == thing) {
 			color[2] = 0.0;
 		}
 
