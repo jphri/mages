@@ -63,6 +63,7 @@ static void general_btn_cbk(UIObject *btn, void *userptr);
 static void process_open_menu(void);
 static void update_cursor_pos(vec2 v);
 
+static void thing_nothing_render(Thing *thing);
 static void thing_null_render(Thing *thing);
 static void thing_player_render(Thing *thing);
 static void thing_dummy_render(Thing *thing);
@@ -70,6 +71,7 @@ static void render_thing(Thing *thing);
 
 static ThingRender renders[LAST_THING] = {
 	[THING_NULL] = thing_null_render,
+	[THING_WORLD_MAP] = thing_nothing_render,
 	[THING_PLAYER] = thing_player_render,
 	[THING_DUMMY] = thing_dummy_render
 };
@@ -1182,11 +1184,12 @@ select_begin(int x, int y)
 		vec2_dup(rect.position, thing->position);
 		vec2_dup(rect.half_size, (vec2){ 0.5, 0.5 });
 
-		if(rect_contains_point(&rect, p)) {
-			selected_thing = thing;
-			update_inputs();
-			goto end_search;
-		}
+		if(renders[thing->type] != thing_nothing_render)
+			if(rect_contains_point(&rect, p)) {
+				selected_thing = thing;
+				update_inputs();
+				goto end_search;
+			}
 
 		for(MapBrush *b = thing->brush_list_end; b; b = b->prev) {
 			Rectangle rect = {
@@ -1289,6 +1292,12 @@ render_thing(Thing *thing)
 
 		gfx_push_rect(brush->position, brush->half_size, 0.5/(editor_get_zoom()), color);
 	}
+}
+
+void
+thing_nothing_render(Thing *c)
+{
+	(void)c;
 }
 
 void
