@@ -1183,40 +1183,28 @@ select_begin(int x, int y)
 	for(Thing *thing = editor.map->things_end; thing; thing = thing->prev) {
 		Rectangle rect;
 
-		switch(thing->type) {
-		case THING_WORLD_MAP: 
-			vec2_dup(rect.position, thing->position);
-			vec2_dup(rect.half_size, (vec2){ 0.5, 0.5 });
+		vec2_dup(rect.position, thing->position);
+		vec2_dup(rect.half_size, (vec2){ 0.5, 0.5 });
+
+		if(rect_contains_point(&rect, p)) {
+			selected_thing = thing;
+			update_inputs();
+			goto end_search;
+		}
+
+		for(MapBrush *b = thing->brush_list_end; b; b = b->prev) {
+			Rectangle rect = {
+				.position = { b->position[0], b->position[1] },
+				.half_size = { b->half_size[0], b->half_size[1] }
+			};
 
 			if(rect_contains_point(&rect, p)) {
+				selected_brush = b;
 				selected_thing = thing;
-				goto end_search;
-			}
-
-			for(MapBrush *b = thing->brush_list_end; b; b = b->prev) {
-				Rectangle rect = {
-					.position = { b->position[0], b->position[1] },
-					.half_size = { b->half_size[0], b->half_size[1] }
-				};
-
-				if(rect_contains_point(&rect, p)) {
-					selected_brush = b;
-					selected_thing = thing;
-					update_inputs();
-					goto end_search;
-				}
-			}
-			break;
-		default:
-			vec2_dup(rect.position, thing->position);
-			vec2_dup(rect.half_size, (vec2){ 0.5, 0.5 });
-			
-			if(rect_contains_point(&rect, p)) {
-				selected_thing = thing;
+				update_inputs();
 				goto end_search;
 			}
 		}
-
 	}
 
 end_search:
