@@ -30,7 +30,6 @@ struct MapBrush{
 	MapBrush *next, *prev;
 };
 
-
 struct Thing {
 	int type;
 	int layer;
@@ -42,13 +41,10 @@ struct Thing {
 };
 
 typedef struct {
-	int w, h;
-	int *tiles;
-	CollisionData *collision;
 	Thing *things, *things_end;
 } Map;
 
-Map *map_alloc(int w, int h);
+Map *map_alloc(void);
 Map *map_load(const char *file);
 void map_free(Map *);
 
@@ -63,8 +59,6 @@ void map_thing_insert_brush_after(Thing *thing, MapBrush *brush, MapBrush *after
 void map_thing_insert_brush_before(Thing *thing, MapBrush *brush, MapBrush *before);
 
 char *map_export(Map *map, size_t *out_data_size);
-void map_set_gfx_scene(Map *map);
-void map_set_phx_scene(Map *map);
 void map_set_ent_scene(Map *map);
 
 #endif

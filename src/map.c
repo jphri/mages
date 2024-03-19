@@ -16,21 +16,13 @@ static void thing_dummy(Thing *c);
 static void thing_door(Thing *c);
 static void thing_world_map(Thing *c);
 
-static void create_sprite(int layer, int x, int y, int w, int h, int tile);
-static void find_sprite(int layer, int x, int y, int w, int h, int *tiles);
-static void setup_layer(int layers, int w, int h, int *tiles);
-
-static int size_command(Map **map, StrView *tokenview);
-static int tile_command(Map **map, StrView *tokenview);
-static int collision_command(Map **map, StrView *tokenview);
-static int thing_command(Map **map, StrView *tokenview);
-
 static int new_thing_command(Map **map, StrView *tokenview);
 static int thing_position_command(Map **map, StrView *tokenview);
 static int thing_health_command(Map **map, StrView *tokenview);
 static int thing_health_max_command(Map **map, StrView *tokenview);
 static int thing_direction_command(Map **map, StrView *tokenview);
 static int thing_layer_command(Map **map, StrView *tokenview);
+static int thing_brush_command(Map **map, StrView *tokenview);
 
 static ThingFunc thing_pc[LAST_THING] = {
 	[THING_PLAYER]    = thing_player,
@@ -43,38 +35,32 @@ static struct {
 	bool position;
 	bool health, health_max;
 	bool direction;
+	bool brushes;
 } relevant_component[] = {
 	[THING_PLAYER] = { .position = true },
-	[THING_DUMMY] = { .position = true }
+	[THING_DUMMY] = { .position = true },
+	[THING_WORLD_MAP] = { .brushes = true }
 };
 
 static struct {
 	const char *name;
 	int (*process)(Map **map, StrView *tokenview);
 } commands[] = {
-	{ "size", size_command },
-	{ "tile", tile_command },
-	{ "collision",  collision_command },
-	{ "thing", thing_command },
 	{ "new_thing", new_thing_command },
 	{ "thing_position", thing_position_command },
 	{ "thing_health", thing_health_command },
 	{ "thing_max_health", thing_health_max_command },
 	{ "thing_direction", thing_direction_command },
 	{ "thing_layer", thing_layer_command },
+	{ "thing_brush", thing_brush_command }
 };
 
 
 Map *
-map_alloc(int w, int h)
+map_alloc(void)
 {
 	Map *map;
-	map = calloc(1, sizeof(*map) + sizeof(map->tiles[0]) * w * h * 64);
-	map->w = w;
-	map->h = h;
-	map->tiles = (int*)(map + 1);
-	map->collision = NULL;
-	map->things = NULL;
+	map = calloc(1, sizeof(*map));
 	return map;
 }
 
@@ -82,7 +68,7 @@ Map *
 map_load(const char *file) 
 {
 	FileBuffer fp;
-	Map *map = NULL;
+	Map *map = map_alloc();
 
 	if(fbuf_open(&fp, file, "r", allocator_default()))
 		return 0;
@@ -111,8 +97,7 @@ continue_loading:
 	return map;
 
 error_load:
-	if(map)
-		map_free(map);
+	map_free(map);
 	fbuf_close(&fp);
 	return NULL;
 }
@@ -120,10 +105,6 @@ error_load:
 void
 map_free(Map *map)
 {
-	for(CollisionData *c = map->collision, *next; c; c = next) {
-		next = c->next;
-		free(c);
-	}
 	for(Thing *c = map->things, *next; c; c = next) {
 		next = c->next;
 		for(MapBrush *brush = c->brush_list, *next; brush; brush = next) {
@@ -141,18 +122,6 @@ map_export(Map *map, size_t *out_data_size)
 	ArrayBuffer buffer;
 
 	arrbuf_init(&buffer);
-	arrbuf_printf(&buffer, "size %d %d\n", map->w, map->h);
-	for(int k = 0; k < 64; k++)
-		for(int i = 0; i < map->w * map->h; i++) {
-			int tile = map->tiles[i + k * map->w * map->h];
-			if(tile <= 0)
-				continue;
-			arrbuf_printf(&buffer, "tile %d %d\n", i + k * map->w * map->h, tile);
-		}
-
-	for(CollisionData *c = map->collision; c; c = c->next)
-		arrbuf_printf(&buffer, "collision %f %f %f %f\n", c->position[0], c->position[1], c->half_size[0], c->half_size[1]);
-
 	for(Thing *t = map->things; t; t = t->next) {
 		arrbuf_printf(&buffer, "new_thing %d\n", t->type);
 		if(relevant_component[t->type].position) {
@@ -172,39 +141,18 @@ map_export(Map *map, size_t *out_data_size)
 			case DIR_RIGHT: arrbuf_printf(&buffer, "thing_direction %s\n", "right"); break;
 			}
 		}
+		if(relevant_component[t->type].brushes) {
+			for(MapBrush *b = t->brush_list; b; b = b->next) {
+				arrbuf_printf(&buffer, "thing_brush %d %f %f %f %f %d\n",
+						b->tile,
+						b->position[0], b->position[1],
+						b->half_size[0], b->half_size[1],
+						b->collidable);
+			}
+		}
 	}
-
 	*out_data_size = buffer.size;
 	return buffer.data;
-}
-
-void
-map_set_gfx_scene(Map *map) 
-{
-	for(size_t i = 0; i < 64; i++) {
-		int layer_index = i * map->w * map->h;
-		setup_layer(i, map->w, map->h, &map->tiles[layer_index]);
-	}
-}
-
-void
-map_set_phx_scene(Map *map) 
-{
-	for(CollisionData *c = map->collision; c; c = c->next) {
-		Body *body = phx_new();
-		vec2_dup(body->position,  VEC2_DUP(c->position));
-		vec2_dup(body->half_size, VEC2_DUP(c->half_size));
-		
-		body->collision_layer = PHX_LAYER_MAP_BIT;
-		body->solve_layer     = PHX_LAYER_MAP_BIT;
-		body->collision_mask  = 0;
-		body->solve_mask      = 0;
-		body->entity          = NULL;
-		body->no_update       = false;
-		body->is_static       = true;
-		body->mass            = 0.0;
-		body->restitution     = 0.0;
-	}
 }
 
 void 
@@ -216,93 +164,14 @@ map_set_ent_scene(Map *map)
 }
 
 int
-size_command(Map **map, StrView *tokenview)
-{
-	int w, h;
-	if(!strview_int(strview_token(tokenview, " "), &w))
-		return 1;
-
-	if(!strview_int(strview_token(tokenview, " "), &h))
-		return 1;
-
-	*map = map_alloc(w, h);
-	return 0;
-}
-
-int
-tile_command(Map **map, StrView *tokenview)
-{
-	int tile_id, tile;
-	if(!strview_int(strview_token(tokenview, " "), &tile_id))
-		return 1;
-
-	if(!strview_int(strview_token(tokenview, " "), &tile))
-		return 1;
-
-	(*map)->tiles[tile_id] = tile;
-	return 0;
-}
-
-int
-collision_command(Map **map, StrView *tokenview)
-{
-	CollisionData *data = malloc(sizeof(*data));
-	if(!strview_float(strview_token(tokenview, " "), &data->position[0]))
-		return 1;
-
-	if(!strview_float(strview_token(tokenview, " "), &data->position[1]))
-		return 1;
-
-	if(!strview_float(strview_token(tokenview, " "), &data->half_size[0]))
-		return 1;
-
-	if(!strview_float(strview_token(tokenview, " "), &data->half_size[1]))
-		return 1;
-
-	data->next = (*map)->collision;
-	(*map)->collision = data;
-
-	return 0;
-}
-
-int
-thing_command(Map **map, StrView *tokenview)
-{
-	Thing *data = malloc(sizeof(*data));
-
-	if(!strview_int(strview_token(tokenview, " "), &data->type))
-		return 1;
-
-	if(!strview_float(strview_token(tokenview, " "), &data->position[0]))
-		return 1;
-
-	if(!strview_float(strview_token(tokenview, " "), &data->position[1]))
-		return 1;
-
-	data->next = (*map)->things;
-	data->prev = NULL;
-	if((*map)->things)
-		(*map)->things->prev = data;
-
-	(*map)->things = data;
-	return 0;
-}
-
-int
 new_thing_command(Map **map, StrView *tokenview)
 {
-	Thing *data = malloc(sizeof(*data));
+	Thing *data = calloc(1, sizeof(*data));
 
 	if(!strview_int(strview_token(tokenview, " "), &data->type))
 		return 1;
 	
-	data->next = (*map)->things;
-	data->prev = NULL;
-	if((*map)->things)
-		(*map)->things->prev = data;
-
-	(*map)->things = data;
-
+	map_insert_thing(*map, data);
 	return 0;
 }
 
@@ -356,6 +225,34 @@ thing_direction_command(Map **map, StrView *tokenview)
 	} else {
 		return 1;
 	}
+	return 0;
+}
+
+int
+thing_brush_command(Map **map, StrView *tokenview)
+{
+	MapBrush *brush = calloc(1, sizeof(*brush));
+	Thing *thing = (*map)->things;
+	
+	if(!strview_int(strview_token(tokenview, " "), &brush->tile))
+		return 1;
+
+	if(!strview_float(strview_token(tokenview, " "), &brush->position[0]))
+		return 1;
+
+	if(!strview_float(strview_token(tokenview, " "), &brush->position[1]))
+		return 1;
+
+	if(!strview_float(strview_token(tokenview, " "), &brush->half_size[0]))
+		return 1;
+
+	if(!strview_float(strview_token(tokenview, " "), &brush->half_size[1]))
+		return 1;
+	
+	if(!strview_int(strview_token(tokenview, " "), &brush->collidable))
+		return 1;
+
+	map_thing_insert_brush(thing, brush);
 	return 0;
 }
 
@@ -415,91 +312,19 @@ thing_world_map(Thing *c)
 			tiles->sprite_y = (brush->tile - 1) / cols;
 			break;
 		}
-	}
-}
-
-void
-setup_layer(int layer, int w, int h, int *tiles)
-{
-	int *dup = malloc(sizeof(*tiles) * w * h);
-	memcpy(dup, tiles, sizeof(*tiles) * w * h);
-
-	for(int y = 0; y < h; y++)
-	for(int x = 0; x < w; x++) {
-		if(dup[x + y * w] > 0) {
-			find_sprite(layer, x, y, w, h, dup);
+		
+		if(brush->collidable) {
+			Body *body = phx_new();
+			body->collision_layer = PHX_LAYER_MAP_BIT;
+			body->solve_layer     = PHX_LAYER_MAP_BIT;
+			body->collision_mask  = 0;
+			body->solve_mask      = 0;
+			body->entity          = NULL;
+			body->no_update       = false;
+			body->is_static       = true;
+			body->mass            = 0.0;
+			body->restitution     = 0.0;
 		}
-	}
-	
-	free(dup);
-}
-
-void
-find_sprite(int layer, int x, int y, int w, int h, int *tiles)
-{
-	int x_end, y_end;
-	int reference_tile = tiles[x + y * w];
-
-	/* first find where x ends */
-	for(x_end = x; x_end < w; x_end++) {
-		if(tiles[x_end + y * w] != reference_tile) {
-			break;
-		}
-	}
-
-	/* now, find y where the size does not fit x_end */
-	for(y_end = y + 1; y_end < h; y_end++) {
-		for(int xx = x; xx < x_end; xx++) {
-			if(tiles[xx + y_end * w] != reference_tile) {
-				goto produce_rect;
-			}
-		}
-	}
-
-produce_rect:
-	if(x_end - x == 0 || y_end - y == 0)
-		return;
-
-	for(int yy = y; yy < y_end; yy++)
-	for(int xx = x; xx < x_end; xx++) {
-		tiles[xx + yy * w] = 0;
-	}
-	
-	create_sprite(layer, x, y, (x_end - x), (y_end - y), reference_tile - 1);
-}
-
-void
-create_sprite(int layer, int x, int y, int w, int h, int tile)
-{
-	int rows, cols;
-	if(tile != 4) {
-		SceneTiles *sprite = gfx_scene_new_obj(layer, SCENE_OBJECT_TILES);
-
-		gfx_sprite_count_rows_cols(SPRITE_TERRAIN, &rows, &cols);
-		sprite->half_size[0] = (float)w * ENTITY_SCALE;
-		sprite->half_size[1] = (float)h * ENTITY_SCALE;
-		vec2_add_scaled(sprite->position, sprite->half_size, (vec2){ x, y }, 1.0);
-
-		sprite->type = SPRITE_TERRAIN;
-		sprite->sprite_x = tile % rows;
-		sprite->sprite_y = tile / rows;
-		sprite->uv_scale[0] = w;
-		sprite->uv_scale[1] = h;
-	} else {
-		SceneAnimatedTiles *sprite = gfx_scene_new_obj(layer, SCENE_OBJECT_ANIMATED_TILES);
-
-		gfx_sprite_count_rows_cols(SPRITE_TERRAIN, &rows, &cols);
-		sprite->half_size[0] = (float)w * ENTITY_SCALE;
-		sprite->half_size[1] = (float)h * ENTITY_SCALE;
-		vec2_add_scaled(sprite->position, sprite->half_size, (vec2){ x, y }, 1.0);
-
-		sprite->type = SPRITE_TERRAIN;
-		sprite->sprite_x = tile % rows;
-		sprite->sprite_y = tile / rows;
-		sprite->uv_scale[0] = w;
-		sprite->uv_scale[1] = h;
-		sprite->animation = ANIMATION_WATER_TILE;
-		sprite->fps = 1.0;
 	}
 }
 
@@ -593,3 +418,4 @@ map_thing_insert_brush_before(Thing *thing, MapBrush *brush, MapBrush *before)
 	brush->next = before;
 	before->prev = brush;
 }
+

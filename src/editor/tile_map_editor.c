@@ -647,7 +647,7 @@ GAME_STATE_LEVEL_EDIT_init(void)
 
 	editor.map_atlas = SPRITE_TERRAIN;
 	if(editor.map == NULL) {
-		editor.map = map_alloc(16, 16);
+		editor.map = map_alloc();
 	}
 	ui_window_append_child(editor.general_window, general_root);
 
@@ -924,7 +924,7 @@ newbtn_new_cbk(UIObject *obj, void *userptr)
 		return;
 	
 	map_free(editor.map);
-	editor.map = map_alloc(width, height);
+	editor.map = map_alloc();
 	ui_deparent(new_window);
 	ui_text_input_clear(new_width);
 	ui_text_input_clear(new_height);
@@ -1073,37 +1073,6 @@ play_cbk(UIObject *obj, void (*userptr))
 	(void)obj;
 	(void)userptr;
 	gstate_set(GAME_STATE_LEVEL);
-}
-
-void
-common_draw_map(int current_layer, float after_layer_alpha)
-{
-	TextureStamp stamp;
-	int rows, cols;
-
-	gfx_sprite_count_rows_cols(SPRITE_TERRAIN, &rows, &cols);
-
-	for(int k = 0; k < SCENE_LAYERS; k++)
-	for(int i = 0; i < editor.map->w * editor.map->h; i++) {
-		float x = (     (i % editor.map->w) + 0.5);
-		float y = ((int)(i / editor.map->w) + 0.5);
-
-		int spr = editor.map->tiles[i + k * editor.map->w * editor.map->h] - 1;
-		if(spr < 0)
-			continue;
-		int spr_x = spr % cols;
-		int spr_y = spr / cols;
-
-		stamp = get_sprite(SPRITE_TERRAIN, spr_x, spr_y);
-
-		gfx_push_texture_rect(
-				&stamp,
-				(vec2){ x, y },
-				(vec2){ 0.5, 0.5 }, (vec2){ 1.0, 1.0 },
-				0.0,
-				(vec4){ 1.0, 1.0, 1.0, k <= current_layer ? 1.0 : after_layer_alpha }
-		);
-	}
 }
 
 void
