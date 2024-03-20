@@ -93,7 +93,7 @@ static float camera_zoom = 16.0;
 
 static vec2  begin_offset, move_offset, offset;
 static int current_layer = 0;
-static bool  ctrl_pressed = false;
+static bool  ctrl_pressed = false, shift_pressed = false;
 
 static MouseState mouse_state;
 
@@ -766,6 +766,7 @@ GAME_STATE_LEVEL_EDIT_keyboard(SDL_Event *event)
 	if(event->type == SDL_KEYDOWN) {
 		switch(event->key.keysym.sym) {
 		case SDLK_LCTRL: ctrl_pressed = true; break;
+		case SDLK_LSHIFT: shift_pressed = true; break;
 		case SDLK_UP:
 			if(!selected_brush)
 				break;
@@ -789,6 +790,17 @@ GAME_STATE_LEVEL_EDIT_keyboard(SDL_Event *event)
 				map_thing_remove_brush(selected_thing, selected_brush);
 				free(selected_brush);
 				selected_brush = NULL;
+
+				switch(selected_thing->type) {
+				case THING_WORLD_MAP:
+					if(!selected_thing->brush_list) {
+						map_remove_thing(editor.map, selected_thing);
+						free(selected_thing);
+						selected_thing = NULL;
+					}
+				default:
+					break;
+				}
 			} else {
 				if(!selected_thing)
 					break;
@@ -826,6 +838,7 @@ GAME_STATE_LEVEL_EDIT_keyboard(SDL_Event *event)
 	} else {
 		switch(event->key.keysym.sym) {
 		case SDLK_LCTRL: ctrl_pressed = false; break;
+		case SDLK_LSHIFT: shift_pressed = false; break;
 		}
 	}
 }
@@ -1090,15 +1103,19 @@ rect_begin(int x, int y)
 	if(ui_checkbox_get_toggled(integer_round))
 		vec2_round(begin_offset, begin_offset);
 
-	selected_brush = malloc(sizeof(MapBrush));
-	selected_brush->half_size[0] = 0;
-	selected_brush->half_size[1] = 0;
-	selected_brush->tile = editor.current_tile;
-	selected_brush->next = NULL;
-	selected_brush->prev = NULL;
-	vec2_dup(selected_brush->position, begin_offset);
-
-	map_thing_insert_brush(selected_thing, selected_brush);
+	if(shift_pressed) {
+		if(!selected_brush)
+			return;
+	} else {
+		selected_brush = malloc(sizeof(MapBrush));
+		selected_brush->half_size[0] = 0;
+		selected_brush->half_size[1] = 0;
+		selected_brush->tile = editor.current_tile;
+		selected_brush->next = NULL;
+		selected_brush->prev = NULL;
+		vec2_dup(selected_brush->position, begin_offset);
+		map_thing_insert_brush(selected_thing, selected_brush);
+	}
 }
 
 void
