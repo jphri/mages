@@ -396,7 +396,7 @@ GAME_STATE_LEVEL_EDIT_init(void)
 	extra_window = ui_window_new();
 	ui_window_set_decorated(extra_window, false);
 	ui_window_set_size(extra_window, (vec2){ 90, 10 });
-	ui_window_set_position(extra_window, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 90, - 30 - 10 });
+	ui_window_set_position(extra_window, UI_ORIGIN_BOTTOM_LEFT, (vec2){ 90, - 10 });
 	{
 		UIObject *layout = ui_layout_new();
 		{
