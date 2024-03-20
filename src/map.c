@@ -324,6 +324,8 @@ thing_world_map(Thing *c)
 			body->is_static       = true;
 			body->mass            = 0.0;
 			body->restitution     = 0.0;
+			vec2_dup(body->position, brush->position);
+			vec2_dup(body->half_size, brush->half_size);
 		}
 	}
 }
