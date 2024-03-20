@@ -1103,6 +1103,13 @@ rect_begin(int x, int y)
 	if(ui_checkbox_get_toggled(integer_round))
 		vec2_round(begin_offset, begin_offset);
 
+	switch(selected_thing->type) {
+	case THING_WORLD_MAP:
+		break;
+	default:
+		return;
+	}
+
 	if(shift_pressed) {
 		if(!selected_brush)
 			return;
