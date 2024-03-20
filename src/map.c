@@ -178,7 +178,7 @@ new_thing_command(Map **map, StrView *tokenview)
 int
 thing_position_command(Map **map, StrView *tokenview)
 {
-	Thing *thing = (*map)->things;
+	Thing *thing = (*map)->things_end;
 	
 	if(!strview_float(strview_token(tokenview, " "), &thing->position[0]))
 		return 1;
@@ -192,7 +192,7 @@ thing_position_command(Map **map, StrView *tokenview)
 int
 thing_health_command(Map **map, StrView *tokenview)
 {
-	Thing *thing = (*map)->things;
+	Thing *thing = (*map)->things_end;
 	
 	if(!strview_float(strview_token(tokenview, " "), &thing->health))
 		return 1;
@@ -203,7 +203,7 @@ thing_health_command(Map **map, StrView *tokenview)
 int
 thing_health_max_command(Map **map, StrView *tokenview)
 {
-	Thing *thing = (*map)->things;
+	Thing *thing = (*map)->things_end;
 	if(!strview_float(strview_token(tokenview, " "), &thing->health_max))
 		return 1;
 	return 0;
@@ -212,7 +212,7 @@ thing_health_max_command(Map **map, StrView *tokenview)
 int
 thing_direction_command(Map **map, StrView *tokenview)
 {
-	Thing *thing = (*map)->things;
+	Thing *thing = (*map)->things_end;
 	StrView tok = strview_token(tokenview, " ");
 	if(strview_cmp(tok, "up") == 0) {
 		thing->direction = DIR_UP;
@@ -232,7 +232,7 @@ int
 thing_brush_command(Map **map, StrView *tokenview)
 {
 	MapBrush *brush = calloc(1, sizeof(*brush));
-	Thing *thing = (*map)->things;
+	Thing *thing = (*map)->things_end;
 	
 	if(!strview_int(strview_token(tokenview, " "), &brush->tile))
 		return 1;
@@ -259,7 +259,7 @@ thing_brush_command(Map **map, StrView *tokenview)
 int
 thing_layer_command(Map **map, StrView *tokenview)
 {
-	Thing *thing = (*map)->things;
+	Thing *thing = (*map)->things_end;
 	if(!strview_int(strview_token(tokenview, " "), &thing->layer)) {
 		return 1;
 	}
