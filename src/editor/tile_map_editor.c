@@ -1252,7 +1252,11 @@ select_drag(int x, int y)
 	vec2_dup(begin_offset, v);
 
 	if(selected_brush) {
-		vec2_sub(selected_brush->position, selected_brush->position, p);
+		if(shift_pressed) {
+			for(MapBrush *b = selected_thing->brush_list; b; b = b->next)
+				vec2_sub(b->position, b->position, p);
+		} else
+			vec2_sub(selected_brush->position, selected_brush->position, p);
 	} else {
 		vec2_sub(selected_thing->position, selected_thing->position, p);
 	}
