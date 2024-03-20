@@ -762,26 +762,49 @@ GAME_STATE_LEVEL_EDIT_keyboard(SDL_Event *event)
 		return;
 
 	MapBrush *current_next, *current_prev;
+	Thing *current_next_thing, *current_prev_thing;
 
 	if(event->type == SDL_KEYDOWN) {
 		switch(event->key.keysym.sym) {
 		case SDLK_LCTRL: ctrl_pressed = true; break;
 		case SDLK_LSHIFT: shift_pressed = true; break;
 		case SDLK_UP:
-			if(!selected_brush)
-				break;
+			if(shift_pressed) {
+				if(!selected_brush)
+					return;
+				current_next = selected_brush->next;
+				if(!current_next)
+					return;
 
-			if(selected_brush == selected_thing->brush_list_end)
+				map_thing_remove_brush(selected_thing, selected_brush);
+				map_thing_insert_brush_after(selected_thing, selected_brush, current_next);
 				break;
-			
-			if(ctrl_pressed) {
-				selected_brush = selected_brush->next;
+			} else if(ctrl_pressed) {
+				if(!selected_thing)
+					return;
+
+				current_next_thing = selected_thing->next;
+				if(!current_next_thing)
+					return;
+
+				map_remove_thing(editor.map, selected_thing);
+				map_insert_thing_after(editor.map, selected_thing, current_next_thing);
 				break;
+			} else {
+				if(!selected_thing)
+					return;
+
+				if(selected_brush && selected_brush->next) {
+					selected_brush = selected_brush->next;
+				} else {
+					if(selected_thing->next) {
+						selected_thing = selected_thing->next;
+					}
+					selected_brush = selected_thing->brush_list;
+				}
 			}
+			update_inputs();
 
-			current_next = selected_brush->next;
-			map_thing_remove_brush(selected_thing, selected_brush);
-			map_thing_insert_brush_after(selected_thing, selected_brush, current_next);
 			break;
 		case SDLK_DELETE:
 			if(!ctrl_pressed) {
@@ -818,20 +841,41 @@ GAME_STATE_LEVEL_EDIT_keyboard(SDL_Event *event)
 			}
 			break;
 		case SDLK_DOWN:
-			if(!selected_brush)
-				break;
+			if(shift_pressed) {
+				if(!selected_brush)
+					return;
+				current_prev = selected_brush->prev;
+				if(!current_prev)
+					return;
 
-			if(selected_brush == selected_thing->brush_list)
+				map_thing_remove_brush(selected_thing, selected_brush);
+				map_thing_insert_brush_before(selected_thing, selected_brush, current_prev);
 				break;
+			} else if(ctrl_pressed) {
+				if(!selected_thing)
+					return;
 
-			if(ctrl_pressed) {
-				selected_brush = selected_brush->prev;
+				current_prev_thing = selected_thing->prev;
+				if(!current_prev_thing)
+					return;
+
+				map_remove_thing(editor.map, selected_thing);
+				map_insert_thing_before(editor.map, selected_thing, current_prev_thing);
 				break;
+			} else {
+				if(!selected_thing)
+					return;
+
+				if(selected_brush && selected_brush->prev) {
+					selected_brush = selected_brush->prev;
+				} else {
+					if(selected_thing->prev) {
+						selected_thing = selected_thing->prev;
+						selected_brush = selected_thing->brush_list_end;
+					}
+				}
 			}
-
-			current_prev = selected_brush->prev;
-			map_thing_remove_brush(selected_thing, selected_brush);
-			map_thing_insert_brush_before(selected_thing, selected_brush, current_prev);
+			update_inputs();
 			break;
 		}
 		
@@ -1197,12 +1241,29 @@ void
 select_begin(int x, int y)
 {
 	vec2 p;
+	Rectangle rect;
 	gfx_pixel_to_world((vec2){ x, y }, p);
+	
+	if(selected_brush) {
+		vec2_dup(rect.position, selected_brush->position);
+		vec2_dup(rect.half_size, selected_brush->half_size);
+
+		if(rect_contains_point(&rect, p)) {
+			goto end_search;
+		}
+	}
+	
+	if(selected_thing) {
+		vec2_dup(rect.position, selected_thing->position);
+		vec2_dup(rect.half_size, (vec2){ 0.5, 0.5 });
+		if(rect_contains_point(&rect, p)) {
+			goto end_search;
+		}
+	}
 
 	selected_thing = NULL;
 	selected_brush = NULL;
 	for(Thing *thing = editor.map->things_end; thing; thing = thing->prev) {
-		Rectangle rect;
 
 		vec2_dup(rect.position, thing->position);
 		vec2_dup(rect.half_size, (vec2){ 0.5, 0.5 });
@@ -1291,11 +1352,12 @@ render_thing(Thing *thing)
 
 	for(MapBrush *brush = thing->brush_list; brush; brush = brush->next) {
 		int tile = brush->tile - 1;
+		Rectangle test_rect;
+
 		TextureStamp stamp = get_sprite(SPRITE_TERRAIN, tile % cols, tile / cols);
 		vec4 color = { 1.0, 1.0, 1.0, 1.0 };
 
 		if(selected_brush && selected_brush != brush) {
-			Rectangle test_rect;
 			vec2_dup(test_rect.position, brush->position);
 			vec2_add(test_rect.half_size, brush->half_size, selected_brush->half_size);
 

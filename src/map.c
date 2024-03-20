@@ -370,6 +370,19 @@ map_insert_thing_after(Map *map, Thing *thing, Thing *after)
 }
 
 void
+map_insert_thing_before(Map *map, Thing *thing, Thing *before)
+{
+	thing->prev = before->prev;
+	if(before->prev)
+		before->prev->next = thing;
+	else
+		map->things = thing;
+
+	thing->next = before;
+	before->prev = thing;
+}
+
+void
 map_thing_insert_brush(Thing *thing, MapBrush *brush)
 {
 	if(thing->brush_list) {
