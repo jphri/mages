@@ -116,6 +116,14 @@ static UIObject *ui_brush_collidable;
 static UIObject *ui_brush_pos_x, *ui_brush_pos_y;
 static UIObject *ui_brush_size_x, *ui_brush_size_y;
 
+static MapBrush copied_brush;
+static Thing copied_thing;
+static enum {
+	CLIPBOARD_NONE, 
+	CLIPBOARD_BRUSH,
+	CLIPBOARD_THING
+} clipboard;
+
 static ArrayBuffer helper_print;
 
 static const char *direction_str[] = {
@@ -129,6 +137,7 @@ void
 GAME_STATE_LEVEL_EDIT_init(void)
 {
 	arrbuf_init(&cursor_pos_str);
+	clipboard = CLIPBOARD_NONE;
 
 	arrbuf_init(&helper_print);
 	type_string[THING_NULL]   = to_strview("");
@@ -673,6 +682,7 @@ GAME_STATE_LEVEL_EDIT_mouse_button(SDL_Event *event)
 	if(ui_is_active())
 		return;
 	vec2 v;
+
 	gfx_pixel_to_world((vec2){ event->button.x, event->button.y }, v);
 	if(ui_checkbox_get_toggled(integer_round))
 		vec2_round(v, v);
@@ -768,6 +778,44 @@ GAME_STATE_LEVEL_EDIT_keyboard(SDL_Event *event)
 		switch(event->key.keysym.sym) {
 		case SDLK_LCTRL: ctrl_pressed = true; break;
 		case SDLK_LSHIFT: shift_pressed = true; break;
+		case SDLK_c:
+			if(ctrl_pressed) {
+				if(selected_brush) {
+					copied_brush = *selected_brush;
+					clipboard = CLIPBOARD_BRUSH;
+				} else if(selected_thing) {
+					copied_thing = *selected_thing;
+					clipboard = CLIPBOARD_THING;
+				}
+			}
+			break;
+		case SDLK_v:
+			if(ctrl_pressed) {
+				Thing *new_thing;
+				MapBrush *new_brush;
+
+				switch(clipboard) {
+				case CLIPBOARD_THING:
+					new_thing = malloc(sizeof(*new_thing));
+					*new_thing = copied_thing;
+					map_insert_thing(editor.map, new_thing);
+					selected_thing = new_thing;
+					
+					break;
+				case CLIPBOARD_BRUSH:
+					if(!selected_thing)
+						return;
+					new_brush = malloc(sizeof(*new_brush));
+					*new_brush = copied_brush;
+					
+					map_thing_insert_brush(selected_thing, new_brush);
+					selected_brush = new_brush;
+					break;
+				case CLIPBOARD_NONE:
+					break;
+				}
+			}
+			break;
 		case SDLK_UP:
 			if(shift_pressed) {
 				if(!selected_brush)
