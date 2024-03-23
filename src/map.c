@@ -41,6 +41,7 @@ static struct {
 	[THING_PLAYER] = { .position = true },
 	[THING_DUMMY] = { .position = true },
 	[THING_WORLD_MAP] = { .brushes = true, .layer = true },
+	[THING_DOOR] = { .direction = true, .position = true }
 };
 
 static struct {
