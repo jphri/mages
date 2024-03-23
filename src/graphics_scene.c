@@ -72,7 +72,7 @@ static inline Frame *calculate_frame_animation(Animation animation, float time, 
 	return &animations[animation].frames[frame];
 }
 
-static SceneObjectPrivData   *layer_objects[SCENE_LAYERS];
+static SceneObjectPrivData *layer_objects[SCENE_LAYERS], *layer_objects_end[SCENE_LAYERS];
 static ObjectPool objects;
 static double global_time;
 
@@ -83,12 +83,15 @@ static inline void insert_object_layer(SceneObjectPrivData *object)
 {
 	int layer_id = object->layer;
 	
-	object->next_layer = layer_objects[layer_id];
-	object->prev_layer = NULL;
+	object->next_layer = NULL;
+	object->prev_layer = layer_objects_end[layer_id];
 
-	if(layer_objects[layer_id])
-		layer_objects[layer_id]->prev_layer = object;
-	layer_objects[layer_id] = object;
+	if(layer_objects_end[layer_id]) {
+		layer_objects_end[layer_id]->next_layer = object;
+	} else {
+		layer_objects[layer_id] = object;
+	}
+	layer_objects_end[layer_id] = object;
 }
 
 static inline void remove_object_layer(SceneObjectPrivData *object) 
@@ -100,6 +103,7 @@ static inline void remove_object_layer(SceneObjectPrivData *object)
 	if(next) next->prev_layer = object->prev_layer;
 	if(prev) prev->next_layer = object->next_layer;
 	if(layer_objects[lay] == object) layer_objects[lay] = next;
+	if(layer_objects_end[lay] == object) layer_objects_end[lay] = prev;
 }
 
 static SceneObjectPrivData *

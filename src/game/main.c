@@ -66,8 +66,6 @@ GAME_STATE_LEVEL_init(void)
 	event_subscribe(level_subscriber, EVENT_PLAYER_SPAWN);
 
 	map = editor.map;
-	map_set_gfx_scene(map);
-	map_set_phx_scene(map);
 	map_set_ent_scene(map);
 }
 
