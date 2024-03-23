@@ -36,10 +36,11 @@ static struct {
 	bool health, health_max;
 	bool direction;
 	bool brushes;
+	bool layer;
 } relevant_component[] = {
 	[THING_PLAYER] = { .position = true },
 	[THING_DUMMY] = { .position = true },
-	[THING_WORLD_MAP] = { .brushes = true }
+	[THING_WORLD_MAP] = { .brushes = true, .layer = true },
 };
 
 static struct {
@@ -149,6 +150,9 @@ map_export(Map *map, size_t *out_data_size)
 						b->half_size[0], b->half_size[1],
 						b->collidable);
 			}
+		}
+		if(relevant_component[t->type].layer) {
+			arrbuf_printf(&buffer, "thing_layer %d\n", t->layer);
 		}
 	}
 	*out_data_size = buffer.size;
@@ -263,6 +267,8 @@ thing_layer_command(Map **map, StrView *tokenview)
 	if(!strview_int(strview_token(tokenview, " "), &thing->layer)) {
 		return 1;
 	}
+	if(thing->layer < 0 || thing->layer >= 63)
+		return 1;
 	return 0;
 }
 
