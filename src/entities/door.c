@@ -186,7 +186,7 @@ door_hover_rect(Entity *door_ent)
 		rect.half_size[0] = ENTITY_SCALE * 2;
 		
 		if(door->open) {
-			rect.position[1] += ENTITY_SCALE * 2;
+			rect.position[1] -= ENTITY_SCALE * 2;
 			rect.position[0] -= ENTITY_SCALE * 2;
 
 			rect.half_size[1] = ENTITY_SCALE;
