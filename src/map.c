@@ -291,7 +291,7 @@ thing_world_map(Thing *c)
 	SceneAnimatedTiles *anim_tiles;
 	int rows, cols;
 
-	for(MapBrush *brush = c->brush_list_end; brush; brush = brush->prev) {
+	for(MapBrush *brush = c->brush_list; brush; brush = brush->next) {
 		switch(brush->tile) {
 		case 5:
 			anim_tiles = gfx_scene_new_obj(c->layer, SCENE_OBJECT_ANIMATED_TILES);
