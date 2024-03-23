@@ -37,7 +37,7 @@ static void proc_select_begin(int x, int y);
 static void proc_select_end(int x, int y);
 static void proc_select_drag(int x, int y);
 
-static void integer_round_cbk(UIObject *obj, void *userptr);
+static void flip_cbk(UIObject *obj, void *userptr);
 static void thing_type_name_cbk(UIObject *obj, void *userptr);
 static void thing_float(UIObject *obj, void *userptr);
 static void thing_int(UIObject *obj, void *userptr);
@@ -102,7 +102,7 @@ static MouseState mouse_state;
 
 static UIObject *general_root;
 static UIObject *after_layer_alpha_slider;
-static UIObject *integer_round;
+static UIObject *integer_round, *collidable;
 
 static MapBrush *selected_brush;
 static Thing *selected_thing;
@@ -491,9 +491,17 @@ GAME_STATE_LEVEL_EDIT_init(void)
 			BEGIN_SUB("Integer round:") {
 				integer_round = ui_checkbox_new();
 				ui_checkbox_set_toggled(integer_round, false);
-				ui_checkbox_set_callback(integer_round, NULL, integer_round_cbk);
+				ui_checkbox_set_callback(integer_round, NULL, flip_cbk);
 
 				ui_layout_append(sublayout, integer_round);
+			} END_SUB;
+
+			BEGIN_SUB("Collidable") {
+				collidable = ui_checkbox_new();
+				ui_checkbox_set_toggled(collidable, false);
+				ui_checkbox_set_callback(collidable, NULL, flip_cbk);
+
+				ui_layout_append(sublayout, collidable);
 			} END_SUB;
 		}
 		ui_child_append(general_root, general_layout);
@@ -1229,6 +1237,7 @@ rect_begin(int x, int y)
 		brush->tile = editor.current_tile;
 		brush->next = NULL;
 		brush->prev = NULL;
+		brush->collidable = ui_checkbox_get_toggled(collidable);
 		vec2_dup(brush->position, begin_offset);
 		map_thing_insert_brush(selected_thing, brush);
 		select_brush(brush);
@@ -1298,7 +1307,7 @@ rect_draw(void)
 }
 
 void
-integer_round_cbk(UIObject *obj, void *userptr)
+flip_cbk(UIObject *obj, void *userptr)
 {
 	(void)userptr;
 	ui_checkbox_set_toggled(obj, !ui_checkbox_get_toggled(obj));
