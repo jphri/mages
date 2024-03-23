@@ -38,6 +38,7 @@ static void select_drag(int x, int y);
 static void integer_round_cbk(UIObject *obj, void *userptr);
 static void thing_type_name_cbk(UIObject *obj, void *userptr);
 static void thing_float(UIObject *obj, void *userptr);
+static void thing_int(UIObject *obj, void *userptr);
 static void thing_direction(UIObject *obj, void *userptr);
 static void update_inputs(void);
 static void update_thing_context(void);
@@ -109,6 +110,7 @@ static UIObject *thing_context, *thing_type_name;
 static UIObject *uiposition_x, *uiposition_y;
 static UIObject *uihealth, *uihealth_max;
 static UIObject *uidirection;
+static UIObject *uilayer;
 
 static UIObject *ui_brush_root;
 static UIObject *ui_brush_tile;
@@ -569,6 +571,17 @@ GAME_STATE_LEVEL_EDIT_init(void)
 			}
 			ui_layout_append(sublayout, retarded);
 		} END_LAYOUT;
+
+		BEGIN_LAYOUT("layer") {
+			UIObject *retarded = ui_layout_new(); 
+			ui_layout_set_order(retarded, UI_LAYOUT_HORIZONTAL);
+			{
+				uilayer = ui_text_input_new();
+				ui_text_input_set_cbk(uilayer, (void*)(offsetof(Thing, direction)), thing_int);
+				ui_layout_append(retarded, uilayer);
+			}
+			ui_layout_append(sublayout, retarded);
+		} END_LAYOUT;
 	}
 
 	ui_child_append(thing_context, layout);
@@ -627,6 +640,7 @@ GAME_STATE_LEVEL_EDIT_init(void)
 			ui_checkbox_set_callback(ui_brush_collidable, (void*)(offsetof(MapBrush, collidable)), brush_check_cbk);
 			ui_layout_append(sub, ui_brush_collidable);
 		}
+
 	}
 	ui_child_append(ui_brush_root, layout);
 	
@@ -1206,7 +1220,7 @@ rect_begin(int x, int y)
 		if(!selected_brush)
 			return;
 	} else {
-		selected_brush = malloc(sizeof(MapBrush));
+		selected_brush = calloc(1, sizeof(MapBrush));
 		selected_brush->half_size[0] = 0;
 		selected_brush->half_size[1] = 0;
 		selected_brush->tile = editor.current_tile;
@@ -1495,6 +1509,13 @@ thing_float(UIObject *obj, void *userptr)
 }
 
 void
+thing_int(UIObject *obj, void *userptr)
+{
+	int *ptr = (void*)((uintptr_t)selected_thing + (uintptr_t)userptr);
+	strview_int(ui_text_input_get_str(obj), ptr);
+}
+
+void
 thing_direction(UIObject *obj, void *userptr)
 {
 	Direction *dir = (void*)((uintptr_t)selected_thing + (uintptr_t)userptr);
@@ -1521,6 +1542,7 @@ update_inputs(void)
 	SETINPUT(uiposition_y, "%0.2f", selected_thing->position[1]);
 	SETINPUT(uihealth, "%0.2f", selected_thing->health);
 	SETINPUT(uihealth_max, "%0.2f", selected_thing->health_max);
+	SETINPUT(uilayer, "%d", selected_thing->layer);
 
 	if(selected_thing->direction >= 0 && selected_thing->direction <= 3) {
 		SETINPUT(uidirection, "%s", direction_str[selected_thing->direction]);
