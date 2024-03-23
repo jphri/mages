@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdbool.h>
-#include <ctype.h>
 #include <glad/gles2.h>
 
 #include <SDL.h>
@@ -26,22 +25,25 @@ enum {
 
 static void layer_slider_cbk(UIObject *obj, void *userptr);
 
+static void select_thing(Thing *thing);
+static void select_brush(MapBrush *brush);
+
 static void rect_begin(int x, int y);
 static void rect_drag(int x, int y);
 static void rect_end(int x, int y);
 static void rect_draw(void);
 
-static void select_begin(int x, int y);
-static void select_end(int x, int y);
-static void select_drag(int x, int y);
+static void proc_select_begin(int x, int y);
+static void proc_select_end(int x, int y);
+static void proc_select_drag(int x, int y);
 
 static void integer_round_cbk(UIObject *obj, void *userptr);
 static void thing_type_name_cbk(UIObject *obj, void *userptr);
 static void thing_float(UIObject *obj, void *userptr);
 static void thing_int(UIObject *obj, void *userptr);
 static void thing_direction(UIObject *obj, void *userptr);
-static void update_inputs(void);
-static void update_thing_context(void);
+static void update_inputs_things(void);
+static void update_inputs_brush(void);
 
 static void brush_float_cbk(UIObject *object, void *userptr);
 static void brush_check_cbk(UIObject *object, void *userptr);
@@ -705,7 +707,7 @@ GAME_STATE_LEVEL_EDIT_mouse_button(SDL_Event *event)
 	if(event->type == SDL_MOUSEBUTTONUP) {
 		switch(mouse_state) {
 		case MOUSE_DRAWING: rect_end(event->button.x, event->button.y); break;
-		case MOUSE_MOVING_BRUSH: select_end(event->button.x, event->button.y); break;
+		case MOUSE_MOVING_BRUSH: proc_select_end(event->button.x, event->button.y); break;
 		default:
 			break;
 		}
@@ -733,7 +735,7 @@ GAME_STATE_LEVEL_EDIT_mouse_button(SDL_Event *event)
 			break;
 		case SDL_BUTTON_LEFT:
 			gfx_pixel_to_world((vec2){ event->button.x, event->button.y }, pos);
-			select_begin(event->motion.x, event->motion.y);
+			proc_select_begin(event->motion.x, event->motion.y);
 			mouse_state = MOUSE_MOVING_BRUSH;
 			break;
 		}
@@ -771,7 +773,7 @@ GAME_STATE_LEVEL_EDIT_mouse_move(SDL_Event *event)
 		rect_drag(event->motion.x, event->motion.y);
 		break;
 	case MOUSE_MOVING_BRUSH:
-		select_drag(event->motion.x, event->motion.y);
+		proc_select_drag(event->motion.x, event->motion.y);
 		break;
 	default:
 		do {} while(0);
@@ -813,7 +815,7 @@ GAME_STATE_LEVEL_EDIT_keyboard(SDL_Event *event)
 					new_thing = malloc(sizeof(*new_thing));
 					*new_thing = copied_thing;
 					map_insert_thing(editor.map, new_thing);
-					selected_thing = new_thing;
+					select_thing(new_thing);
 					
 					break;
 				case CLIPBOARD_BRUSH:
@@ -823,7 +825,7 @@ GAME_STATE_LEVEL_EDIT_keyboard(SDL_Event *event)
 					*new_brush = copied_brush;
 					
 					map_thing_insert_brush(selected_thing, new_brush);
-					selected_brush = new_brush;
+					select_brush(new_brush);
 					break;
 				case CLIPBOARD_NONE:
 					break;
@@ -857,31 +859,32 @@ GAME_STATE_LEVEL_EDIT_keyboard(SDL_Event *event)
 					return;
 
 				if(selected_brush && selected_brush->next) {
-					selected_brush = selected_brush->next;
+					select_brush(selected_brush->next);
 				} else {
 					if(selected_thing->next) {
-						selected_thing = selected_thing->next;
+						select_thing(selected_thing->next);
+						select_brush(selected_thing->brush_list);
 					}
-					selected_brush = selected_thing->brush_list;
 				}
 			}
-			update_inputs();
 
 			break;
 		case SDLK_DELETE:
 			if(!ctrl_pressed) {
 				if(!selected_brush)
 					break;
-				map_thing_remove_brush(selected_thing, selected_brush);
-				free(selected_brush);
-				selected_brush = NULL;
+				MapBrush *brush = selected_brush;
+				Thing *thing = selected_thing;
+				map_thing_remove_brush(thing, brush);
+				select_brush(NULL);
+				free(brush);
 
 				switch(selected_thing->type) {
 				case THING_WORLD_MAP:
 					if(!selected_thing->brush_list) {
-						map_remove_thing(editor.map, selected_thing);
-						free(selected_thing);
-						selected_thing = NULL;
+						map_remove_thing(editor.map, thing);
+						select_thing(NULL);
+						free(thing);
 					}
 				default:
 					break;
@@ -899,7 +902,7 @@ GAME_STATE_LEVEL_EDIT_keyboard(SDL_Event *event)
 					free(brush);
 				}
 				free(selected_thing);
-				selected_thing = NULL;
+				select_thing(NULL);
 			}
 			break;
 		case SDLK_DOWN:
@@ -929,15 +932,14 @@ GAME_STATE_LEVEL_EDIT_keyboard(SDL_Event *event)
 					return;
 
 				if(selected_brush && selected_brush->prev) {
-					selected_brush = selected_brush->prev;
+					select_brush(selected_brush->prev);
 				} else {
 					if(selected_thing->prev) {
-						selected_thing = selected_thing->prev;
-						selected_brush = selected_thing->brush_list_end;
+						select_thing(selected_thing->prev);
+						select_brush(selected_thing->brush_list_end);
 					}
 				}
 			}
-			update_inputs();
 			break;
 		}
 		
@@ -1200,9 +1202,10 @@ void
 rect_begin(int x, int y)
 {
 	if(!selected_thing) {
-		selected_thing = calloc(1, sizeof(*selected_thing));
-		selected_thing->type = THING_WORLD_MAP;
-		map_insert_thing(editor.map, selected_thing);
+		Thing *thing = calloc(1, sizeof(*selected_thing));
+		thing->type = THING_WORLD_MAP;
+		map_insert_thing(editor.map, thing);
+		select_thing(thing);
 	}
 
 	gfx_pixel_to_world((vec2){ x, y }, begin_offset);
@@ -1220,14 +1223,15 @@ rect_begin(int x, int y)
 		if(!selected_brush)
 			return;
 	} else {
-		selected_brush = calloc(1, sizeof(MapBrush));
-		selected_brush->half_size[0] = 0;
-		selected_brush->half_size[1] = 0;
-		selected_brush->tile = editor.current_tile;
-		selected_brush->next = NULL;
-		selected_brush->prev = NULL;
-		vec2_dup(selected_brush->position, begin_offset);
-		map_thing_insert_brush(selected_thing, selected_brush);
+		MapBrush *brush = calloc(1, sizeof(MapBrush));
+		brush->half_size[0] = 0;
+		brush->half_size[1] = 0;
+		brush->tile = editor.current_tile;
+		brush->next = NULL;
+		brush->prev = NULL;
+		vec2_dup(brush->position, begin_offset);
+		map_thing_insert_brush(selected_thing, brush);
+		select_brush(brush);
 	}
 }
 
@@ -1249,6 +1253,7 @@ rect_drag(int x, int y)
 	vec2_add_scaled(selected_brush->half_size, selected_brush->half_size, delta, 0.5);
 
 	vec2_dup(begin_offset, v);
+	update_inputs_brush();
 }
 
 void
@@ -1300,7 +1305,7 @@ integer_round_cbk(UIObject *obj, void *userptr)
 }
 
 void
-select_begin(int x, int y)
+proc_select_begin(int x, int y)
 {
 	vec2 p;
 	Rectangle rect;
@@ -1323,8 +1328,8 @@ select_begin(int x, int y)
 		}
 	}
 
-	selected_thing = NULL;
-	selected_brush = NULL;
+	select_thing(NULL);
+	select_brush(NULL);
 	for(Thing *thing = editor.map->things_end; thing; thing = thing->prev) {
 
 		vec2_dup(rect.position, thing->position);
@@ -1332,8 +1337,7 @@ select_begin(int x, int y)
 
 		if(renders[thing->type] != thing_nothing_render)
 			if(rect_contains_point(&rect, p)) {
-				selected_thing = thing;
-				update_inputs();
+				select_thing(thing);
 				goto end_search;
 			}
 
@@ -1344,24 +1348,21 @@ select_begin(int x, int y)
 			};
 
 			if(rect_contains_point(&rect, p)) {
-				selected_brush = b;
-				selected_thing = thing;
-				update_inputs();
+				select_thing(thing);
+				select_brush(b);
 				goto end_search;
 			}
 		}
 	}
 
 end_search:
-	update_thing_context();
-
 	gfx_pixel_to_world((vec2){ x, y }, begin_offset);
 	if(ui_checkbox_get_toggled(integer_round))
 		vec2_round(begin_offset, begin_offset);
 }
 
 void
-select_drag(int x, int y)
+proc_select_drag(int x, int y)
 {
 	if(!selected_thing)
 		return;
@@ -1383,11 +1384,12 @@ select_drag(int x, int y)
 	} else {
 		vec2_sub(selected_thing->position, selected_thing->position, p);
 	}
-	update_inputs();
+	update_inputs_things();
+	update_inputs_brush();
 }
 
 void
-select_end(int x, int y)
+proc_select_end(int x, int y)
 {
 	(void)x;
 	(void)y;
@@ -1495,7 +1497,7 @@ thing_type_name_cbk(UIObject *obj, void *userptr)
 	for(int i = 0; i < LAST_THING; i++) {
 		if(strview_cmpstr(v, type_string[i]) == 0) {
 			selected_thing->type = i;
-			update_inputs();
+			update_inputs_things();
 			return;
 		}
 	}
@@ -1528,7 +1530,7 @@ thing_direction(UIObject *obj, void *userptr)
 }
 
 void
-update_inputs(void)
+update_inputs_things(void)
 {
 	#define SETINPUT(INPUT, FORMAT, COMPONENT) \
 	arrbuf_clear(&helper_print); \
@@ -1550,6 +1552,17 @@ update_inputs(void)
 		SETINPUT(uidirection, "%s", "");
 	}
 
+	#undef SETINPUT
+}
+
+void
+update_inputs_brush(void)
+{
+	#define SETINPUT(INPUT, FORMAT, COMPONENT) \
+	arrbuf_clear(&helper_print); \
+	arrbuf_printf(&helper_print, FORMAT, COMPONENT); \
+	ui_text_input_set_text(INPUT, to_strview_buffer(helper_print.data, helper_print.size));
+
 	if(!selected_brush)
 		return;
 
@@ -1559,25 +1572,8 @@ update_inputs(void)
 	SETINPUT(ui_brush_size_y, "%0.2f", selected_brush->half_size[1]);
 	SETINPUT(ui_brush_tile, "%d", selected_brush->tile);
 	ui_checkbox_set_toggled(ui_brush_collidable, selected_brush->collidable);
-}
 
-void
-update_thing_context(void)
-{
-	if(selected_thing) {
-		ui_text_input_set_text(thing_type_name, type_string[selected_thing->type]);
-		ui_window_append_child(editor.thing_window, thing_context);
-	} else {
-		ui_deparent(thing_context);
-	}
-	
-	if(selected_brush) {
-		ui_window_append_child(editor.brush_window, ui_brush_root);
-	} else {
-		ui_deparent(ui_brush_root);
-	}
-
-	update_inputs();
+	#undef SETINPUT
 }
 
 void
@@ -1601,4 +1597,31 @@ brush_check_cbk(UIObject *obj, void *userptr)
 	*ptr = !*ptr;
 
 	ui_checkbox_set_toggled(obj, *ptr);
+}
+
+void
+select_thing(Thing *thing)
+{
+	selected_thing = thing;
+	update_inputs_things();
+
+	if(selected_thing) {
+		ui_text_input_set_text(thing_type_name, type_string[selected_thing->type]);
+		ui_window_append_child(editor.thing_window, thing_context);
+	} else {
+		ui_deparent(thing_context);
+	}
+}
+
+void
+select_brush(MapBrush *brush)
+{
+	selected_brush = brush;
+	update_inputs_brush();
+
+	if(selected_brush) {
+		ui_window_append_child(editor.brush_window, ui_brush_root);
+	} else {
+		ui_deparent(ui_brush_root);
+	}
 }
