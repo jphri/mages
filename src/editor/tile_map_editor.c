@@ -1036,6 +1036,8 @@ newbtn_new_cbk(UIObject *obj, void *userptr)
 
 	map_free(editor.map);
 	editor.map = map_alloc();
+	select_brush(NULL);
+	select_thing(NULL);
 	ui_deparent(new_window);
 }
 

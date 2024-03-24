@@ -51,6 +51,7 @@ ent_player_new(vec2 position)
 
 	self->mob.health = 10;
 	self->mob.health_max = 10;
+	self->moving = false;
 
 	EVENT_EMIT(EVENT_PLAYER_SPAWN, .player = (Entity*)self);
 
@@ -68,31 +69,36 @@ player_update(Entity *self_player, float delta)
 	const Uint8 *keys = SDL_GetKeyboardState(NULL);
 	int state = SDL_GetMouseState(&mouse_x, &mouse_y);
 
-	if(keys[SDL_SCANCODE_W])
+	self->moving = false;
+	if(keys[SDL_SCANCODE_W]) {
 		self->body->accel[1] -= SPEED;
-	if(keys[SDL_SCANCODE_S])
+		self->moving = true;
+	}
+	if(keys[SDL_SCANCODE_S]) {
 		self->body->accel[1] += SPEED;
+		self->moving = true;
+	}
 	if(keys[SDL_SCANCODE_A]) {
 		self->sprite->half_size[0] = -ENTITY_SCALE;
 		self->body->accel[0] -= SPEED;
+		self->moving = true;
 	}
 	if(keys[SDL_SCANCODE_D]) {
 		self->sprite->half_size[0] = ENTITY_SCALE;
 		self->body->accel[0] += SPEED;
+		self->moving = true;
 	}
 
-	if(self->body->velocity[0] != 0 || self->body->velocity[1] != 0) {
-		if(!self->moving) {
+	if(self->moving) {
+		if(self->sprite->animation != ANIMATION_PLAYER_MOVEMENT) {
 			self->sprite->animation = ANIMATION_PLAYER_MOVEMENT;
 			self->sprite->fps = 5.0;
 			self->sprite->time = 0.0;
-			self->moving = true;
 		}
 	} else {
 		self->sprite->animation = ANIMATION_PLAYER_IDLE;
 		self->sprite->fps = 0.0;
 		self->sprite->time = 0.0;
-		self->moving = false;
 	}
 
 	if(SDL_BUTTON(SDL_BUTTON_LEFT) & state) {
