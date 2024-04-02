@@ -72,6 +72,24 @@ static void thing_player_render(Thing *thing);
 static void thing_dummy_render(Thing *thing);
 static void render_thing(Thing *thing);
 
+static void init(void);
+static void end(void);
+static void mouse_button(SDL_Event *event);
+static void mouse_wheel(SDL_Event *event);
+static void mouse_move(SDL_Event *event);
+static void keyboard(SDL_Event *event);
+static void render(int w, int h);
+
+static GameStateVTable state_vtable = {
+	.init = init,
+	.end = end,
+	.render = render,
+	.mouse_button = mouse_button,
+	.mouse_wheel = mouse_wheel,
+	.mouse_move = mouse_move,
+	.keyboard = keyboard,
+};
+
 static ThingRender renders[LAST_THING] = {
 	[THING_NULL] = thing_null_render,
 	[THING_WORLD_MAP] = thing_nothing_render,
@@ -137,8 +155,14 @@ static const char *direction_str[] = {
 	[DIR_RIGHT] = "right"
 };
 
+void 
+start_game_level_edit(void)
+{
+	game_change_state_vtable(&state_vtable);
+}
+
 void
-GAME_STATE_LEVEL_EDIT_init(void)
+init(void)
 {
 	arrbuf_init(&cursor_pos_str);
 	clipboard = CLIPBOARD_NONE;
@@ -685,8 +709,14 @@ GAME_STATE_LEVEL_EDIT_init(void)
 }
 
 void
-GAME_STATE_LEVEL_EDIT_render(void)
+render(int w, int h)
 {
+	(void)w;
+	(void)h;
+
+	gfx_clear();
+	gfx_camera_set_enabled(true);
+	gfx_set_camera(camera_offset, (vec2){ 32.0, 32.0 });
 	gfx_begin();
 	for(Thing *c = editor.map->things; c; c = c->next) {
 		render_thing(c);
@@ -696,10 +726,13 @@ GAME_STATE_LEVEL_EDIT_render(void)
 	}
 	gfx_flush();
 	gfx_end();
+
+	gfx_camera_set_enabled(false);
+	ui_draw();
 }
 
 void
-GAME_STATE_LEVEL_EDIT_mouse_button(SDL_Event *event)
+mouse_button(SDL_Event *event)
 {
 	Thing *thing;
 
@@ -752,7 +785,7 @@ GAME_STATE_LEVEL_EDIT_mouse_button(SDL_Event *event)
 }
 
 void
-GAME_STATE_LEVEL_EDIT_mouse_wheel(SDL_Event *event)
+mouse_wheel(SDL_Event *event)
 {
 	if(ui_is_active())
 		return;
@@ -763,7 +796,7 @@ GAME_STATE_LEVEL_EDIT_mouse_wheel(SDL_Event *event)
 }
 
 void
-GAME_STATE_LEVEL_EDIT_mouse_move(SDL_Event *event) 
+mouse_move(SDL_Event *event) 
 {
 	if(ui_is_active())
 		return;
@@ -790,7 +823,7 @@ GAME_STATE_LEVEL_EDIT_mouse_move(SDL_Event *event)
 }
 
 void
-GAME_STATE_LEVEL_EDIT_keyboard(SDL_Event *event)
+keyboard(SDL_Event *event)
 {
 	if(ui_is_active())
 		return;
@@ -959,15 +992,8 @@ GAME_STATE_LEVEL_EDIT_keyboard(SDL_Event *event)
 	}
 }
 
-
 void 
-GAME_STATE_LEVEL_EDIT_update(float delta)
-{
-	(void)delta;
-}
-
-void 
-GAME_STATE_LEVEL_EDIT_end(void) 
+end(void) 
 {
 	ui_del_object(general_root);
 	ui_del_object(thing_context);
@@ -1183,7 +1209,7 @@ play_cbk(UIObject *obj, void (*userptr))
 {
 	(void)obj;
 	(void)userptr;
-	gstate_set(GAME_STATE_LEVEL);
+	start_game_level();
 }
 
 void

@@ -14,23 +14,40 @@
 #include "../entity.h"
 #include "../map.h"
 #include "../ui.h"
-#include "../util.h"
 #include "../audio.h"
 #include "../events.h"
 #include "SDL_events.h"
 
+static void init(void);
+static void end(void);
+static void render(int w, int h);
+static void update(float delta);
+static void mouse_button(SDL_Event *event);
 
 static void event_receiver(Event event, const void *data);
 static void edit_cbk(UIObject *obj, void *userptr);
 
 static Map *map;
-
 static Subscriber *level_subscriber;
 static vec2 camera_position;
 static vec2 mouse_pos;
 
+static GameStateVTable state_vtable = {
+	.init = init,
+	.end = end,
+	.render = render,
+	.update = update,
+	.mouse_button = mouse_button
+};
+
 void
-GAME_STATE_LEVEL_init(void)
+start_game_level(void)
+{
+	game_change_state_vtable(&state_vtable);
+}
+
+void
+init(void)
 {
 	GLOBAL.player = NULL;
 
@@ -70,11 +87,15 @@ GAME_STATE_LEVEL_init(void)
 }
 
 void
-GAME_STATE_LEVEL_update(float delta)
+update(float delta)
 {
 	vec2 offset, delta_pos;
 	float dist2;
 	Rectangle window_rect = gfx_window_rectangle();
+
+	gfx_scene_update(delta);
+	phx_update(delta);
+	ent_update(delta);
 
 	if(GLOBAL.player) {
 		vec2_add_scaled(offset, (vec2){ 0.0, 0.0 }, GLOBAL.player->player.body->position, -32.0);
@@ -85,35 +106,39 @@ GAME_STATE_LEVEL_update(float delta)
 		vec2_normalize(delta_pos, delta_pos);
 
 		vec2_add_scaled(camera_position, camera_position, delta_pos, dist2 * delta);
-		gfx_set_camera(camera_position, (vec2){ 32.0, 32.0 });
 	}
 }
 
 void
-GAME_STATE_LEVEL_render(void)
+render(int w, int h)
 {
+	(void)w;
+	(void)h;
+
+	gfx_clear();
+	gfx_camera_set_enabled(true);
+	gfx_set_camera(camera_position, (vec2){ 32.0, 32.0 });
+	gfx_scene_draw();
+
+	gfx_camera_set_enabled(false);
+	ui_draw();
 }
 
 void
-GAME_STATE_LEVEL_end(void)
+end(void)
 {
+	event_delete_subscriber(level_subscriber);
+	event_cleanup();
+
 	phx_reset();
 	ent_reset();
 	ui_reset();
 	gfx_scene_reset();
 	audio_bgm_pause();
-
-	event_delete_subscriber(level_subscriber);
 }
 
 void 
-GAME_STATE_LEVEL_mouse_move(SDL_Event *event) 
-{ 
-	(void)event;
-}
-
-void 
-GAME_STATE_LEVEL_mouse_button(SDL_Event *event)
+mouse_button(SDL_Event *event)
 { 
 	if(event->type == SDL_MOUSEBUTTONDOWN && event->button.button == SDL_BUTTON_RIGHT) {
 		gfx_pixel_to_world((vec2){ event->button.x, event->button.y }, mouse_pos);
@@ -122,19 +147,11 @@ GAME_STATE_LEVEL_mouse_button(SDL_Event *event)
 }
 
 void 
-GAME_STATE_LEVEL_keyboard(SDL_Event *event) 
-{ 
-	(void)event;
-}
-
-void GAME_STATE_LEVEL_mouse_wheel(SDL_Event *event) { (void)event; } 
-
-void 
 edit_cbk(UIObject *obj, void *userptr)
 {
 	(void)obj;
 	(void)userptr;
-	gstate_set(GAME_STATE_LEVEL_EDIT);
+	start_game_level_edit();
 }
 
 void

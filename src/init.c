@@ -21,60 +21,15 @@
 #include "util.h"
 #include "events.h"
 
-typedef struct {
-	void (*init)(void);
-	void (*end)(void);
-	void (*update)(float delta); 
-	void (*render)(void);
-	void (*keyboard)(SDL_Event *event);
-	void (*mouse_move)(SDL_Event *event);
-	void (*mouse_button)(SDL_Event *event);
-	void (*mouse_wheel)(SDL_Event *event);
-} GameStateVTable;
-
 static void *cache_line_allocate(size_t size, void *user);
 static void  cache_line_deallocate(void *ptr, void *user);
+static GLADapiproc load_proc(const char *name);
 
-static GLADapiproc load_proc(const char *name) 
-{
-	GLADapiproc proc;
-
-	*(void**)(&proc)= SDL_GL_GetProcAddress(name);
-	return proc;
-}
-
-static GameStateVTable state_vtable[] = {
-	#define GAME_ST_DEF(STATE_NAME) \
-		[STATE_NAME] = {\
-			.init = STATE_NAME##_init,\
-			.end = STATE_NAME##_end,\
-			.update = STATE_NAME##_update,\
-			.render = STATE_NAME##_render,\
-			.keyboard = STATE_NAME##_keyboard,\
-			.mouse_move = STATE_NAME##_mouse_move,\
-			.mouse_button = STATE_NAME##_mouse_button,\
-			.mouse_wheel = STATE_NAME##_mouse_wheel, \
-		},
-
-	GAME_STATE_LIST
-	
-	#undef GAME_ST_DEF
-};
-
-static GameState current_state, next_state;
-static bool need_change;
+Global GLOBAL;
 static float fps_time;
 static int fps;
 static Uint64 rendering_time;
-
-Global GLOBAL;
-
-void
-gstate_set(GameState state)
-{
-	need_change = true;
-	next_state = state;
-}
+static GameStateVTable *current_state, *next_state;
 
 int
 main(int argc, char *argv[])
@@ -127,9 +82,15 @@ main(int argc, char *argv[])
 	ui_init();
 	audio_init();
 
-	state_vtable[current_state].init();
-
 	prev_time = SDL_GetPerformanceCounter();
+
+	start_game_level_edit();
+	current_state = next_state;
+	next_state = NULL;
+
+	if(current_state->init)
+		current_state->init();
+
 	while(true) {
 		SDL_Event event;
 		int w, h;
@@ -142,7 +103,8 @@ main(int argc, char *argv[])
 				goto end_loop;
 			case SDL_MOUSEMOTION:
 				ui_mouse_motion(event.motion.x, event.motion.y);
-				state_vtable[current_state].mouse_move(&event);
+				if(current_state->mouse_move)
+					current_state->mouse_move(&event);
 				break;
 			case SDL_MOUSEBUTTONUP:
 			case SDL_MOUSEBUTTONDOWN:
@@ -151,25 +113,28 @@ main(int argc, char *argv[])
 				case SDL_BUTTON_RIGHT: ui_mouse_button(UI_MOUSE_RIGHT, event.type == SDL_MOUSEBUTTONDOWN); break;
 				case SDL_BUTTON_MIDDLE: ui_mouse_button(UI_MOUSE_MIDDLE, event.type == SDL_MOUSEBUTTONDOWN); break;
 				}
-				state_vtable[current_state].mouse_button(&event);
+				if(current_state->mouse_button)
+					current_state->mouse_button(&event);
 				break;
 			case SDL_KEYDOWN:
-				switch(event.key.keysym.scancode) {
-				case SDL_SCANCODE_LEFT:      ui_key(UI_KEY_LEFT);      break;
-				case SDL_SCANCODE_RIGHT:     ui_key(UI_KEY_RIGHT);     break;
-				case SDL_SCANCODE_UP:        ui_key(UI_KEY_UP);        break;
-				case SDL_SCANCODE_DOWN:      ui_key(UI_KEY_DOWN);      break;
-				case SDL_SCANCODE_BACKSPACE: ui_key(UI_KEY_BACKSPACE); break;
-				case SDL_SCANCODE_RETURN:    ui_key(UI_KEY_ENTER);     break;
-				default:
-					break;
-				}
+				if(event.type == SDL_KEYDOWN)
+					switch(event.key.keysym.scancode) {
+						case SDL_SCANCODE_LEFT:      ui_key(UI_KEY_LEFT);      break;
+						case SDL_SCANCODE_RIGHT:     ui_key(UI_KEY_RIGHT);     break;
+						case SDL_SCANCODE_UP:        ui_key(UI_KEY_UP);        break;
+						case SDL_SCANCODE_DOWN:      ui_key(UI_KEY_DOWN);      break;
+						case SDL_SCANCODE_BACKSPACE: ui_key(UI_KEY_BACKSPACE); break;
+						case SDL_SCANCODE_RETURN:    ui_key(UI_KEY_ENTER);     break;
+						default: break;
+					}
 				/* fallthrough */
 			case SDL_KEYUP:
-				state_vtable[current_state].keyboard(&event);
+				if(current_state->keyboard)
+					current_state->keyboard(&event);
 				break;
 			case SDL_MOUSEWHEEL:
-				state_vtable[current_state].mouse_wheel(&event);
+				if(current_state->mouse_wheel)
+					current_state->mouse_wheel(&event);
 				break;
 			case SDL_TEXTINPUT:
 				ui_text(event.text.text, strlen(event.text.text));
@@ -181,38 +146,23 @@ main(int argc, char *argv[])
 		float delta = (float)(curr_time - prev_time) / SDL_GetPerformanceFrequency();
 		prev_time = curr_time;
 
-		Uint64 begin_render_time = SDL_GetPerformanceCounter();
-		state_vtable[current_state].update(delta);
-		gfx_scene_update(delta);
-		phx_update(delta);
-		ent_update(delta);
+		if(current_state->update)
+			current_state->update(delta);
 
 		SDL_GetWindowSize(GLOBAL.window, &w, &h);
 		glViewport(0, 0, w, h);
 
+		Uint64 begin_render_time = SDL_GetPerformanceCounter();
 		gfx_make_framebuffers(w, h);
-		//gfx_setup_draw_framebuffers();
-		gfx_clear();
-		
-		gfx_camera_set_enabled(true);
-		gfx_scene_draw();
-		//gfx_end_draw_framebuffers();
-		//gfx_render_present();
-
-		ent_render();
-		state_vtable[current_state].render();
-
-		gfx_camera_set_enabled(false);
-		ui_draw();
+		current_state->render(w, h);
 		Uint64 end_render_time = SDL_GetPerformanceCounter();
 
 		SDL_GL_SwapWindow(GLOBAL.window);
-		if(need_change) {
-			state_vtable[current_state].end();
+		if(next_state) {
+			current_state->end();
 			current_state = next_state;
-			state_vtable[current_state].init();
-
-			need_change = false;
+			current_state->init();
+			next_state = NULL;
 		}
 
 		rendering_time += end_render_time - begin_render_time;
@@ -233,7 +183,7 @@ main(int argc, char *argv[])
 	}
 
 end_loop:
-	state_vtable[current_state].end();
+	current_state->end();
 
 	phx_end();
 	ent_end();
@@ -247,6 +197,12 @@ end_loop:
 	SDL_Quit();
 
 	return 0;
+}
+
+void
+game_change_state_vtable(GameStateVTable *new_vtable)
+{
+	next_state = new_vtable;
 }
 
 Allocator
@@ -269,6 +225,14 @@ void
 disable_text_input(void)
 {
 	SDL_StopTextInput();
+}
+
+static GLADapiproc load_proc(const char *name) 
+{
+	GLADapiproc proc;
+
+	*(void**)(&proc)= SDL_GL_GetProcAddress(name);
+	return proc;
 }
 
 #if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
@@ -304,6 +268,7 @@ static void cache_line_deallocate(void *ptr, void *user)
 	(void)user;
 	_aligned_free(ptr);
 }
+
 
 #else
 #error "Only WINDOWS or UNIX."
