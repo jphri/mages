@@ -101,7 +101,6 @@ main(int argc, char *argv[])
 			switch(event.type) {
 			case SDL_QUIT:
 				goto end_loop;
-				break;
 			case SDL_MOUSEMOTION:
 				ui_mouse_motion(event.motion.x, event.motion.y);
 				if(current_state->mouse_move)
