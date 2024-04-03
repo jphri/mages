@@ -716,7 +716,7 @@ render(int w, int h)
 
 	gfx_clear();
 	gfx_camera_set_enabled(true);
-	gfx_set_camera(camera_offset, (vec2){ 32.0, 32.0 });
+	gfx_set_camera(camera_offset, (vec2){ camera_zoom, camera_zoom });
 	gfx_begin();
 	for(Thing *c = editor.map->things; c; c = c->next) {
 		render_thing(c);
