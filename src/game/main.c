@@ -17,12 +17,17 @@
 #include "../audio.h"
 #include "../events.h"
 #include "SDL_events.h"
+#include "SDL_timer.h"
+
+#define GAME_LOOP_HZ 1024
 
 static void init(void);
 static void end(void);
 static void render(int w, int h);
 static void update(float delta);
 static void mouse_button(SDL_Event *event);
+
+static int loop_thread(void *);
 
 static void event_receiver(Event event, const void *data);
 static void edit_cbk(UIObject *obj, void *userptr);
@@ -31,6 +36,9 @@ static Map *map;
 static Subscriber *level_subscriber;
 static vec2 camera_position;
 static vec2 mouse_pos;
+static bool running;
+
+static SDL_Thread *game_loop_thread;
 
 static GameStateVTable state_vtable = {
 	.init = init,
@@ -84,6 +92,9 @@ init(void)
 
 	map = editor.map;
 	map_set_ent_scene(map);
+
+	running = true;
+	game_loop_thread = SDL_CreateThread(loop_thread, "game loop", NULL);
 }
 
 void
@@ -91,11 +102,11 @@ update(float delta)
 {
 	vec2 offset, delta_pos;
 	float dist2;
-	Rectangle window_rect = gfx_window_rectangle();
 
+	(void)delta;
+
+	Rectangle window_rect = gfx_window_rectangle();
 	gfx_scene_update(delta);
-	phx_update(delta);
-	ent_update(delta);
 
 	if(GLOBAL.player) {
 		vec2_add_scaled(offset, (vec2){ 0.0, 0.0 }, GLOBAL.player->player.body->position, -32.0);
@@ -127,6 +138,9 @@ render(int w, int h)
 void
 end(void)
 {
+	running = false;
+	SDL_WaitThread(game_loop_thread, NULL);
+
 	event_delete_subscriber(level_subscriber);
 	event_cleanup();
 
@@ -166,4 +180,28 @@ event_receiver(Event event, const void *data)
 	default:
 		break;
 	}
+}
+
+int
+loop_thread(void *ptr)
+{
+	(void)ptr;
+
+	Uint64 prev_time = SDL_GetPerformanceCounter();
+	while(running) {
+		Uint64 curr_time = SDL_GetPerformanceCounter();
+		Uint64 delta_time = curr_time - prev_time;
+		double delta = (delta_time) / (double)SDL_GetPerformanceFrequency();
+		prev_time = curr_time;
+		
+		phx_update(delta);
+		ent_update(delta);
+
+		printf("Processing time: %f ms\r", delta * 1000);
+		if(delta < 1.0 / GAME_LOOP_HZ) {
+			SDL_Delay((1000 / GAME_LOOP_HZ) - (int)(delta * 1000));
+		}
+	}
+
+	return 0;
 }
