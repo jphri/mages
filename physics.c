@@ -129,7 +129,6 @@ body_check_collision(BodyID self_id, BodyID target_id, Hit *hit)
 	#define target phx_data(target_id)
 
 	vec2 subbed_pos, added_size, min, max;
-	vec2 t_min, t_max;
 	
 	vec2_add(added_size, target->half_size, self->half_size);
 	vec2_sub(subbed_pos, target->position, self->position);

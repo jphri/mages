@@ -1,14 +1,21 @@
 #include <SDL2/SDL.h>
 #include <GL/glew.h>
+#include <assert.h>
 
 #include "vecmath.h"
 #include "glutil.h"
 #include "util.h"
 
 #include "graphics.h"
+#include "third/stb_image.h"
 
 enum Uniform {
+	U_PROJECTION,
 	U_VIEW,
+	U_IMAGE_TEXTURE,
+	U_SPRITE_CR,
+	U_TILE_MAP_SIZE,
+	U_ALBEDO_TEXTURE,
 	LAST_UNIFORM
 };
 
@@ -24,18 +31,44 @@ enum VertexAttrib {
 	LAST_VATTRIB
 };
 
+#define FBO_SCALE 4
+
 typedef struct {
 	vec2 position;
 	vec2 texcoord;
 	vec4 color;
 } SpriteVertex;
 
+typedef struct {
+	GLuint texture;
+	GLuint instance_buffer;
+	GLuint vao;
+	GLuint cols, rows;
+	GLuint sprite_count;
+} SpriteBuffer;
+
+typedef struct {
+	GLuint texture;
+	int cols, rows;
+} TerrainTexture;
+
+typedef struct {
+	vec2 position;
+	vec2 tile_data;
+} TileData;
+
+#define MAX_SPRITES 1024
+
 #include "base-renderer.h"
 
 void
 intrend_bind_uniforms(ShaderProgram *shader)
 {
-	intrend_uniform_bind(shader, U_VIEW, "u_View");
+	intrend_uniform_bind(shader, U_VIEW,           "u_View");
+	intrend_uniform_bind(shader, U_IMAGE_TEXTURE,  "u_ImageTexture");
+	intrend_uniform_bind(shader, U_PROJECTION,     "u_Projection");
+	intrend_uniform_bind(shader, U_SPRITE_CR,      "u_SpriteCR");
+	intrend_uniform_bind(shader, U_ALBEDO_TEXTURE, "u_AlbedoTexture");
 }
 
 void
@@ -52,16 +85,39 @@ intrend_bind_attribs(ShaderProgram *shader)
 	intrend_attrib_bind(shader, VATTRIB_INST_COLOR,     "v_InstColor");
 }
 
+static void create_texture_buffer(int w, int h);
 static void init_shaders();
 
-static SDL_GLContext context;
-static GLuint sprite_buffer_gpu, sprite_buffer_instance, sprite_vao, sprite_count;
-static ShaderProgram sprite_program;
+static void   init_shaders();
+static GLuint load_texture(const char *file);
+
+static SpriteBuffer load_sprite_buffer(const char *file, int cols, int rows);
+static void         draw_sprite_buffer(SpriteBuffer *buffer);
+static void         insert_sprite_buffer(SpriteBuffer *buffer, Sprite *sprite);
+static void         end_sprite_buffer(SpriteBuffer *buffer);
+
+static TerrainTexture load_terrain(const char *file, int cols, int rows);
+static void           end_terrain(TerrainTexture *texture);
+static void         draw_tmap(GraphicsTileMap *tmap);
+
+static void draw_post(ShaderProgram *program);
+
+static GLuint sprite_buffer_gpu;
+static int screen_width, screen_height;
+static ShaderProgram sprite_program, tile_map_program;
+static SpriteBuffer sprite_buffers[LAST_SPRITE];
+static TerrainTexture terrain_texture[LAST_TERRAIN];
+static ArrayBuffer tile_maps;
+
+static GLuint albedo_fbo, albedo_texture;
+static GLuint post_process_vbo, post_process_vao;
+
+static ShaderProgram post_clean;
 
 void
 gfx_init()
 {
-	SpriteVertex vertex_data[] = {
+	static SpriteVertex vertex_data[] = {
 		{ .position = { -1.0, -1.0 }, .texcoord = { 0.0, 0.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
 		{ .position = {  1.0, -1.0 }, .texcoord = { 1.0, 0.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
 		{ .position = {  1.0,  1.0 }, .texcoord = { 1.0, 1.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
@@ -69,27 +125,28 @@ gfx_init()
 		{ .position = { -1.0,  1.0 }, .texcoord = { 0.0, 1.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
 		{ .position = { -1.0, -1.0 }, .texcoord = { 0.0, 0.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
 	};
-	Sprite sprite = {
-		.position = { 0.5, 0.5 },
-		.color    = { 0.2, 0.3, 0.7, 1.0 },
-		.rotation = 3.1415926535 / 4,
-		.half_size = { 0.5, 0.5 },
-		.sprite_id = { 0.0, 0.0 }
+	static SpriteVertex post_process[] = {
+		{ .position = { -1.0, -1.0 }, .texcoord = { 0.0, 0.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
+		{ .position = {  1.0, -1.0 }, .texcoord = { 1.0, 0.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
+		{ .position = {  1.0,  1.0 }, .texcoord = { 1.0, 1.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
+		{ .position = {  1.0,  1.0 }, .texcoord = { 1.0, 1.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
+		{ .position = { -1.0,  1.0 }, .texcoord = { 0.0, 1.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
+		{ .position = { -1.0, -1.0 }, .texcoord = { 0.0, 0.0 }, .color = { 1.0, 1.0, 1.0, 1.0 } },
 	};
 	init_shaders();
 
 	sprite_buffer_gpu = ugl_create_buffer(GL_STATIC_DRAW, sizeof(vertex_data), vertex_data);
-	sprite_buffer_instance = ugl_create_buffer(GL_STATIC_DRAW, sizeof(sprite), &sprite);
-	sprite_vao        = ugl_create_vao(8, (VaoSpec[]){
-		{ .name = VATTRIB_POSITION, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, position), .buffer = sprite_buffer_gpu },
-		{ .name = VATTRIB_TEXCOORD, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, texcoord), .buffer = sprite_buffer_gpu },
-		{ .name = VATTRIB_COLOR,    .size = 4, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, color),    .buffer = sprite_buffer_gpu },
+	sprite_buffers[SPRITE_PLAYER] = load_sprite_buffer("textures/player.png", 2, 1);
+	sprite_buffers[SPRITE_FIRIE] = load_sprite_buffer("textures/fire.png", 1, 1);
 
-		{ .name = VATTRIB_INST_POSITION,  .size = 2, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, position),  .divisor = 1, .buffer = sprite_buffer_instance },
-		{ .name = VATTRIB_INST_SIZE,      .size = 2, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, half_size), .divisor = 1, .buffer = sprite_buffer_instance },
-		{ .name = VATTRIB_INST_SPRITE_ID, .size = 2, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, sprite_id), .divisor = 1, .buffer = sprite_buffer_instance },
-		{ .name = VATTRIB_INST_COLOR,     .size = 4, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, color),     .divisor = 1, .buffer = sprite_buffer_instance },
-		{ .name = VATTRIB_INST_ROTATION,  .size = 1, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, rotation),  .divisor = 1, .buffer = sprite_buffer_instance },
+	arrbuf_init(&tile_maps);
+
+	terrain_texture[TERRAIN_NORMAL] = load_terrain("textures/terrain.png", 16, 16);
+
+	post_process_vbo = ugl_create_buffer(GL_STATIC_DRAW, sizeof(post_process), post_process);
+	post_process_vao = ugl_create_vao(2, (VaoSpec[]){
+		{ .name = VATTRIB_POSITION, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, position), .buffer = post_process_vbo },
+		{ .name = VATTRIB_TEXCOORD, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, texcoord), .buffer = post_process_vbo },
 	});
 }
 
@@ -97,23 +154,66 @@ void
 gfx_end()
 {
 	glDeleteProgram(sprite_program.program);
+	glDeleteBuffers(1, (GLuint[]) {
+		sprite_buffer_gpu
+	});
+
+	for(int i = 0; i < LAST_SPRITE; i++)
+		end_sprite_buffer(&sprite_buffers[i]);
+
+	for(int i = 0; i < LAST_TERRAIN; i++)
+		end_terrain(&terrain_texture[i]);
 }
 
 void
 gfx_draw_sprite(Sprite *sprite) 
 {
-	glBindBuffer(GL_ARRAY_BUFFER, sprite_buffer_instance);
+	insert_sprite_buffer(&sprite_buffers[sprite->sprite_type], sprite);
 }
 
 void
 gfx_render(int w, int h) 
 {
-	mat3 view;
+	mat3 view, projection;
 	mat3_ident(view);
+	affine2d_ortho_window(projection, w, h);
+
+	create_texture_buffer(w, h);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, albedo_fbo);
+	glViewport(0, 0, w / FBO_SCALE, h / FBO_SCALE);
+	
+	glClearColor(0.2, 0.3, 0.7, 1.0);
+	glClear(GL_COLOR_BUFFER_BIT);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	intrend_bind_shader(&sprite_program);
-	intrend_uniform_mat3(U_VIEW, view);
-	intrend_draw_instanced(&sprite_program, sprite_vao, GL_TRIANGLES, 6, 1);
+	intrend_uniform_mat3(U_VIEW,       view);
+	intrend_uniform_mat3(U_PROJECTION, projection);
+	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
+
+	intrend_bind_shader(&tile_map_program);
+	intrend_uniform_mat3(U_VIEW,       view);
+	intrend_uniform_mat3(U_PROJECTION, projection);
+	intrend_uniform_iv(U_IMAGE_TEXTURE, 1, 1, &(GLint){ 0 });
+
+	GraphicsTileMap *tmap_list = tile_maps.data;
+	for(size_t i = 0; 
+		i < arrbuf_length(&tile_maps, sizeof(GraphicsTileMap)); 
+		i++) 
+	{
+		draw_tmap(&tmap_list[i]);
+	}
+	arrbuf_clear(&tile_maps);
+
+	for(int i = 0; i < LAST_SPRITE; i++)
+		draw_sprite_buffer(&sprite_buffers[i]);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(0, 0, w, h);
+
+	draw_post(&post_clean);
 }
 
 void
@@ -122,14 +222,259 @@ init_shaders()
 	#define SHADER_PROGRAM(symbol, ...) \
 		intrend_link(&symbol, #symbol, sizeof((GLuint[]){ __VA_ARGS__ })/sizeof(GLuint), (GLuint[]){ __VA_ARGS__ })
 
-	GLuint default_vertex   = ugl_compile_shader_file("shaders/default.vsh", GL_VERTEX_SHADER);
-	GLuint default_fragment = ugl_compile_shader_file("shaders/default.fsh", GL_FRAGMENT_SHADER);
+	#define LIST_SHADERS \
+		SHADER(default_vertex,   "shaders/default.vsh", GL_VERTEX_SHADER)\
+		SHADER(default_fragment, "shaders/default.fsh", GL_FRAGMENT_SHADER)\
+		SHADER(tilemap_vertex,   "shaders/tilemap.vsh", GL_VERTEX_SHADER) \
+		\
+		SHADER(post_vertex,      "shaders/post.vsh", GL_VERTEX_SHADER)\
+		SHADER(post_clean_fsh,   "shaders/post_clean.fsh", GL_FRAGMENT_SHADER)
+
+	#define SHADER(shader_name, shader_path, shader_type) \
+		GLuint shader_name = ugl_compile_shader_file(shader_path, shader_type);
+		LIST_SHADERS
+	#undef SHADER
 
 	SHADER_PROGRAM(sprite_program, default_vertex, default_fragment);
+	SHADER_PROGRAM(tile_map_program, tilemap_vertex, default_fragment);
+	SHADER_PROGRAM(post_clean, post_vertex, post_clean_fsh);
 
-	glDeleteShader(default_vertex);
-	glDeleteShader(default_fragment);
+	#define SHADER(shader_name, shader_path, shader_type) \
+		glDeleteShader(shader_name);
+		LIST_SHADERS
+	#undef SHADER
 
+	#undef LIST_SHADERS
 	#undef SHADER_PROGRAM
 }
 
+void
+create_texture_buffer(int w, int h)
+{
+	if(screen_width == w && screen_height == h)
+		return;
+
+	screen_width = w;
+	screen_height = h;
+	
+	if(glIsTexture(albedo_texture))
+		glDeleteTextures(1, &albedo_texture);
+
+	if(glIsFramebuffer(albedo_fbo))
+		glDeleteFramebuffers(1, &albedo_fbo);
+	
+	glGenTextures(1, &albedo_texture);
+	glGenFramebuffers(1, &albedo_fbo);
+
+	glBindTexture(GL_TEXTURE_2D, albedo_texture);
+	glTexImage2D(GL_TEXTURE_2D,
+			0,
+			GL_RGBA32F,
+			screen_width / FBO_SCALE, screen_height / FBO_SCALE,
+			0, 
+			GL_RGBA,
+			GL_UNSIGNED_BYTE,
+			NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	
+	glBindFramebuffer(GL_FRAMEBUFFER, albedo_fbo);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, albedo_texture, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+GLuint
+load_texture(const char *file)
+{
+	GLuint texture;
+	int image_width, image_height;
+	unsigned char *image_data;
+
+	image_data = stbi_load(file, &image_width, &image_height, NULL, 4);
+	if(!image_data) {
+		printf("Could not load the texture %s\n", file);
+		return -1;
+	}
+
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexImage2D(GL_TEXTURE_2D,
+			0,
+			GL_RGBA8,
+			image_width, image_height,
+			0, 
+			GL_RGBA,
+			GL_UNSIGNED_BYTE,
+			image_data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	stbi_image_free(image_data);
+	return texture;
+}
+
+
+SpriteBuffer 
+load_sprite_buffer(const char *file, int cols, int rows)
+{
+	GLuint instance_buffer = ugl_create_buffer(GL_STATIC_DRAW, sizeof(Sprite) * MAX_SPRITES, NULL);
+	return (SpriteBuffer) {
+		.texture         = load_texture(file),
+		.instance_buffer = instance_buffer,
+		.cols            = cols,
+		.rows            = rows,
+		.sprite_count    = 0,
+		.vao = ugl_create_vao(8, (VaoSpec[]){
+			{ .name = VATTRIB_POSITION, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, position), .buffer = sprite_buffer_gpu },
+			{ .name = VATTRIB_TEXCOORD, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, texcoord), .buffer = sprite_buffer_gpu },
+			{ .name = VATTRIB_COLOR,    .size = 4, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, color),    .buffer = sprite_buffer_gpu },
+
+			{ .name = VATTRIB_INST_POSITION,  .size = 2, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, position),  .divisor = 1, .buffer = instance_buffer },
+			{ .name = VATTRIB_INST_SIZE,      .size = 2, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, half_size), .divisor = 1, .buffer = instance_buffer },
+			{ .name = VATTRIB_INST_SPRITE_ID, .size = 2, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, sprite_id), .divisor = 1, .buffer = instance_buffer },
+			{ .name = VATTRIB_INST_COLOR,     .size = 4, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, color),     .divisor = 1, .buffer = instance_buffer },
+			{ .name = VATTRIB_INST_ROTATION,  .size = 1, .type = GL_FLOAT, .stride = sizeof(Sprite), .offset = offsetof(Sprite, rotation),  .divisor = 1, .buffer = instance_buffer },
+		})
+	};
+}
+
+void
+draw_sprite_buffer(SpriteBuffer *buffer)
+{
+	if(buffer->sprite_count == 0)
+		return;
+
+	intrend_bind_shader(&sprite_program);
+	intrend_uniform_fv(U_SPRITE_CR, 1, 2, (float[]){ buffer->cols, buffer->rows });
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, buffer->texture);
+	intrend_draw_instanced(&sprite_program, buffer->vao, GL_TRIANGLES, 6, buffer->sprite_count);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	buffer->sprite_count = 0;
+}
+
+void
+insert_sprite_buffer(SpriteBuffer *buffer, Sprite *sprite)
+{
+	if(buffer->sprite_count >= MAX_SPRITES)
+		return;
+		
+	glBindBuffer(GL_ARRAY_BUFFER,    buffer->instance_buffer);
+	glBufferSubData(GL_ARRAY_BUFFER, buffer->sprite_count * sizeof(Sprite), sizeof(Sprite), sprite);
+	glBindBuffer(GL_ARRAY_BUFFER,    0);
+	buffer->sprite_count ++;
+}
+
+void
+end_sprite_buffer(SpriteBuffer *buffer)
+{
+	glDeleteVertexArrays(1, &buffer->vao);
+	glDeleteBuffers(1, &buffer->instance_buffer);
+	glDeleteTextures(1, &buffer->texture);
+}
+
+GraphicsTileMap
+gfx_tmap_new(Terrain terrain, int w, int h, int *data) 
+{
+	unsigned int count_tiles = 0;
+	ArrayBuffer buffer;
+	arrbuf_init(&buffer);
+
+	for(int y = 0; y < h; y++) {
+		for(int x = 0; x < w; x++) {
+			int i = x + y * w;
+			if(!data[i])
+				continue;
+
+			int spr = data[i] - 1;
+			TileData info = {
+				.position = { x, y },
+				.tile_data = {
+					(int)(spr % terrain_texture[terrain].cols),
+					(int)(spr / terrain_texture[terrain].cols)
+				}
+			};
+			arrbuf_insert(&buffer, sizeof(info), &info);
+			count_tiles ++;
+		}
+	}
+
+	unsigned int gpu_buffer = ugl_create_buffer(GL_STATIC_DRAW, buffer.size, buffer.data);
+	unsigned int gpu_vao    = ugl_create_vao(5, (VaoSpec[]) {
+		{ .name = VATTRIB_POSITION, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, position), .buffer = sprite_buffer_gpu },
+		{ .name = VATTRIB_TEXCOORD, .size = 2, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, texcoord), .buffer = sprite_buffer_gpu },
+		{ .name = VATTRIB_COLOR,    .size = 4, .type = GL_FLOAT, .stride = sizeof(SpriteVertex), .offset = offsetof(SpriteVertex, color),    .buffer = sprite_buffer_gpu },
+		{ .name = VATTRIB_INST_POSITION,   .size = 2, .type = GL_FLOAT, .stride = sizeof(TileData), .offset = offsetof(TileData, position),  .divisor = 1, .buffer = gpu_buffer },
+		{ .name = VATTRIB_INST_SPRITE_ID,  .size = 2, .type = GL_FLOAT, .stride = sizeof(TileData), .offset = offsetof(TileData, tile_data), .divisor = 1, .buffer = gpu_buffer },
+	});
+
+	arrbuf_free(&buffer);
+
+	return (GraphicsTileMap) {
+		.buffer = gpu_buffer,
+		.vao = gpu_vao,
+		.count_tiles = count_tiles,
+		.terrain = terrain,
+	};
+}
+
+void
+gfx_tmap_free(GraphicsTileMap *tmap) 
+{
+	glDeleteBuffers(1, &tmap->buffer);
+	glDeleteVertexArrays(1, &tmap->vao);
+}
+
+void
+gfx_tmap_draw(GraphicsTileMap *tmap) 
+{
+	arrbuf_insert(&tile_maps, sizeof(*tmap), tmap);
+}
+
+void
+draw_tmap(GraphicsTileMap *tmap) 
+{
+	intrend_bind_shader(&tile_map_program);
+	intrend_uniform_fv(U_SPRITE_CR, 1, 2, (GLfloat[]){ 
+			terrain_texture[tmap->terrain].cols, 
+			terrain_texture[tmap->terrain].rows 
+	});
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, terrain_texture[tmap->terrain].texture);
+	intrend_draw_instanced(&tile_map_program, tmap->vao, GL_TRIANGLES, 6, tmap->count_tiles);
+}
+
+TerrainTexture
+load_terrain(const char *path, int cols, int rows) 
+{
+	return (TerrainTexture) {
+		.texture = load_texture(path),
+		.cols = cols,
+		.rows = rows,
+	};
+}
+
+void
+end_terrain(TerrainTexture *terrain)
+{
+	glDeleteTextures(1, &terrain->texture);
+}
+
+void
+draw_post(ShaderProgram *program)
+{
+	intrend_bind_shader(program);
+	intrend_uniform_iv(U_ALBEDO_TEXTURE, 1, 1, (int[]){ 0 });
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, albedo_texture);
+
+	intrend_draw(program, post_process_vao, GL_TRIANGLES, 6);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+}

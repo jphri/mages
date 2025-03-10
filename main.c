@@ -21,7 +21,7 @@ main()
 							  SDL_WINDOWPOS_UNDEFINED,
 							  SDL_WINDOWPOS_UNDEFINED,
 							  800, 600,
-							  SDL_WINDOW_OPENGL);
+							  SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 	GLOBAL.renderer = SDL_CreateRenderer(GLOBAL.window, -1, SDL_RENDERER_ACCELERATED);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -48,9 +48,18 @@ main()
 		.is_static = true
 	};
 	ent_player_new((vec2){ 400, 300 });
+	GraphicsTileMap tmap = gfx_tmap_new(TERRAIN_NORMAL, 3, 4, (int[]){
+		1, 1, 1,
+		1, 2, 1,
+		1, 0, 1,
+		1, 1, 1
+	});
+	(void)tmap;
+
 
 	Uint64 prev_time = SDL_GetPerformanceCounter();
 	while(true) {
+		int w, h;
 		SDL_Event event;
 		Uint64 curr_time = SDL_GetPerformanceCounter();
 		float delta = (float)(curr_time - prev_time) / SDL_GetPerformanceFrequency();
@@ -59,9 +68,14 @@ main()
 		phx_update(delta);
 		ent_update(delta);
 
-		gfx_render(800, 600);
+		SDL_GetWindowSize(GLOBAL.window, &w, &h);
 
-		SDL_RenderPresent(GLOBAL.renderer);
+
+		ent_render();
+		
+		gfx_tmap_draw(&tmap);
+		gfx_render(w, h);
+
 		SDL_GL_SwapWindow(GLOBAL.window);
 		while(SDL_PollEvent(&event)) {
 			switch(event.type) {
@@ -70,8 +84,8 @@ main()
 			}
 		}
 	}
-end_loop:
 
+end_loop:
 	phx_end();
 	SDL_DestroyRenderer(GLOBAL.renderer);
 	SDL_DestroyWindow(GLOBAL.window);

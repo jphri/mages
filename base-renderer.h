@@ -32,7 +32,7 @@ static inline void intrend_bind_shader(ShaderProgram *shader) {
 	glUseProgram(shader->program);
 }
 
-static inline void intrend_uniform_mat3(Uniform uniform, mat3 const mat) {
+static inline void intrend_uniform_mat3(Uniform uniform, mat3 mat) {
 	glUniformMatrix3fv(current_shader->uniforms[uniform], 1, GL_FALSE, &mat[0][0]);
 }
 

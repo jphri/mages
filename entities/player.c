@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 
+#include "../graphics.h"
 #include "../vecmath.h"
 #include "../physics.h"
 #include "../entity.h"
@@ -33,6 +34,8 @@ ent_player_update(EntityID self_id, float delta)
 	#define self ((EntityPlayer*)ent_data(self_id))
 	#define self_body phx_data(self->body)
 
+	(void)delta;
+
 	const Uint8 *keys = SDL_GetKeyboardState(NULL);
 	unsigned int hit_count;
 
@@ -50,7 +53,7 @@ ent_player_update(EntityID self_id, float delta)
 		ent_del(self_id);
 
 	HitInfo *info = phx_hits(self->body, &hit_count);
-	for(int i = 0; i < hit_count; i++)
+	for(unsigned int i = 0; i < hit_count; i++)
 		printf("Hit ID: %d\n", info->id);
 
 	#undef self_id
@@ -60,6 +63,16 @@ ent_player_update(EntityID self_id, float delta)
 void
 ent_player_render(EntityID self_id)
 {
+	#define self ((EntityPlayer*)ent_data(self_id))
+	#define self_body phx_data(self->body)
+	
+	gfx_draw_sprite(&(Sprite) {
+		.position  = { self_body->position[0], self_body->position[1] },
+		.color     = { 1.0, 1.0, 1.0, 1.0 },
+		.half_size = { self_body->half_size[0], self_body->half_size[1] },
+		.sprite_id = { 0.0, 0.0 },
+		.sprite_type = SPRITE_PLAYER
+	});
 }
 
 void

@@ -52,7 +52,7 @@ ent_update(float delta)
 	}
 
 	EntityID *should_die = should_die_buffer.data;
-	for(int i = 0; 
+	for(size_t i = 0; 
 		i < arrbuf_length(&should_die_buffer, sizeof(EntityID)); 
 		i++)
 	{

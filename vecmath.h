@@ -152,6 +152,13 @@ MATH_FUNC void affine2d_translate(mat3 r, vec2 pos)
 	r[1][2] += pos[1];
 }
 
+MATH_FUNC void affine2d_ortho_window(mat3 r, const float w, const float h)
+{
+	mat3_ident(r);
+	r[0][0] =  2.0f / w; r[2][0] = -1.0;
+	r[1][1] = -2.0f / h; r[2][1] =  1.0;
+}
+
 #undef MATH_FUNC
 
 #endif

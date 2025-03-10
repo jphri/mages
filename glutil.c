@@ -106,16 +106,33 @@ ugl_create_vao(GLuint n_specs, VaoSpec specs[n_specs])
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 
-	for(int i = 0; i < n_specs; i++) {
+	for(GLuint i = 0; i < n_specs; i++) {
+		uintptr_t offset = specs[i].offset;
 		glBindBuffer(GL_ARRAY_BUFFER, specs[i].buffer);
 		glEnableVertexAttribArray(specs[i].name);
-		glVertexAttribPointer(
-			specs[i].name,
-			specs[i].size,
-			specs[i].type,
-			GL_FALSE,
-			specs[i].stride,
-			(void*)specs[i].offset);
+		switch(specs[i].type) {
+		case GL_INT:
+		case GL_BYTE:
+		case GL_SHORT:
+		case GL_UNSIGNED_INT:
+		case GL_UNSIGNED_BYTE:
+		case GL_UNSIGNED_SHORT:
+			glVertexAttribIPointer(
+					specs[i].name,
+					specs[i].size,
+					specs[i].type,
+					specs[i].stride,
+					(void*)offset);
+			break;
+		default:
+			glVertexAttribPointer(
+					specs[i].name,
+					specs[i].size,
+					specs[i].type,
+					GL_FALSE,
+					specs[i].stride,
+					(void*)offset);
+		}
 		glVertexAttribDivisor(specs[i].name, specs[i].divisor);
 	}
 

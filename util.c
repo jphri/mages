@@ -187,7 +187,7 @@ strview_str(StrView view)
 void
 strview_str_mem(StrView view, char *data, size_t size) 
 {
-	size = (size > view.end - view.begin) ? (view.end - view.begin) : size;
+	size = (size > (size_t)(view.end - view.begin)) ? (size_t)(view.end - view.begin) : size;
 	strncpy(data, view.begin, size);
 	data[size-1] = 0;
 }
