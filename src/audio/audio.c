@@ -13,7 +13,6 @@
 static void source_process_callback(void *userdata, Uint8 *stream, int len);
 
 static SDL_AudioSpec     wanted_audio_spec;
-static ObjectPool sfx_sources;
 
 SDL_AudioSpec audio_spec;
 SDL_AudioDeviceID audio_device;
@@ -31,7 +30,7 @@ audio_init(void)
 		SDL_AUDIO_ALLOW_SAMPLES_CHANGE);
 	SDL_PauseAudioDevice(audio_device, 0);
 
-	objpool_init(&sfx_sources, sizeof(AudioSource), DEFAULT_ALIGNMENT);
+	init_sfx_system();
 	load_audio_buffers();
 
 	printf("Audio Initialized!\n");
@@ -61,19 +60,6 @@ audio_end(void)
 }
 
 void
-audio_sfx_play(Mixer mixer, Sound sound, float freq)
-{
-	SDL_LockAudioDevice(audio_device);
-	AudioSource *source = objpool_new(&sfx_sources);
-	source->buffer = &audio_buffers[sound];
-	source->mixer = &audio_mixer[mixer];
-	source->position = 0;
-	source->freq_error = 0;
-	source->freq_change = (int)(freq * 256);
-	SDL_UnlockAudioDevice(audio_device);
-}
-
-void
 source_process_callback(void *userdata, Uint8 *stream_raw, int len)
 {
 	(void)userdata;
@@ -82,12 +68,6 @@ source_process_callback(void *userdata, Uint8 *stream_raw, int len)
 
 	memset(stream, 0, len);
 	process_bgm(stream_len, stream);
-
-	for(AudioSource *source = objpool_begin(&sfx_sources); source; source = objpool_next(source)) {
-		process_audio_stream(stream, stream_len, source);
-		if(source->position > source->buffer->length)
-			objpool_free(source);
-	}
-	objpool_clean(&sfx_sources);
+	process_sfx(stream_len, stream);
 }
 
