@@ -9,7 +9,7 @@
 #include "graphics.h"
 #include "map.h"
 #include "../editor/editor.h"
-#include "../game_state.h"
+#include "game_state.h"
 #include "global.h"
 #include "physics.h"
 #include "entity.h"

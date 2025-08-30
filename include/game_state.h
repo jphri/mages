@@ -17,7 +17,6 @@ typedef struct {
 
 void start_game_level(void);
 void start_game_level_edit(void);
-
 void game_change_state_vtable(GameStateVTable *new_vtable);
 
 #endif

@@ -7,7 +7,7 @@
 
 #include "util.h"
 
-#include "../game_state.h"
+#include "game_state.h"
 #include "vecmath.h"
 #include "graphics.h"
 #include "map.h"
