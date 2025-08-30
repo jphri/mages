@@ -13,6 +13,7 @@ CFLAGS += -DSDL_MAIN_HANDLED
 CFLAGS += -D_POSIX_C_SOURCE=200809L
 CFLAGS += -O3 -std=c99 -pipe -Wall -Wextra -Werror -pedantic
 CFLAGS += -Ithird/include
+CFLAGS += -Iinclude
 CFLAGS += -fPIE
 CFLAGS += -MP -MD
 LDFLAGS += -lm

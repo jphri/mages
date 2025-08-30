@@ -6,7 +6,7 @@
 #include <wchar.h>
 
 #include "../game_state.h"
-#include "../vecmath.h"
+#include "vecmath.h"
 #include "../graphics.h"
 #include "../util.h"
 #include "../map.h"
