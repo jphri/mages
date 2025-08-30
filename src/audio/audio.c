@@ -7,12 +7,7 @@
 #include "audio.h"
 #include "util.h"
 
-typedef struct {
-	short *buffer;
-	int length;
-	int frequency;
-	int channels;
-} AudioBuffer;
+#include "dat.h"
 
 typedef struct {
 	int volume;
@@ -26,15 +21,13 @@ typedef struct {
 	int freq_error;
 } AudioSource;
 
-static AudioBuffer load_audio(const char *path);
-static AudioBuffer load_audio_wav(const char *path);
 static void source_process_callback(void *userdata, Uint8 *stream, int len);
 static void process_audio_stream(Sint16 *stream, int len, AudioSource *source);
 
 static SDL_AudioSpec     wanted_audio_spec, audio_spec;
 static SDL_AudioDeviceID audio_device;
 
-static AudioBuffer audio_buffers[LAST_AUDIO_BUFFER];
+
 static AudioMixer  audio_mixer[LAST_AUDIO_MIXER];
 static AudioSource bgm_source;
 static ObjectPool sfx_sources;
@@ -49,17 +42,12 @@ audio_init(void)
 	wanted_audio_spec.samples  = 1024;
 	wanted_audio_spec.callback = source_process_callback;
 
-	audio_buffers[AUDIO_BUFFER_BGM_TEST] = load_audio("sounds/bgm/time-to-reflect-what-i-have-done.ogg");
-	audio_buffers[AUDIO_BUFFER_FIREBALL] = load_audio_wav("sounds/sfx/fireball.wav");
-	audio_buffers[AUDIO_BUFFER_FIREBALL_HIT] = load_audio_wav("sounds/sfx/fireball-hit.wav");
-	audio_buffers[AUDIO_BUFFER_DOOR_OPEN]  = load_audio_wav("sounds/sfx/door-open.wav");
-	audio_buffers[AUDIO_BUFFER_DOOR_CLOSE] = load_audio_wav("sounds/sfx/door-close.wav");
-
 	audio_device = SDL_OpenAudioDevice(NULL, false, &wanted_audio_spec, &audio_spec,
 		SDL_AUDIO_ALLOW_SAMPLES_CHANGE);
 	SDL_PauseAudioDevice(audio_device, 0);
 
 	objpool_init(&sfx_sources, sizeof(AudioSource), DEFAULT_ALIGNMENT);
+	load_audio_buffers();
 
 	printf("Audio Initialized!\n");
 	printf("Audio frequency: %d\n"
@@ -124,34 +112,6 @@ source_process_callback(void *userdata, Uint8 *stream_raw, int len)
 	objpool_clean(&sfx_sources);
 }
 
-AudioBuffer
-load_audio(const char *path)
-{
-	AudioBuffer buffer = {0};
-	buffer.length = stb_vorbis_decode_filename(path, &buffer.channels, &buffer.frequency, &buffer.buffer);
-	return buffer;
-}
-
-AudioBuffer
-load_audio_wav(const char *path)
-{
-	AudioBuffer buffer;
-	
-	SDL_AudioSpec spec;
-	Uint32 wav_length;
-	Uint8 *wav_buffer;
-
-	if(SDL_LoadWAV(path, &spec, &wav_buffer, &wav_length) == NULL) {
-		die("cannot load file: %s\n", path);
-	}
-	
-	buffer.channels = spec.channels;
-	buffer.frequency = spec.freq;
-	buffer.length = wav_length / sizeof(Sint16);;
-	buffer.buffer = (short*)wav_buffer;
-
-	return buffer;
-}
 
 void
 process_audio_stream(Sint16 *stream, int stream_len, AudioSource *source)
