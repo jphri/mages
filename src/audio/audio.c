@@ -8,30 +8,19 @@
 #include "util.h"
 
 #include "dat.h"
-
-typedef struct {
-	int volume;
-} AudioMixer;
-
-typedef struct {
-	const AudioBuffer *buffer;
-	AudioMixer  *mixer;
-	int freq_change;
-	int position;
-	int freq_error;
-} AudioSource;
+#include "fns.h"
 
 static void source_process_callback(void *userdata, Uint8 *stream, int len);
-static void process_audio_stream(Sint16 *stream, int len, AudioSource *source);
 
-static SDL_AudioSpec     wanted_audio_spec, audio_spec;
+static SDL_AudioSpec     wanted_audio_spec;
 static SDL_AudioDeviceID audio_device;
-
 
 static AudioMixer  audio_mixer[LAST_AUDIO_MIXER];
 static AudioSource bgm_source;
 static ObjectPool sfx_sources;
 static int bgm_playing;
+
+SDL_AudioSpec audio_spec;
 
 void
 audio_init(void)
@@ -110,33 +99,6 @@ source_process_callback(void *userdata, Uint8 *stream_raw, int len)
 			objpool_free(source);
 	}
 	objpool_clean(&sfx_sources);
-}
-
-
-void
-process_audio_stream(Sint16 *stream, int stream_len, AudioSource *source)
-{
-	const int max = (1 << 15) - 1;
-	const int min = -(1 << 15);
-
-	for(int ll = 0; ll < stream_len; ll += audio_spec.channels) {
-		Sint32 channel;
-		if(source->position >= source->buffer->length)
-			break;
-
-		channel = source->buffer->channels;
-		for(int i = 0; i < audio_spec.channels; i++) {
-			int sample = source->buffer->buffer[source->position + (i % channel)];
-			int a = stream[ll + i] + ((sample * source->mixer->volume) >> 7);
-			stream[ll + i] = clampi(a, min, max);
-		}
-
-		source->freq_error += (source->buffer->frequency * source->freq_change) >> 8;
-		while(source->freq_error > audio_spec.freq) {
-			source->freq_error -= audio_spec.freq;
-			source->position += source->buffer->channels;
-		}
-	}
 }
 
 void
