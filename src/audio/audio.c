@@ -50,13 +50,9 @@ audio_init(void)
 void
 audio_end(void)
 {
+	unload_audio_buffers();
 	SDL_PauseAudioDevice(audio_device, 1);
 	SDL_CloseAudioDevice(audio_device);
-
-	for(int i = 0; i < LAST_AUDIO_BUFFER; i++) {
-		free(audio_buffers[i].buffer);
-	}
-
 }
 
 void

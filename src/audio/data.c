@@ -21,6 +21,14 @@ load_audio_buffers(void)
 	audio_buffers[AUDIO_BUFFER_DOOR_CLOSE] = load_audio_wav("sounds/sfx/door-close.wav");
 }
 
+void
+unload_audio_buffers(void)
+{
+	for(int i = 0; i < LAST_AUDIO_BUFFER; i++) {
+		free(audio_buffers[i].buffer);
+	}
+}
+
 AudioBuffer
 load_audio(const char *path)
 {

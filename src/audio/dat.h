@@ -24,3 +24,4 @@ extern SDL_AudioSpec audio_spec;
 extern SDL_AudioDeviceID audio_device;
 
 void load_audio_buffers(void);
+void unload_audio_buffers(void);
