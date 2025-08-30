@@ -1,11 +1,8 @@
 #include <SDL.h>
 #include <stdbool.h>
 #include <stb_vorbis.h>
-#include <stdlib.h>
 #include <stdint.h>
-
-#include "audio.h"
-#include "util.h"
+#include <audio.h>
 
 #include "dat.h"
 #include "fns.h"
