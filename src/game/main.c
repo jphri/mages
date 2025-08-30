@@ -16,7 +16,7 @@
 #include "../map.h"
 #include "../ui.h"
 #include "audio.h"
-#include "../events.h"
+#include "events.h"
 #include "SDL_events.h"
 
 static void init(void);
