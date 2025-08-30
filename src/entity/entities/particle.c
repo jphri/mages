@@ -6,15 +6,13 @@
 
 #include "graphics.h"
 #include "physics.h"
-#include "../entity.h"
+#include "entity.h"
 
 #define SELF        ENT_DATA(ENTITY_PARTICLE, self_id)
 #define SELF_SPRITE gfx_scene_spr(SELF->sprite)
 
 #define BODY_COMPONENT (SELF->body)
 #define SELF_BODY phx_data(BODY_COMPONENT.body)
-
-#include "../entity_components.h"
 
 static void particle_update(Entity *, float delta);
 static void particle_die(Entity *);

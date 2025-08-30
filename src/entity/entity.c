@@ -6,8 +6,6 @@
 #include "util.h"
 #include "vecmath.h"
 #include "entity.h"
-#include "game_objects.h"
-#include "global.h"
 
 #define MAX_INTERACT_DIST (10 * ENTITY_SCALE)
 

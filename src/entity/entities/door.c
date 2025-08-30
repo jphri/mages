@@ -1,5 +1,5 @@
 #include "physics.h"
-#include "../entity.h"
+#include "entity.h"
 #include "graphics.h"
 #include "audio.h"
 #include <math.h>

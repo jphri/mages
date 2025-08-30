@@ -5,8 +5,7 @@
 
 #include "graphics.h"
 #include "physics.h"
-#include "../entity.h"
-#include "../id.h"
+#include "entity.h"
 #include "audio.h"
 
 static void collision_callback(Body * self_body, Body * other, Contact *contact);

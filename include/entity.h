@@ -5,7 +5,6 @@
 #include <stdint.h>
 
 #include "graphics.h"
-#include "game_objects.h"
 #include "vecmath.h"
 #include "math.h"
 #include "defs.h"

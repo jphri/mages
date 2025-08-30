@@ -4,10 +4,7 @@
 
 #include "graphics.h"
 #include "physics.h"
-#include "../entity.h"
-#include "../id.h"
-
-#include "../entity_components.h"
+#include "entity.h"
 
 static void dummy_update(Entity *self_id, float delta);
 static void dummy_take_damage(Entity *self_id, float damage);

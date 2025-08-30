@@ -4,7 +4,6 @@
 
 #include "vecmath.h"
 #include "physics.h"
-#include "../entity.h"
 #include "../map.h"
 #include "SDL_keycode.h"
 #include "editor.h"

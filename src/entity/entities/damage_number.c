@@ -5,8 +5,7 @@
 
 #include "graphics.h"
 #include "physics.h"
-#include "../entity.h"
-#include "../id.h"
+#include "entity.h"
 
 #define SELF      ENT_DATA(ENTITY_DAMAGE_NUMBER, self)
 
