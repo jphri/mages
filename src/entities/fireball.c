@@ -7,7 +7,7 @@
 #include "physics.h"
 #include "../entity.h"
 #include "../id.h"
-#include "../audio.h"
+#include "audio.h"
 
 static void collision_callback(Body * self_body, Body * other, Contact *contact);
 static void fireball_update(Entity * self_id, float delta);

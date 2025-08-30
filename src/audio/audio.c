@@ -6,7 +6,6 @@
 
 #include "audio.h"
 #include "util.h"
-#include "global.h"
 
 typedef struct {
 	short *buffer;

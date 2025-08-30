@@ -7,7 +7,7 @@
 #include "physics.h"
 #include "../entity.h"
 #include "../id.h"
-#include "../audio.h"
+#include "audio.h"
 #include "../events.h"
 
 #define SPEED 50
