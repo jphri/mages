@@ -4,7 +4,7 @@
 
 #include "../global.h"
 #include "vecmath.h"
-#include "../physics.h"
+#include "physics.h"
 #include "../entity.h"
 #include "../graphics.h"
 #include "../map.h"

@@ -11,7 +11,7 @@
 #include "../editor/editor.h"
 #include "../game_state.h"
 #include "../global.h"
-#include "../physics.h"
+#include "physics.h"
 #include "../entity.h"
 #include "../map.h"
 #include "../ui.h"

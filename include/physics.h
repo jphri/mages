@@ -4,7 +4,6 @@
 #include <stdbool.h>
 
 #include "vecmath.h"
-#include "game_objects.h"
 #include "defs.h"
 
 #define GRID_TILE_SIZE 16

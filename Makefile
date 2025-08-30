@@ -1,5 +1,5 @@
 THIRD_SRC_FILES = $(wildcard third/src/*.c)
-SRC_FILES       = $(wildcard src/*.c src/entities/*.c src/game/*.c src/editor/*.c src/widgets/*.c src/util/*.c) 
+SRC_FILES       = $(wildcard src/*.c src/entities/*.c src/game/*.c src/editor/*.c src/widgets/*.c src/util/*.c src/physics/*.c) 
 
 OBJ_FILES       = $(SRC_FILES:.c=.o)
 THIRD_OBJ_FILES = $(THIRD_SRC_FILES:.c=.o)

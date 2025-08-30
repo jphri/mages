@@ -2,12 +2,9 @@
 #include <SDL.h>
 #include <assert.h>
 
-#include "game_objects.h"
 #include "util.h"
 #include "vecmath.h"
 #include "physics.h"
-#include "global.h"
-#include "graphics.h"
 
 #define PHYSICS_HZ 480
 #define PHYSICS_TIME (1.0 / PHYSICS_HZ)
