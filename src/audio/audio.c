@@ -119,16 +119,17 @@ process_audio_stream(Sint16 *stream, int stream_len, AudioSource *source)
 	const int max = (1 << 15) - 1;
 	const int min = -(1 << 15);
 
-	for(int ll = 0; ll < stream_len; ll += 2) {
-		Sint32 a1, a2, channel;
+	for(int ll = 0; ll < stream_len; ll += audio_spec.channels) {
+		Sint32 channel;
 		if(source->position >= source->buffer->length)
 			break;
 
 		channel = source->buffer->channels;
-		a1 = stream[ll + 0] + ((source->buffer->buffer[source->position +            0] * source->mixer->volume) >> 7);
-		a2 = stream[ll + 1] + ((source->buffer->buffer[source->position +  channel - 1] * source->mixer->volume) >> 7);
-		stream[ll + 0] = clampi(a1, min, max);
-		stream[ll + 1] = clampi(a2, min, max);
+		for(int i = 0; i < audio_spec.channels; i++) {
+			int sample = source->buffer->buffer[source->position + (i % channel)];
+			int a = stream[ll + i] + ((sample * source->mixer->volume) >> 7);
+			stream[ll + i] = clampi(a, min, max);
+		}
 
 		source->freq_error += (source->buffer->frequency * source->freq_change) >> 8;
 		while(source->freq_error > audio_spec.freq) {
