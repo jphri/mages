@@ -5,7 +5,6 @@
 
 #include "util.h"
 #include "vecmath.h"
-#include "game_objects.h"
 
 #define TILE_SIZE    16
 #define SCENE_LAYERS 64

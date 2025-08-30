@@ -5,7 +5,6 @@
 #include <string.h>
 
 #include "SDL_stdinc.h"
-#include "game_objects.h"
 #include "vecmath.h"
 #include "glutil.h"
 #include "util.h"

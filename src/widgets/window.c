@@ -1,4 +1,4 @@
-#include "../graphics.h"
+#include "graphics.h"
 #include "../ui.h"
 
 #define WINDOW_TITLE_HEIGHT 14

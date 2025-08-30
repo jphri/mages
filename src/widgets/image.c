@@ -1,5 +1,5 @@
 #include "../ui.h"
-#include "../graphics.h"
+#include "graphics.h"
 
 #define IMAGE(OBJ) WIDGET(UI_IMAGE, OBJ)
 

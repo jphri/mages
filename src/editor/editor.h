@@ -2,7 +2,7 @@
 #define EDITOR_H
 
 #include "../map.h"
-#include "../graphics.h"
+#include "graphics.h"
 #include "../ui.h"
 #include <SDL.h>
 

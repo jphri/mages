@@ -9,7 +9,7 @@
 
 #include "../game_state.h"
 #include "vecmath.h"
-#include "../graphics.h"
+#include "graphics.h"
 #include "../map.h"
 #include "../ui.h"
 #include "editor.h"

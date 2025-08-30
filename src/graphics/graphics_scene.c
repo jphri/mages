@@ -5,12 +5,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "game_objects.h"
 #include "vecmath.h"
 #include "util.h"
 #include "glutil.h"
 #include "graphics.h"
-#include "global.h"
 
 typedef struct SceneObjectPrivData SceneObjectPrivData;
 struct SceneObjectPrivData {
