@@ -7,7 +7,6 @@
 #include "../physics.h"
 #include "../entity.h"
 #include "../graphics.h"
-#include "../util.h"
 #include "../map.h"
 #include "SDL_keycode.h"
 #include "editor.h"
