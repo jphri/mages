@@ -1,4 +1,6 @@
 #include <audio.h>
+#include <SDL.h>
+
 #include "dat.h"
 
 AudioMixer audio_mixer[LAST_AUDIO_MIXER];

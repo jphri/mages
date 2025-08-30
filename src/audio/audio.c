@@ -13,13 +13,10 @@
 static void source_process_callback(void *userdata, Uint8 *stream, int len);
 
 static SDL_AudioSpec     wanted_audio_spec;
-static SDL_AudioDeviceID audio_device;
-
-static AudioSource bgm_source;
 static ObjectPool sfx_sources;
-static int bgm_playing;
 
 SDL_AudioSpec audio_spec;
+SDL_AudioDeviceID audio_device;
 
 void
 audio_init(void)
@@ -84,13 +81,7 @@ source_process_callback(void *userdata, Uint8 *stream_raw, int len)
 	int stream_len = len / sizeof(Sint16);
 
 	memset(stream, 0, len);
-	if(bgm_playing) {
-		process_audio_stream(stream, stream_len, &bgm_source);
-		if(bgm_source.position >= bgm_source.buffer->length) {
-			bgm_source.position = 0;
-			bgm_source.freq_error = 0;
-		}
-	}
+	process_bgm(stream_len, stream);
 
 	for(AudioSource *source = objpool_begin(&sfx_sources); source; source = objpool_next(source)) {
 		process_audio_stream(stream, stream_len, source);
@@ -98,30 +89,5 @@ source_process_callback(void *userdata, Uint8 *stream_raw, int len)
 			objpool_free(source);
 	}
 	objpool_clean(&sfx_sources);
-}
-
-void
-audio_bgm_play(Sound sound, float freq_scale)
-{
-	SDL_LockAudioDevice(audio_device);
-	bgm_source.buffer = &audio_buffers[sound];
-	bgm_source.mixer = &audio_mixer[AUDIO_MIXER_BGM];
-	bgm_source.position = 0;
-	bgm_source.freq_error = 0;
-	bgm_source.freq_change = (int)(freq_scale * 256);
-	SDL_UnlockAudioDevice(audio_device);
-	bgm_playing = 1;
-}
-
-void
-audio_bgm_pause(void)
-{
-	bgm_playing = 0;
-}
-
-void
-audio_bgm_resume(void)
-{
-	bgm_playing = 1;
 }
 

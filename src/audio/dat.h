@@ -1,5 +1,3 @@
-#include <SDL_audio.h>
-
 typedef struct {
 	short *buffer;
 	int length;
@@ -23,5 +21,6 @@ extern AudioBuffer audio_buffers[LAST_AUDIO_BUFFER];
 extern AudioMixer  audio_mixer[LAST_AUDIO_MIXER];
 
 extern SDL_AudioSpec audio_spec;
+extern SDL_AudioDeviceID audio_device;
 
 void load_audio_buffers(void);
