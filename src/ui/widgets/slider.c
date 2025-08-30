@@ -1,6 +1,5 @@
-#include "../ui.h"
+#include "ui.h"
 #include "graphics.h"
-#include <stdio.h>
 
 typedef struct {
 	float width, border;

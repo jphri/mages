@@ -1,4 +1,4 @@
-#include "../ui.h"
+#include "ui.h"
 #include "graphics.h"
 
 static void button_motion(UIObject *obj, UIEvent *event, Rectangle *rect);

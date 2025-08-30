@@ -3,7 +3,7 @@
 
 #include "map.h"
 #include "graphics.h"
-#include "../ui.h"
+#include "ui.h"
 #include <SDL.h>
 
 typedef enum {

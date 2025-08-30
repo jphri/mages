@@ -11,7 +11,7 @@
 #include "vecmath.h"
 #include "graphics.h"
 #include "map.h"
-#include "../ui.h"
+#include "ui.h"
 #include "editor.h"
 
 typedef void (*ThingRender)(Thing *thing);

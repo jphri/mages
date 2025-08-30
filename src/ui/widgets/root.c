@@ -1,4 +1,4 @@
-#include "../ui.h"
+#include "ui.h"
 
 void
 UI_ROOT_event(UIObject *obj, UIEvent *ev, Rectangle *rect)

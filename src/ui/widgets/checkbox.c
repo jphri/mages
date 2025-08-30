@@ -1,4 +1,4 @@
-#include "../ui.h"
+#include "ui.h"
 
 #define CHECKBOX(obj) WIDGET(UI_CHECKBOX, obj)
 

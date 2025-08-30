@@ -1,5 +1,4 @@
-#include "../ui.h"
-#include "SDL_log.h"
+#include "ui.h"
 
 #define SPRITE_SIZE 32
 

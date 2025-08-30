@@ -1,6 +1,6 @@
 #include <ctype.h>
 
-#include "../ui.h"
+#include "ui.h"
 #include "graphics.h"
 
 static void tinput_draw(UIObject *input, Rectangle *rect);

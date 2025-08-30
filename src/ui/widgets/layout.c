@@ -1,5 +1,5 @@
 #include "graphics.h"
-#include "../ui.h"
+#include "ui.h"
 
 UIObject *
 ui_layout_new(void)

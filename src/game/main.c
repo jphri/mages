@@ -13,7 +13,7 @@
 #include "global.h"
 #include "physics.h"
 #include "entity.h"
-#include "../ui.h"
+#include "ui.h"
 #include "audio.h"
 #include "events.h"
 #include "SDL_events.h"
