@@ -1,4 +1,3 @@
-#These 4 variables can be set on the command line
 THIRD_SRC_FILES = $(wildcard third/src/*.c)
 SRC_FILES       = $(wildcard src/*.c src/entities/*.c src/game/*.c src/editor/*.c src/widgets/*.c) 
 
