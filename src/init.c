@@ -6,7 +6,6 @@
 
 #include "SDL_keyboard.h"
 #include "SDL_timer.h"
-#include "game_objects.h"
 #include "global.h"
 #include "game_state.h"
 #include "ui.h"
