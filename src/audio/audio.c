@@ -8,8 +8,13 @@
 #include "fns.h"
 
 static void source_process_callback(void *userdata, Uint8 *stream, int len);
-
-static SDL_AudioSpec     wanted_audio_spec;
+static SDL_AudioSpec     wanted_audio_spec = {
+	.freq = 48000,
+	.format = AUDIO_S16SYS,
+	.channels = 2,
+	.samples = 1024,
+	.callback = source_process_callback,
+};
 
 SDL_AudioSpec audio_spec;
 SDL_AudioDeviceID audio_device;
@@ -17,12 +22,6 @@ SDL_AudioDeviceID audio_device;
 void
 audio_init(void)
 {
-	wanted_audio_spec.freq     = 48000;
-	wanted_audio_spec.format   = AUDIO_S16SYS;
-	wanted_audio_spec.channels = 2;
-	wanted_audio_spec.samples  = 1024;
-	wanted_audio_spec.callback = source_process_callback;
-
 	audio_device = SDL_OpenAudioDevice(NULL, false, &wanted_audio_spec, &audio_spec,
 		SDL_AUDIO_ALLOW_SAMPLES_CHANGE);
 	SDL_PauseAudioDevice(audio_device, 0);
