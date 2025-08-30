@@ -15,7 +15,6 @@ static void source_process_callback(void *userdata, Uint8 *stream, int len);
 static SDL_AudioSpec     wanted_audio_spec;
 static SDL_AudioDeviceID audio_device;
 
-static AudioMixer  audio_mixer[LAST_AUDIO_MIXER];
 static AudioSource bgm_source;
 static ObjectPool sfx_sources;
 static int bgm_playing;
@@ -48,8 +47,8 @@ audio_init(void)
 	    audio_spec.channels,
 	    audio_spec.samples);
 
-	audio_mixer[AUDIO_MIXER_BGM].volume = 128;
-	audio_mixer[AUDIO_MIXER_SFX].volume = 128;
+	audio_set_volumer(AUDIO_MIXER_BGM, 1.0);
+	audio_set_volumer(AUDIO_MIXER_SFX, 1.0);
 }
 
 void
@@ -126,8 +125,3 @@ audio_bgm_resume(void)
 	bgm_playing = 1;
 }
 
-void
-audio_set_volumer(Mixer mixer, float v)
-{
-	audio_mixer[mixer].volume = 128 * v;
-}

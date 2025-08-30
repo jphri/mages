@@ -20,6 +20,8 @@ typedef struct {
 } AudioSource;
 
 extern AudioBuffer audio_buffers[LAST_AUDIO_BUFFER];
+extern AudioMixer  audio_mixer[LAST_AUDIO_MIXER];
+
 extern SDL_AudioSpec audio_spec;
 
 void load_audio_buffers(void);
