@@ -8,7 +8,10 @@
 
 #define DOOR(ID) ENT_DATA(ENTITY_DOOR, ID)
 
+#ifndef M_PI
 #define M_PI 3.1415926535
+#endif
+
 #define EPSLON 0.001
 #define DRAG 100
 
