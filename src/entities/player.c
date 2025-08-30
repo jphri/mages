@@ -2,7 +2,7 @@
 #include <SDL.h>
 #include "vecmath.h"
 
-#include "../global.h"
+#include "global.h"
 #include "graphics.h"
 #include "physics.h"
 #include "../entity.h"

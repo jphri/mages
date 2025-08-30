@@ -2,7 +2,6 @@
 #include <stdbool.h>
 #include <SDL.h>
 
-#include "../global.h"
 #include "vecmath.h"
 #include "physics.h"
 #include "../entity.h"

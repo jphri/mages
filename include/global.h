@@ -2,7 +2,6 @@
 #define GLOBAL_H
 
 #include <SDL.h>
-#include "game_objects.h"
 #include "util.h"
 #include "defs.h"
 

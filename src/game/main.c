@@ -10,7 +10,7 @@
 #include "../map.h"
 #include "../editor/editor.h"
 #include "../game_state.h"
-#include "../global.h"
+#include "global.h"
 #include "physics.h"
 #include "../entity.h"
 #include "../map.h"

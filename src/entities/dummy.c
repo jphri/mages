@@ -6,7 +6,6 @@
 #include "physics.h"
 #include "../entity.h"
 #include "../id.h"
-#include "../global.h"
 
 #include "../entity_components.h"
 
