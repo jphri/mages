@@ -70,8 +70,8 @@ phx_set_grid_size(int w, int h)
 	grid_size_w = w;
 	grid_size_h = h;
 
-	grid_list = calloc(sizeof(grid_list[0]), grid_size);
-	static_grid_list = calloc(sizeof(grid_list[0]), grid_size);
+	grid_list = calloc(grid_size, sizeof(grid_list[0]));
+	static_grid_list = calloc(grid_size, sizeof(grid_list[0]));
 }
 
 void
