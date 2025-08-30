@@ -1,5 +1,5 @@
 THIRD_SRC_FILES = $(wildcard third/src/*.c)
-SRC_FILES       = $(wildcard src/*.c src/entities/*.c src/game/*.c src/editor/*.c src/widgets/*.c) 
+SRC_FILES       = $(wildcard src/*.c src/entity/*.c src/entity/entities/*.c src/game/*.c src/editor/*.c src/ui/widgets/*.c src/util/*.c src/physics/*.c src/glutil/*.c src/graphics/*.c src/audio/*.c src/events/*.c src/map/*.c src/ui/*.c) 
 
 OBJ_FILES       = $(SRC_FILES:.c=.o)
 THIRD_OBJ_FILES = $(THIRD_SRC_FILES:.c=.o)
@@ -13,6 +13,7 @@ CFLAGS += -DSDL_MAIN_HANDLED
 CFLAGS += -D_POSIX_C_SOURCE=200809L
 CFLAGS += -O3 -std=c99 -pipe -Wall -Wextra -Werror -pedantic
 CFLAGS += -Ithird/include
+CFLAGS += -Iinclude
 CFLAGS += -fPIE
 CFLAGS += -MP -MD
 LDFLAGS += -lm

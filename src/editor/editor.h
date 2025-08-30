@@ -1,9 +1,9 @@
 #ifndef EDITOR_H
 #define EDITOR_H
 
-#include "../map.h"
-#include "../graphics.h"
-#include "../ui.h"
+#include "map.h"
+#include "graphics.h"
+#include "ui.h"
 #include <SDL.h>
 
 typedef enum {

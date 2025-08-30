@@ -4,18 +4,18 @@
 
 #include <SDL.h>
 
-#include "../graphics.h"
-#include "../map.h"
+#include "vecmath.h"
+
+#include "graphics.h"
+#include "map.h"
 #include "../editor/editor.h"
-#include "../game_state.h"
-#include "../global.h"
-#include "../vecmath.h"
-#include "../physics.h"
-#include "../entity.h"
-#include "../map.h"
-#include "../ui.h"
-#include "../audio.h"
-#include "../events.h"
+#include "game_state.h"
+#include "global.h"
+#include "physics.h"
+#include "entity.h"
+#include "ui.h"
+#include "audio.h"
+#include "events.h"
 #include "SDL_events.h"
 
 static void init(void);
