@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <SDL.h>
 #include <assert.h>
+#include <stdint.h>
 
 #include "util.h"
 #include "vecmath.h"
@@ -37,12 +38,12 @@ static void update_body(Body * body, float delta);
 static void update_body_grid(BodyGridNodeID self_grid, BodyGridNodeID other_grid);
 
 static void solve(Contact *contact);
+static int  hash(int x, int y);
 
 static float accumulator_time;
 static ArrayBuffer grid_node_arena;
-static int grid_size, grid_size_w, grid_size_h;
-static BodyGridNodeID *grid_list;
-static BodyGridNodeID *static_grid_list;
+static BodyGridNodeID grid_list[0x10000];
+static BodyGridNodeID static_grid_list[0x10000];
 static ObjectPool objects;
 
 static void (*pre_solve_callback)(Contact *contact);
@@ -53,22 +54,6 @@ phx_init(void)
 	objpool_init(&objects, sizeof(Body), DEFAULT_ALIGNMENT);
 	arrbuf_init(&grid_node_arena);
 	accumulator_time = 0;
-
-	phx_set_grid_size(128, 128);
-}
-
-void
-phx_set_grid_size(int w, int h)
-{
-	if(grid_list) free(grid_list);
-	if(static_grid_list) free(static_grid_list);
-
-	grid_size = w * h;
-	grid_size_w = w;
-	grid_size_h = h;
-
-	grid_list = calloc(grid_size, sizeof(grid_list[0]));
-	static_grid_list = calloc(grid_size, sizeof(grid_list[0]));
 }
 
 void
@@ -107,7 +92,7 @@ phx_update(float delta)
 		objpool_clean(&objects);
 		calculate_grid();
 
-		for(int i = 0; i < grid_size; i++) {
+		for(int i = 0; i < 0x10000; i++) {
 			BodyGridNodeID node_id = grid_list[i];
 			BodyGridNodeID static_node_id = static_grid_list[i];
 			while(node_id) {
@@ -271,8 +256,8 @@ id_to_grid(BodyGridNodeID id)
 void
 calculate_grid(void)
 {
-	memset(grid_list, 0, sizeof(grid_list[0]) * grid_size);
-	memset(static_grid_list, 0, sizeof(static_grid_list[0]) * grid_size);
+	memset(grid_list, 0, sizeof(grid_list));
+	memset(static_grid_list, 0, sizeof(static_grid_list));
 	arrbuf_clear(&grid_node_arena);
 
 	for(Body *body = objpool_begin(&objects); body; body = objpool_next(body)) {
@@ -285,21 +270,15 @@ calculate_grid(void)
 		int grid_max_y = floorf(body->position[1] + body->half_size[1]) / GRID_TILE_SIZE;
 
 		for(int x = grid_min_x; x <= grid_max_x; x++) {
-			if(x < 0 || x >= grid_size_w)
-				continue;
-
 			for(int y = grid_min_y; y <= grid_max_y; y++) {
-				if(y < 0 || y >= grid_size_h)
-					continue;
-
 				BodyGridNode *node = arrbuf_newptr(&grid_node_arena, sizeof(BodyGridNode));
 				node->body = body;
 				if(!body->is_static) {
-					node->next = grid_list[x + y * grid_size_w];
-					grid_list[x + y * grid_size_w] = grid_to_id(node);
+					node->next = grid_list[hash(x, y)];
+					grid_list[hash(x, y)] = grid_to_id(node);
 				} else {
-					node->next = static_grid_list[x + y * grid_size_w];
-					static_grid_list[x + y * grid_size_w] = grid_to_id(node);
+					node->next = static_grid_list[hash(x, y)];
+					static_grid_list[hash(x, y)] = grid_to_id(node);
 				}
 			}
 		}
@@ -316,4 +295,17 @@ void
 phx_set_pre_solve(void (*pre)(Contact *contact))
 {
 	pre_solve_callback = pre;
+}
+
+static int hash(int x, int y)
+{
+	static const uint16_t multiplier = 40504;
+	uint16_t h = 0;
+
+	x /= GRID_TILE_SIZE;
+	y /= GRID_TILE_SIZE;
+
+	h += x * multiplier;
+	h += y * multiplier;
+	return h;
 }

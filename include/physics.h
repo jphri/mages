@@ -63,8 +63,6 @@ void phx_init(void);
 void phx_end(void);
 void phx_reset(void);
 
-void phx_set_grid_size(int w, int h);
-
 Body *phx_new(void);
 void  phx_del(Body *body);
 void  phx_update(float delta);
