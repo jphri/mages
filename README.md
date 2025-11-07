@@ -27,8 +27,7 @@ $ export CFLAGS=`pkg-config --cflags sdl2`
 $ export LDFLAGS=`pkg-config --libs sdl2`
 ```
 
-You can also setglibc's retarded  your optimization flags and other dependencies, like the 
-glibc's ```-lm``` on ```LDFLAGS```
+Also remember to add ```-lm``` to your LDFLAGS if you use glibc.
 
 ## Nice flags to help with stuff
 
