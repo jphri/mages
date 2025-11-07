@@ -1,5 +1,7 @@
 # Magos
 
+![](screenshot.png)
+
 This is more of a engine than a game. Just for fun, actually.
 
 The objective of this project it was to make a cross-platform project, that
